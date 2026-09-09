@@ -1,0 +1,11 @@
+[project]
+name = "handicapped-h2hs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "archeryutils>=3.0.0",
+    "notebook>=7.6.2",
+    "pandas>=3.0.5",
+]
