@@ -1,0 +1,115 @@
+[
+  {
+    "id": 1,
+    "name": "Project scaffolding and dependencies",
+    "description": "Set up the project so `main.py` starts a local Flask web server. Add Flask, numpy, scipy, matplotlib, and pytest as dependencies via `uv add` (do not use pip/conda). Create the package layout for the stats engine (e.g. `h2h/stats.py`) separate from the web layer (e.g. `h2h/app.py`), with `main.py` at the repo root simply importing and running the Flask app. Running `uv run main.py` must start the server and serve a placeholder page at `/`.",
+    "tests": [
+      "`uv run main.py` starts without error and binds to a localhost port.",
+      "A GET request to `/` returns HTTP 200.",
+      "The stats module can be imported independently of Flask (`import h2h.stats` succeeds with Flask not running)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 2,
+    "name": "Per-arrow score PMF from handicap",
+    "description": "In the stats engine, implement a function that takes an AGB handicap and an `archeryutils.targets.Target`, and returns the full per-arrow score probability mass function (a mapping of score value to probability), derived from `sigma_r(handicap, distance)` and the target's `face_spec`, using the same ring-probability terms `archeryutils` computes internally for `HandicapScheme.arrow_score`/`_s_bar`. Must not duplicate `archeryutils`'s scoring-system logic beyond what is necessary to expose the per-ring probabilities instead of just their mean.",
+    "tests": [
+      "For a range of handicaps (e.g. 0, 10, 25, 50, 80) and at least two target faces, the PMF's probabilities sum to 1 (within floating point tolerance).",
+      "For the same inputs, the PMF's expected value (`sum(score * prob)`) matches `archeryutils`'s `HandicapScheme.arrow_score(handicap, target)` within floating point tolerance.",
+      "All PMF probabilities are >= 0."
+    ],
+    "completed": false
+  },
+  {
+    "id": 3,
+    "name": "n_pass score distribution via convolution",
+    "description": "Implement a function that takes a per-arrow PMF (from task 2) and an integer `n_pass`, and returns the exact probability distribution of the summed score over `n_pass` arrows, computed via discrete self-convolution (not Monte Carlo, not a Gaussian/CLT approximation).",
+    "tests": [
+      "For n_pass in {1, 6, 12, 60}, the resulting distribution's probabilities sum to 1 (within floating point tolerance).",
+      "The resulting distribution's expected value equals `n_pass * arrow_score(handicap, target)` within floating point tolerance.",
+      "For n_pass = 1, the result is identical to the input per-arrow PMF."
+    ],
+    "completed": false
+  },
+  {
+    "id": 4,
+    "name": "Percentile computation and pass-winner decision",
+    "description": "Implement a function that, given an n_pass score distribution (from task 3) and an archer's actual observed pass score, returns that archer's percentile (the probability of scoring at or below the observed score under their own distribution). Implement a second function that takes two archers' percentiles (plus their raw scores, for tie-breaking) and returns the pass winner, using the tie-break rule: equal percentile -> higher raw score wins; still equal -> coin flip.",
+    "tests": [
+      "Percentile values returned are always in [0, 1].",
+      "An archer scoring the minimum possible score for their distribution gets a percentile at or near 0; scoring the maximum possible gets a percentile at or near 1.",
+      "Given two different percentiles, the winner-decision function picks the higher one.",
+      "Given equal percentiles but different raw scores, the winner-decision function picks the higher raw score.",
+      "Given equal percentiles and equal raw scores, the winner-decision function still returns a valid winner (does not error or hang) and this is verified as a genuine coin flip (not always the same archer) across repeated calls."
+    ],
+    "completed": false
+  },
+  {
+    "id": 5,
+    "name": "Match/round data model and orchestration",
+    "description": "Implement `Archer`, `Pass`, `Match`, and `Round` data structures per AISpec.md §6. `Round` should source its target/distance/arrow-count metadata from `archeryutils.load_rounds` (default: Portsmouth). `Match` should compute the number of passes as `60 / n_pass` and reject non-divisor `n_pass` values. Provide a function to record a pass's scores for both archers (computing percentiles and pass winner via tasks 2-4) and a function to compute the overall match result (majority of passes wins; even split is a draw) once all passes are recorded.",
+    "tests": [
+      "Creating a `Match` with an `n_pass` that does not divide 60 evenly raises a clear error.",
+      "For n_pass = 12, a `Match` has exactly 5 passes.",
+      "Recording pass scores for both archers correctly updates the running per-archer pass-win tally.",
+      "A match where one archer wins a strict majority of passes reports that archer as the overall winner.",
+      "A match with an even pass count and an even split of pass wins reports a draw."
+    ],
+    "completed": false
+  },
+  {
+    "id": 6,
+    "name": "Match setup UI (archer entry, pairing, n_pass slider)",
+    "description": "Build the setup page: form to add archers (name, handicap, optional bowstyle label), automatic sequential pairing into matches, and a slider restricted to the divisors of 60 ({1,2,3,4,5,6,10,12,15,20,30,60}, default 12) to set `n_pass` for the session before scoring starts. Submitting creates the in-memory `Match` objects for the session.",
+    "tests": [
+      "Adding an odd number of archers flags the last one as unpaired and excludes them from scoring, without crashing the app.",
+      "The n_pass slider cannot be set to a value that is not a divisor of 60 (UI prevents it, or server-side validation rejects it with a clear error).",
+      "Submitting valid archer data creates one Match per pair with the chosen n_pass."
+    ],
+    "completed": false
+  },
+  {
+    "id": 7,
+    "name": "Pass score entry and live results (basic mode)",
+    "description": "Build the basic-mode scoring page: for each match, one input box per archer for the current pass's total score. On submission, display that pass's winner and the running match score (passes won so far by each archer), and progress to the next pass. After the final pass, display the overall match result (winner or draw) per task 5.",
+    "tests": [
+      "Entering both archers' scores for a pass and submitting displays a pass winner consistent with the stats engine's decision (task 4) for those inputs.",
+      "The running match score displayed after each pass matches the tally computed by the Match object.",
+      "After the final pass of a match, the overall match result shown matches the Match object's computed result."
+    ],
+    "completed": false
+  },
+  {
+    "id": 8,
+    "name": "Basic/Advanced UI toggle",
+    "description": "Add a visible, session-wide toggle switching between basic mode (task 7 only) and advanced mode (task 9). Toggling must not lose any already-entered scores or match progress.",
+    "tests": [
+      "Toggling from basic to advanced mode and back preserves all previously entered pass scores and running results.",
+      "The toggle state is visually clear (unambiguous which mode is active)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 9,
+    "name": "Advanced mode: distribution plots and maths explanation",
+    "description": "In advanced mode, for each scored pass, render (via matplotlib, as a static image) each archer's handicap-implied n_pass score distribution with their actual score and resulting percentile marked. Also display a short, human-readable explanation of the underlying method (summarising AISpec.md §2: handicap -> sigma_r -> per-arrow PMF -> convolved n_pass distribution -> percentile comparison), including the explicit note that the bowstyle-variance correction is not applied in this version.",
+    "tests": [
+      "For a scored pass, an image is rendered showing both archers' distributions with their observed scores marked.",
+      "The maths explanation text is present and mentions that bowstyle-variance correction is not applied.",
+      "Advanced-mode content does not appear when the toggle (task 8) is set to basic mode."
+    ],
+    "completed": false
+  },
+  {
+    "id": 10,
+    "name": "End-to-end integration check",
+    "description": "Write an integration test (or documented manual test procedure, if automated browser testing is out of scope) that runs a full session end to end: add archers with differing handicaps, set n_pass, enter all pass scores for a match, and confirm the displayed overall match result matches an independently hand-calculated expectation for at least one concrete worked example (e.g. using the mean-only comparison as a sanity check that the favoured archer's percentile calculation is directionally correct).",
+    "tests": [
+      "A full session (setup through final match result) completes without error for at least 2 archers and one full round of passes.",
+      "The final displayed result for the worked example matches the independently computed expectation.",
+      "Restarting the app clears all prior match state (confirms no unintended persistence, per Assumption 7)."
+    ],
+    "completed": false
+  }
+]
