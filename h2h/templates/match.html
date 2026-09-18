@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ archer_a.name }} (h{{ archer_a.handicap }}) vs {{ archer_b.name }} (h{{ archer_b.handicap }})</h1>
+<p>n_pass = {{ match.n_pass }} ({{ match.passes|length }} passes over 60 arrows)</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pass</th>
+      <th>{{ archer_a.name }} score</th>
+      <th>{{ archer_a.name }} percentile</th>
+      <th>{{ archer_b.name }} score</th>
+      <th>{{ archer_b.name }} percentile</th>
+      <th>Winner</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in match.passes %}
+    <tr>
+      <td>{{ p.pass_index + 1 }}</td>
+      <td>{{ p.score_a if p.is_scored else '' }}</td>
+      <td>{{ '%.1f%%'|format(p.percentile_a * 100) if p.is_scored else '' }}</td>
+      <td>{{ p.score_b if p.is_scored else '' }}</td>
+      <td>{{ '%.1f%%'|format(p.percentile_b * 100) if p.is_scored else '' }}</td>
+      <td>{{ archer_a.name if p.winner == 'a' else (archer_b.name if p.winner == 'b' else '') }}</td>
+    </tr>
+    {% if mode == 'advanced' and p.is_scored %}
+    <tr>
+      <td colspan="6">
+        <img src="{{ url_for('pass_chart', idx=idx, pass_index=p.pass_index) }}" alt="Score distributions for pass {{ p.pass_index + 1 }}">
+      </td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>Passes won: {{ archer_a.name }} {{ match.pass_wins[0] }} - {{ match.pass_wins[1] }} {{ archer_b.name }}</p>
+
+{% if match.is_complete %}
+  {% if match.result() == 'draw' %}
+  <h2 class="draw">Result: draw</h2>
+  {% else %}
+  <h2>Result: {{ archer_a.name if match.result() == 'a' else archer_b.name }} wins</h2>
+  {% endif %}
+{% else %}
+<h2>Enter pass {{ next_pass_index + 1 }}</h2>
+<form method="post" action="{{ url_for('record_pass', idx=idx) }}">
+  <div class="row">
+    <label>{{ archer_a.name }} score: <input type="number" step="0.1" name="score_a" required></label>
+  </div>
+  <div class="row">
+    <label>{{ archer_b.name }} score: <input type="number" step="0.1" name="score_b" required></label>
+  </div>
+  <button type="submit">Submit pass</button>
+</form>
+{% endif %}
+
+{% if mode == 'advanced' %}
+<div class="maths">
+  <h3>How the winner is decided</h3>
+  <p>
+    Each archer's current AGB handicap gives an angular aiming-error standard
+    deviation (<code>sigma_r</code>), which fixes the probability an arrow lands
+    in each scoring ring. Convolving that per-arrow distribution
+    {{ match.n_pass }} times gives the exact distribution of that archer's score
+    over one pass. Each archer's actual pass score is converted into a
+    percentile under their <em>own</em> distribution -- the probability of
+    scoring at or below what they actually shot. The archer who over-performed
+    their own model by more (higher percentile) wins the pass, which fairly
+    accounts for archers having different score variability, not just
+    different average scores.
+  </p>
+  <p>
+    <strong>Note:</strong> this version does not apply any bowstyle-specific
+    variance correction -- the distribution above depends only on handicap and
+    distance, per <code>Specification/humanSpec.md</code>.
+  </p>
+</div>
+{% endif %}
+{% endblock %}

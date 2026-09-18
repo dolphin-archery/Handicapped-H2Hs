@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Matches</h1>
+
+{% if unpaired %}
+<p class="warning">{{ unpaired.name }} has no opponent (odd number of archers entered) and is not scored.</p>
+{% endif %}
+
+{% if not match_views %}
+<p>No matches yet. <a href="{{ url_for('setup') }}">Set up archers</a> to start.</p>
+{% else %}
+<table>
+  <thead>
+    <tr><th>Match</th><th>n_pass</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for mv in match_views %}
+    <tr>
+      <td>{{ mv.archer_a }} (h{{ mv.handicap_a }}) vs {{ mv.archer_b }} (h{{ mv.handicap_b }})</td>
+      <td>{{ mv.n_pass }}</td>
+      <td>{{ mv.status }}</td>
+      <td><a href="{{ url_for('match_view', idx=mv.idx) }}">Open</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

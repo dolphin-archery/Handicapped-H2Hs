@@ -67,7 +67,7 @@
       "The n_pass slider cannot be set to a value that is not a divisor of 60 (UI prevents it, or server-side validation rejects it with a clear error).",
       "Submitting valid archer data creates one Match per pair with the chosen n_pass."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 7,
@@ -78,7 +78,7 @@
       "The running match score displayed after each pass matches the tally computed by the Match object.",
       "After the final pass of a match, the overall match result shown matches the Match object's computed result."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 8,
@@ -88,7 +88,7 @@
       "Toggling from basic to advanced mode and back preserves all previously entered pass scores and running results.",
       "The toggle state is visually clear (unambiguous which mode is active)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 9,
@@ -99,7 +99,7 @@
       "The maths explanation text is present and mentions that bowstyle-variance correction is not applied.",
       "Advanced-mode content does not appear when the toggle (task 8) is set to basic mode."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 10,

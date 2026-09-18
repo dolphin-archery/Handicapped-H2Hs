@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Match setup</h1>
+<p>Enter archers in the order you want them paired (row 1 vs row 2, row 3 vs row 4, ...). Bowstyle is optional and is not used in any calculation.</p>
+{% if error %}
+<p class="warning">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="{{ url_for('start') }}">
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Handicap</th><th>Bowstyle (optional)</th></tr>
+    </thead>
+    <tbody>
+      {% for i in range(num_rows) %}
+      <tr>
+        <td><input type="text" name="name_{{ i }}"></td>
+        <td><input type="number" step="0.1" name="handicap_{{ i }}"></td>
+        <td><input type="text" name="bowstyle_{{ i }}"></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="row">
+    <label for="n_pass_slider">Arrows per pass (n_pass): <span id="n_pass_label">{{ n_pass }}</span></label><br>
+    <input type="range" id="n_pass_slider" min="0" max="{{ valid_n_pass|length - 1 }}" step="1"
+           value="{{ valid_n_pass.index(n_pass) }}">
+    <input type="hidden" id="n_pass_value" name="n_pass" value="{{ n_pass }}">
+  </div>
+
+  <button type="submit">Start matches</button>
+</form>
+
+<script>
+  const validNPass = {{ valid_n_pass|tojson }};
+  const slider = document.getElementById("n_pass_slider");
+  const label = document.getElementById("n_pass_label");
+  const hidden = document.getElementById("n_pass_value");
+  slider.addEventListener("input", () => {
+    const value = validNPass[parseInt(slider.value, 10)];
+    label.textContent = value;
+    hidden.value = value;
+  });
+</script>
+{% endblock %}

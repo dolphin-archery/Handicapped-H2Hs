@@ -21,6 +21,9 @@ The following assumptions were made when turning `Specification/humanSpec.md` in
 9. Bowstyle is collected for display/record-keeping only and never enters any
    calculation, per the explicit exclusion of the bowstyle-variance correction in
    `Specification/humanSpec.md`.
+10. The setup form shows a fixed 20 archer rows rather than a dynamic "add more"
+    control, to avoid losing already-typed rows on a page reload without adding
+    client-side JS state management.
 
 # Implementation History
 
@@ -71,3 +74,45 @@ Verified invalid n_pass rejection, correct pass count for n_pass=12, tally
 updates, majority-wins and even-split-draw outcomes, and that `result()` before
 completion raises. Tests in `tests/test_models.py`. No issues; `models.py` is the
 first module to depend on `stats.py`, and both remain Flask-independent.
+
+## Tasks 6-9: Web UI - setup, scoring, mode toggle, advanced charts (complete)
+Implemented together since the templates are cross-referential (base.html's nav
+needs the toggle route to exist to build its `url_for`, matches.html needs
+match_view to exist once any match is created, etc.), but verified and logged
+against each task's own criteria:
+
+- **Task 6** (`h2h/state.py` `SessionState`, `/`, `/start`, `/matches` routes,
+  `setup.html`/`matches.html`): archers entered via a fixed 20-row form (simpler
+  than dynamic add-row JS for a v1, per Assumption below); n_pass chosen via a
+  real `<input type=range>` slider whose JS snaps across the exact divisor-of-60
+  values (`VALID_N_PASS`), with server-side re-validation in `/start` as a
+  defence in depth (caught a real bug here: `SessionState.start_matches` was
+  mutating `self.n_pass`/`self.matches` *before* constructing the `Match`
+  objects, so an invalid n_pass left the session half-updated and crashed the
+  next page render — fixed by validating/building all matches into a local list
+  first and only committing to state once construction succeeds). Odd archer
+  counts flag the last archer as unpaired without crashing.
+- **Task 7** (`/match/<idx>`, `/match/<idx>/pass`, `match.html`): one score box
+  per archer per pass; submitting shows that pass's winner, running pass tally,
+  and (once complete) the overall result, all read directly from the `Match`
+  object so the UI can't drift from the stats engine's decision.
+- **Task 8** (`/mode` route, nav toggle in `base.html`): toggles a single
+  `SessionState.mode` field; since match/pass state lives separately from mode,
+  toggling never touches entered scores. Verified via a test that scores a pass,
+  toggles mode, and confirms the score is still shown.
+- **Task 9** (`h2h/charts.py` + `/match/<idx>/pass/<n>/chart.png`): renders a
+  two-panel matplotlib bar chart (per archer) of their n_pass distribution with
+  their actual score marked, returned as a real PNG response; the maths
+  explanation and the bowstyle-exclusion note are in `match.html`, shown only
+  when `mode == 'advanced'`.
+
+Verified with a full Flask test-client suite (`tests/test_app.py`, isolated
+`SessionState` per test) covering all of the above, plus a manual smoke test of
+the real `uv run main.py` server via curl for the full flow (setup -> start ->
+score a pass -> toggle mode -> view chart). No outstanding issues.
+
+Assumption added beyond `AISpec.md`: the setup form uses a fixed 20 rows rather
+than a dynamic "add more archers" control, to avoid either losing already-typed
+rows on a page reload or adding client-side JS state management for something
+not required by `Specification/humanSpec.md`. Sufficient for a single club-night
+session; revisit if more than 20 archers are needed.
