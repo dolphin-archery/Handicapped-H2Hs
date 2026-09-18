@@ -56,7 +56,7 @@
       "A match where one archer wins a strict majority of passes reports that archer as the overall winner.",
       "A match with an even pass count and an even split of pass wins reports a draw."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 6,

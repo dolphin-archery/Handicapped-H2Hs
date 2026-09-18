@@ -60,3 +60,14 @@ percentiles are bounded in [0,1] and hit their expected extremes, winner-decisio
 picks the higher percentile, falls back to raw score on a tie, and produces both
 outcomes over repeated calls when fully tied. Tests in `tests/test_stats.py`. No
 issues.
+
+## Task 5: Match/round data model and orchestration (complete)
+Added `h2h/models.py` with `Archer`, `Pass`, `Match`, and `default_round()`
+(Portsmouth, per Assumption 1). `Match` validates `n_pass` against the full set of
+divisors of 60, pre-computes both archers' n_pass score distributions at
+construction time (cheap per task 3), and exposes `record_pass`/`result`/`pass_wins`.
+Overall result is majority-of-passes, draw on an even split, per Assumptions 4-5.
+Verified invalid n_pass rejection, correct pass count for n_pass=12, tally
+updates, majority-wins and even-split-draw outcomes, and that `result()` before
+completion raises. Tests in `tests/test_models.py`. No issues; `models.py` is the
+first module to depend on `stats.py`, and both remain Flask-independent.
