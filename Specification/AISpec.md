@@ -79,9 +79,13 @@ Out of scope for this version (may be revisited later, see `idea_evaluation.md`)
 - **Frontend:** server-rendered HTML pages (Flask templates) with plain forms/inputs
   and a small amount of JS for the slider and the basic/advanced toggle. No SPA
   framework required.
-- **Charting (advanced mode only):** `matplotlib`, rendered server-side to static
-  images (e.g. PNG embedded as base64) and returned as part of the page — avoids
-  pulling in a JS charting library or exposing a chart-data API.
+- **Charting (advanced mode only):** a single interactive chart per match
+  (`Chart.js`, loaded from a pinned CDN version), fed by a small JSON payload
+  built server-side (`h2h/chart_data.py`) and rendered client-side
+  (`h2h/static/match_chart.js`). Both archers' distributions are drawn as one
+  smoothed, filled curve each on a shared graph, with hover tooltips (per
+  Specification/feedback.md "Feedback 1"); see §5.4. Superseded the original
+  per-pass static-PNG (`matplotlib`) design once interactivity was required.
 
 ## 5. Functional requirements
 
@@ -99,8 +103,18 @@ Out of scope for this version (may be revisited later, see `idea_evaluation.md`)
 
 - For each match and each pass in turn, the UI presents one input box per archer for
   that pass's total score (not individual arrows).
+- Each entered score must be a whole number in `[0, n_pass * MAX_SCORE_PER_ARROW]`,
+  where `MAX_SCORE_PER_ARROW` is hard-coded to `10` for now (per
+  Specification/feedback.md "Feedback 1"). An invalid score (non-integer,
+  negative, or above the maximum, or non-numeric input) is rejected with a
+  specific, human-readable error message and does not record anything; the
+  scorer retries the same pass.
+- All recorded scores are displayed as plain integers (never with a decimal
+  point).
 - On submission of both archers' scores for a pass, the system immediately computes
-  and displays: each archer's percentile for that pass, the pass winner, and the
+  and displays: each archer's percentile for that pass, the pass winner, the
+  full-round-equivalent AGB handicap implied by that pass score for each archer
+  (`h2h.stats.equivalent_handicap`; undefined/blank for a score of 0), and the
   running match score (passes won so far).
 - After all `60 / n_pass` passes are entered for a match, the system displays the
   overall match winner (or draw).
@@ -118,12 +132,23 @@ Out of scope for this version (may be revisited later, see `idea_evaluation.md`)
 - A visible toggle switches between:
   - **Basic mode:** archer names/handicaps, score entry boxes, pass/match winners and
     running score only. No statistical detail shown.
-  - **Advanced mode:** everything in Basic mode, plus for each scored pass: a plot of
-    each archer's handicap-implied pass-score distribution with their actual score
-    and percentile marked, and a short in-UI explanation of the underlying maths
-    (summarising §2 above, not a full re-derivation).
+  - **Advanced mode:** everything in Basic mode, plus a single interactive chart
+    per match showing both archers' handicap-implied pass-score distributions
+    as smoothed, shaded curves on one shared graph (not discretised bars, and
+    not two separate charts), trimmed to a sensible x-range rather than the
+    full achievable score range. Hovering the chart shows both archers'
+    current probability values at that score. Each scored pass's actual
+    scores are marked as vertical lines; by default only the most recent
+    pass's markers are shown, with a checkbox to reveal every previous pass's
+    markers too. A short in-UI explanation of the underlying maths
+    (summarising §2 above, not a full re-derivation) is also shown.
 - The toggle applies globally to the session and can be switched at any time without
   losing entered scores.
+- Any underscore-separated identifier shown in user-facing text (e.g. `n_pass`,
+  `sigma_r`) is typeset with a proper subscript (`n<sub>pass</sub>`,
+  `σ<sub>r</sub>`) rather than displaying the literal underscore. This applies
+  to labels and explanatory text; it does not apply to internal error messages,
+  which are instead worded to avoid the raw identifier entirely.
 
 ### 5.5 Assumption logging
 
@@ -135,7 +160,9 @@ Out of scope for this version (may be revisited later, see `idea_evaluation.md`)
 
 - `Archer`: `name`, `handicap`, `bowstyle` (optional, display-only).
 - `Match`: `archer_a`, `archer_b`, `n_pass`, `passes: list[Pass]`.
-- `Pass`: `pass_index`, `score_a`, `score_b`, `percentile_a`, `percentile_b`, `winner`.
+- `Pass`: `pass_index`, `score_a`, `score_b` (int), `percentile_a`, `percentile_b`,
+  `handicap_a`, `handicap_b` (equivalent handicap implied by that pass score, or
+  None for a zero score), `winner`.
 - `Round`: fixed metadata for the 60-arrow round in use (name, target face, distance,
   arrow count) — sourced from `archeryutils.load_rounds`.
 
@@ -159,8 +186,13 @@ Out of scope for this version (may be revisited later, see `idea_evaluation.md`)
    extremes) is: compare raw scores, then coin flip if still equal.
 7. All match state is in-memory only; there is no database and no persistence across
    process restarts.
-8. Charting uses `matplotlib` static images rather than an interactive JS charting
-   library, to keep the dependency footprint small for a local single-user tool.
+8. ~~Charting uses `matplotlib` static images rather than an interactive JS charting
+   library, to keep the dependency footprint small for a local single-user tool.~~
+   Superseded by Specification/feedback.md "Feedback 1": charting now uses
+   Chart.js (interactive, hover tooltips) per section 4/5.4 above.
 9. Bowstyle is collected only for display/record-keeping and never enters any
    calculation, consistent with the explicit exclusion of the bowstyle-variance
    correction in `Specification/humanSpec.md`.
+10. `MAX_SCORE_PER_ARROW` is hard-coded to 10 rather than derived from the
+    target's actual max ring value, per Specification/feedback.md "Feedback 1"
+    ("hard code max score per arrow to 10 for now").

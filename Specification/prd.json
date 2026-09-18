@@ -111,5 +111,56 @@
       "Restarting the app clears all prior match state (confirms no unintended persistence, per Assumption 7)."
     ],
     "completed": true
+  },
+  {
+    "id": 11,
+    "name": "Pass score validation and integer display",
+    "description": "Per Specification/feedback.md 'Feedback 1': a pass score over n_pass arrows must be a whole number in [0, n_pass * MAX_SCORE_PER_ARROW], with MAX_SCORE_PER_ARROW hard-coded to 10. Reject invalid input (non-integer, negative, above the maximum, or non-numeric) with a specific, human-readable error message instead of a 500 or silent acceptance, without recording anything. Recorded scores must always display as plain integers (no trailing '.0').",
+    "tests": [
+      "A negative score is rejected with a message naming the valid range.",
+      "A score above n_pass * 10 is rejected with a message naming the valid range.",
+      "A non-integer score (e.g. 100.5) is rejected with a 'whole number' message.",
+      "Non-numeric input (e.g. 'abc') is rejected with a clear message, not a 500.",
+      "0 and n_pass * 10 (the inclusive boundaries) are accepted.",
+      "A recorded score renders without a trailing '.0' in the match page."
+    ],
+    "completed": false
+  },
+  {
+    "id": 12,
+    "name": "Per-pass equivalent handicap",
+    "description": "Add a full-round-equivalent AGB handicap column per archer per pass: the handicap that would, on average, produce that archer's actual pass score, computed via archeryutils's own handicap_from_score rootfinder over a one-off Round built from n_pass arrows at the match's target. Undefined (displayed as '-') for a score of 0.",
+    "tests": [
+      "A nonzero pass score gets a recorded equivalent handicap for both archers.",
+      "A zero pass score has an undefined (None) equivalent handicap.",
+      "A lower pass score implies a numerically larger (worse) AGB handicap than a higher pass score.",
+      "The equivalent-handicap column is visible in the match page's pass table once a pass is scored."
+    ],
+    "completed": false
+  },
+  {
+    "id": 13,
+    "name": "Interactive single-graph distribution chart",
+    "description": "Replace the per-pass static matplotlib PNG charts with one interactive chart per match (Chart.js via a pinned CDN version): both archers' n_pass score distributions as smoothed, shaded curves on one shared graph, trimmed to a sensible x-range (not the full achievable score range) rather than two separate discretised bar charts. Hovering shows both archers' current probability values at that score. Each scored pass's actual scores are marked as vertical lines; only the most recent pass's markers are shown by default, with a checkbox to reveal every previous pass's markers too.",
+    "tests": [
+      "h2h.chart_data.build_match_chart_data returns a payload with both archers' distribution points, a shared x_min/x_max range narrower than the full 0..n_pass*10 range for two differently-skilled archers, and a y_max ceiling.",
+      "The x-range still gets a sensible minimum width for a near-zero-variance distribution (e.g. two handicap-0 archers), even though its mean sits at the edge of the achievable range.",
+      "Every distribution point falls within the reported x-range.",
+      "Scored passes appear in the payload in order with their raw scores; no scored passes gives an empty list.",
+      "The match page in advanced mode renders a canvas#match-chart, embeds the chart payload as window.MATCH_CHART_DATA, and does not render either in basic mode.",
+      "NOTE: the client-side rendering (h2h/static/match_chart.js) -- actual curve smoothness, hover tooltip content, and the checkbox toggling markers -- could not be visually verified in this environment (no headless-browser tool available); verified server-side output only (valid embedded JSON, correct script ordering, static file served). Manual browser verification is recommended before relying on this."
+    ],
+    "completed": false
+  },
+  {
+    "id": 14,
+    "name": "Subscript typesetting for underscore identifiers",
+    "description": "Any underscore-separated identifier shown in user-facing text (n_pass, sigma_r) must be typeset with a proper subscript (n<sub>pass</sub>, sigma<sub>r</sub>) instead of displaying the literal underscore. Error messages that would otherwise need to show such an identifier are reworded to avoid it instead, since plain-text error strings can't carry markup.",
+    "tests": [
+      "The setup page renders 'n<sub>pass</sub>' and not a literal 'n_pass' label.",
+      "No user-facing template text contains a literal 'n_pass' or 'sigma_r' outside of Jinja value expressions (verified by grep across h2h/templates).",
+      "The invalid-n_pass error message is reworded to avoid the raw identifier."
+    ],
+    "completed": false
   }
 ]
