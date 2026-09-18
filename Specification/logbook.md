@@ -23,3 +23,10 @@ The following assumptions were made when turning `Specification/humanSpec.md` in
    `Specification/humanSpec.md`.
 
 # Implementation History
+
+## Task 1: Project scaffolding and dependencies (complete)
+Added Flask, numpy, scipy, matplotlib, pytest via `uv add`. Created `h2h/` package
+(`app.py` with a `create_app()` factory, placeholder `stats.py` to be filled in by
+task 2) and root `main.py` entry point. Verified `uv run main.py` starts a real
+server and `GET /` returns 200; verified `h2h.stats` imports without Flask. Tests in
+`tests/test_app.py`. No issues.

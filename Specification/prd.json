@@ -8,7 +8,7 @@
       "A GET request to `/` returns HTTP 200.",
       "The stats module can be imported independently of Flask (`import h2h.stats` succeeds with Flask not running)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 2,
