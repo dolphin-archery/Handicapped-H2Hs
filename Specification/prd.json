@@ -110,6 +110,6 @@
       "The final displayed result for the worked example matches the independently computed expectation.",
       "Restarting the app clears all prior match state (confirms no unintended persistence, per Assumption 7)."
     ],
-    "completed": false
+    "completed": true
   }
 ]

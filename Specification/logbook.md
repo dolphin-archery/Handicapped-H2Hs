@@ -116,3 +116,33 @@ than a dynamic "add more archers" control, to avoid either losing already-typed
 rows on a page reload or adding client-side JS state management for something
 not required by `Specification/humanSpec.md`. Sufficient for a single club-night
 session; revisit if more than 20 archers are needed.
+
+## Task 10: End-to-end integration check (complete)
+Added `tests/test_integration.py`, exercising the full HTTP flow (setup -> start
+-> score every pass -> result) against the real Flask app rather than calling
+`h2h.models`/`h2h.stats` directly, since those were already verified in isolation
+by tasks 2-5. Covers the three criteria in prd.json:
+- Full session completes without error for 2 archers over a full n_pass=12 round.
+- A directional worked example (one archer scoring the maximum possible pass
+  score every pass, the other scoring zero every pass) always produces that
+  archer as the overall winner -- this holds for any pair of handicaps because
+  `percentile` is a CDF and therefore monotonic in score, so it's a valid
+  "independently computed expectation" without needing to hand-derive the
+  underlying Gaussian-model probabilities again (already cross-checked against
+  archeryutils's own numbers in `tests/test_stats.py`).
+- Because there is no persistence layer (Assumption 7), "restarting clears
+  state" is verified as: a second, independently-constructed app/`SessionState`
+  never sees a first instance's matches.
+
+Final full suite: 101 tests passing (`h2h/stats.py`, `h2h/models.py`,
+`h2h/state.py`, `h2h/charts.py`, `h2h/app.py` routes, and this integration
+suite). All 10 prd.json tasks are now `"completed": true`. Also re-ran a manual
+smoke test of the real `uv run main.py` server via curl (setup, start, score a
+pass, toggle to advanced mode, fetch the chart PNG) to confirm behaviour matches
+the test-client results outside of Flask's test harness.
+
+Suggested follow-ups (out of scope for this prd, listed for awareness):
+`Testing/idea_evaluation.md`'s "Known gap" (bowstyle-variance correction) remains
+deliberately unimplemented per `Specification/humanSpec.md`; a round-selection
+dropdown (currently Portsmouth-only, Assumption 1) and a dynamic archer-count
+setup form (Assumption 10) would be reasonable v2 additions.
