@@ -1,6 +1,7 @@
 """Tests for the h2h.stats statistical engine."""
 
 import math
+import random
 
 import pytest
 from archeryutils import handicaps as hc
@@ -74,3 +75,48 @@ def test_n_pass_distribution_rejects_non_positive_n_pass():
     pmf = stats.per_arrow_pmf(10, _PORTSMOUTH_TARGET)
     with pytest.raises(ValueError):
         stats.n_pass_score_distribution(pmf, 0)
+
+
+@pytest.fixture
+def dist_h25():
+    """n_pass=12 score distribution for a handicap-25 archer on Portsmouth."""
+    pmf = stats.per_arrow_pmf(25, _PORTSMOUTH_TARGET)
+    return stats.n_pass_score_distribution(pmf, 12)
+
+
+def test_percentile_is_in_unit_interval(dist_h25):
+    """Percentiles must always lie in [0, 1]."""
+    for score in dist_h25:
+        p = stats.percentile(dist_h25, score)
+        assert 0.0 <= p <= 1.0
+
+
+def test_percentile_extremes(dist_h25):
+    """The worst achievable score has a near-zero percentile, the best near one."""
+    min_score = min(dist_h25)
+    max_score = max(dist_h25)
+    assert stats.percentile(dist_h25, min_score) == pytest.approx(
+        dist_h25[min_score], abs=1e-9
+    )
+    assert stats.percentile(dist_h25, max_score) == pytest.approx(1.0, abs=1e-9)
+
+
+def test_decide_pass_winner_picks_higher_percentile():
+    """A clearly higher percentile wins regardless of raw score."""
+    assert stats.decide_pass_winner(0.9, 100, 0.1, 200) == "a"
+    assert stats.decide_pass_winner(0.1, 200, 0.9, 100) == "b"
+
+
+def test_decide_pass_winner_tie_breaks_on_raw_score():
+    """Equal percentiles fall back to comparing raw scores."""
+    assert stats.decide_pass_winner(0.5, 110, 0.5, 100) == "a"
+    assert stats.decide_pass_winner(0.5, 100, 0.5, 110) == "b"
+
+
+def test_decide_pass_winner_full_tie_is_a_genuine_coin_flip():
+    """Equal percentile and equal score must still resolve, via a fair coin flip."""
+    outcomes = {
+        stats.decide_pass_winner(0.5, 100, 0.5, 100, rng=random.Random(seed))
+        for seed in range(50)
+    }
+    assert outcomes == {"a", "b"}

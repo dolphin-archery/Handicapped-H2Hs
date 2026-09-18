@@ -12,6 +12,8 @@ in isolation.
 
 from __future__ import annotations
 
+import random
+
 import numpy as np
 
 from archeryutils import handicaps as hc
@@ -131,3 +133,40 @@ def percentile(distribution: dict[float, float], observed_score: float) -> float
         under `distribution`, in [0, 1].
     """
     return float(sum(p for score, p in distribution.items() if score <= observed_score))
+
+
+def decide_pass_winner(
+    percentile_a: float,
+    score_a: float,
+    percentile_b: float,
+    score_b: float,
+    rng: random.Random | None = None,
+) -> str:
+    """Decide the winner of a single pass between two archers.
+
+    Compares each archer's percentile (see `percentile`) under their own
+    handicap-implied distribution, so the comparison naturally accounts for
+    different variances between archers. Ties are always broken, per
+    Testing/idea_evaluation.md: first by raw score, then by coin flip.
+
+    Parameters
+    ----------
+    percentile_a, percentile_b : float
+        Each archer's percentile for the pass just shot.
+    score_a, score_b : float
+        Each archer's raw score for the pass (used only to break ties).
+    rng : random.Random | None, default=None
+        Source of randomness for the coin-flip tie-break; defaults to the
+        `random` module's own state if not provided.
+
+    Returns
+    -------
+    str
+        "a" or "b" — the winning archer. Never a tie.
+    """
+    if percentile_a != percentile_b:
+        return "a" if percentile_a > percentile_b else "b"
+    if score_a != score_b:
+        return "a" if score_a > score_b else "b"
+    source = rng if rng is not None else random
+    return "a" if source.random() < 0.5 else "b"

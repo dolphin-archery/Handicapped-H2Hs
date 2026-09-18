@@ -50,3 +50,13 @@ n_pass=1 reproduces the input PMF exactly, and n_pass<1 raises ValueError. Teste
 at n_pass in {1, 6, 12, 60} (60 being the full round) - even at 60 arrows this is
 computationally trivial, so no need for a Gaussian/CLT approximation or Monte
 Carlo fallback. Tests in `tests/test_stats.py`. No issues.
+
+## Task 4: Percentile computation and pass-winner decision (complete)
+`percentile` (already added in task 2's commit) and the new `decide_pass_winner`
+implement the comparison method from Testing/idea_evaluation.md: compare each
+archer's percentile under their own distribution, tie-break on raw score, then on
+a coin flip (injectable `random.Random` for deterministic testing). Verified
+percentiles are bounded in [0,1] and hit their expected extremes, winner-decision
+picks the higher percentile, falls back to raw score on a tie, and produces both
+outcomes over repeated calls when fully tied. Tests in `tests/test_stats.py`. No
+issues.

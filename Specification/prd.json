@@ -43,7 +43,7 @@
       "Given equal percentiles but different raw scores, the winner-decision function picks the higher raw score.",
       "Given equal percentiles and equal raw scores, the winner-decision function still returns a valid winner (does not error or hang) and this is verified as a genuine coin flip (not always the same archer) across repeated calls."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 5,
