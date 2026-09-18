@@ -150,7 +150,7 @@
       "The match page in advanced mode renders a canvas#match-chart, embeds the chart payload as window.MATCH_CHART_DATA, and does not render either in basic mode.",
       "NOTE: the client-side rendering (h2h/static/match_chart.js) -- actual curve smoothness, hover tooltip content, and the checkbox toggling markers -- could not be visually verified in this environment (no headless-browser tool available); verified server-side output only (valid embedded JSON, correct script ordering, static file served). Manual browser verification is recommended before relying on this."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 14,
@@ -161,6 +161,6 @@
       "No user-facing template text contains a literal 'n_pass' or 'sigma_r' outside of Jinja value expressions (verified by grep across h2h/templates).",
       "The invalid-n_pass error message is reworded to avoid the raw identifier."
     ],
-    "completed": false
+    "completed": true
   }
 ]

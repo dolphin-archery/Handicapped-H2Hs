@@ -62,7 +62,7 @@ def test_invalid_n_pass_is_rejected_server_side():
     client = make_client()
     resp = client.post("/start", data=start_form(("Alice", 10), ("Bob", 30), n_pass=7))
     assert resp.status_code == 200  # re-renders setup with an error, not a 500
-    assert b"does not evenly divide" in resp.data
+    assert b"must be one of" in resp.data
 
 
 # --- Task 7: pass score entry and live results -------------------------
@@ -99,39 +99,99 @@ def test_toggle_mode_preserves_match_progress():
     client.post("/match/0/pass", data={"score_a": "118", "score_b": "20"})
     client.post("/mode", data={"next": "/match/0"})
     resp = client.get("/match/0")
-    assert b"118" in resp.data or b"20.0" in resp.data
+    assert b"118" in resp.data
+    assert b"20" in resp.data
 
 
 # --- Task 9: advanced-mode charts and maths explanation -----------------
 
 
 def test_advanced_mode_shows_chart_and_maths_explanation():
-    """Advanced mode must show a chart image and an explanation mentioning bowstyle."""
+    """Advanced mode must show the interactive chart and an explanation mentioning bowstyle."""
     client = make_client()
     client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
     client.post("/match/0/pass", data={"score_a": "118", "score_b": "20"})
     client.post("/mode", data={"next": "/match/0"})  # basic -> advanced
     resp = client.get("/match/0")
-    assert b"chart.png" in resp.data
+    assert b'id="match-chart"' in resp.data
+    assert b"MATCH_CHART_DATA" in resp.data
     assert b"bowstyle" in resp.data.lower()
 
 
 def test_basic_mode_hides_advanced_content():
-    """Basic mode must not show chart images or the maths explanation."""
+    """Basic mode must not show the chart or the maths explanation."""
     client = make_client()
     client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
     client.post("/match/0/pass", data={"score_a": "118", "score_b": "20"})
     resp = client.get("/match/0")
-    assert b"chart.png" not in resp.data
+    assert b'id="match-chart"' not in resp.data
     assert b"How the winner is decided" not in resp.data
 
 
-def test_pass_chart_returns_png():
-    """The chart endpoint returns a valid PNG for a scored pass."""
+# --- Feedback 1: score validation, integer display, subscript typesetting --
+
+
+def test_negative_score_shows_friendly_error():
+    """A negative score must be rejected with a clear, user-facing message."""
     client = make_client()
     client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
-    client.post("/match/0/pass", data={"score_a": "118", "score_b": "20"})
-    resp = client.get("/match/0/pass/0/chart.png")
+    resp = client.post("/match/0/pass", data={"score_a": "-5", "score_b": "20"})
     assert resp.status_code == 200
-    assert resp.content_type == "image/png"
-    assert resp.data[:8] == b"\x89PNG\r\n\x1a\n"
+    assert b"Score must be between 0 and 120" in resp.data
+
+
+def test_over_max_score_shows_friendly_error():
+    """A score above n_pass * 10 must be rejected with a clear message."""
+    client = make_client()
+    client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
+    resp = client.post("/match/0/pass", data={"score_a": "121", "score_b": "20"})
+    assert resp.status_code == 200
+    assert b"Score must be between 0 and 120" in resp.data
+
+
+def test_non_integer_score_shows_friendly_error():
+    """A fractional score must be rejected with a clear message."""
+    client = make_client()
+    client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
+    resp = client.post("/match/0/pass", data={"score_a": "100.5", "score_b": "20"})
+    assert resp.status_code == 200
+    assert b"whole number" in resp.data
+
+
+def test_non_numeric_score_shows_friendly_error():
+    """Non-numeric input must be rejected with a clear message, not a 500."""
+    client = make_client()
+    client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
+    resp = client.post("/match/0/pass", data={"score_a": "abc", "score_b": "20"})
+    assert resp.status_code == 200
+    assert b"must be numbers" in resp.data
+
+
+def test_scores_display_as_plain_integers():
+    """Recorded scores must render without a trailing '.0'."""
+    client = make_client()
+    client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
+    resp = client.post(
+        "/match/0/pass", data={"score_a": "118", "score_b": "20"}, follow_redirects=True
+    )
+    assert b"118.0" not in resp.data
+    assert b"20.0" not in resp.data
+
+
+def test_equivalent_handicap_column_shown_in_advanced_and_basic_mode():
+    """The equivalent-handicap-per-pass column must appear once a pass is scored."""
+    client = make_client()
+    client.post("/start", data=start_form(("Alice", 10), ("Bob", 60), n_pass=12))
+    resp = client.post(
+        "/match/0/pass", data={"score_a": "118", "score_b": "20"}, follow_redirects=True
+    )
+    assert b"equiv. handicap" in resp.data
+
+
+def test_n_pass_rendered_with_subscript_not_underscore():
+    """User-visible 'n_pass' text must be typeset with <sub>, not a literal underscore."""
+    client = make_client()
+    resp = client.get("/")
+    assert b"n<sub>pass</sub>" in resp.data
+    assert b">n_pass<" not in resp.data
+    assert b"(n_pass)" not in resp.data

@@ -23,7 +23,7 @@
   </table>
 
   <div class="row">
-    <label for="n_pass_slider">Arrows per pass (n_pass): <span id="n_pass_label">{{ n_pass }}</span></label><br>
+    <label for="n_pass_slider">Arrows per pass (n<sub>pass</sub>): <span id="n_pass_label">{{ n_pass }}</span></label><br>
     <input type="range" id="n_pass_slider" min="0" max="{{ valid_n_pass|length - 1 }}" step="1"
            value="{{ valid_n_pass.index(n_pass) }}">
     <input type="hidden" id="n_pass_value" name="n_pass" value="{{ n_pass }}">

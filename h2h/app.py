@@ -9,9 +9,9 @@ not a multi-tenant service.
 
 from __future__ import annotations
 
-from flask import Flask, Response, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, url_for
 
-from .charts import render_pass_distributions
+from .chart_data import build_match_chart_data
 from .models import Archer, VALID_N_PASS
 from .state import SessionState
 
@@ -87,7 +87,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         )
 
     @app.get("/match/<int:idx>")
-    def match_view(idx: int):
+    def match_view(idx: int, error: str | None = None):
         m = session.matches[idx]
         next_idx = m.next_pass_index()
         return render_template(
@@ -97,22 +97,24 @@ def create_app(state: SessionState | None = None) -> Flask:
             archer_a=m.archer_a,
             archer_b=m.archer_b,
             next_pass_index=next_idx,
+            chart_data=build_match_chart_data(m),
+            error=error,
         )
 
     @app.post("/match/<int:idx>/pass")
     def record_pass(idx: int):
         m = session.matches[idx]
         next_idx = m.next_pass_index()
-        score_a = float(request.form["score_a"])
-        score_b = float(request.form["score_b"])
-        m.record_pass(next_idx, score_a, score_b)
+        try:
+            try:
+                score_a = float(request.form["score_a"])
+                score_b = float(request.form["score_b"])
+            except ValueError:
+                raise ValueError("Scores must be numbers.") from None
+            m.record_pass(next_idx, score_a, score_b)
+        except ValueError as exc:
+            return match_view(idx, error=str(exc))
         return redirect(url_for("match_view", idx=idx))
-
-    @app.get("/match/<int:idx>/pass/<int:pass_index>/chart.png")
-    def pass_chart(idx: int, pass_index: int):
-        m = session.matches[idx]
-        png = render_pass_distributions(m, pass_index)
-        return Response(png, mimetype="image/png")
 
     @app.post("/mode")
     def toggle_mode():
