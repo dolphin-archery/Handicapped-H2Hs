@@ -30,3 +30,14 @@ Added Flask, numpy, scipy, matplotlib, pytest via `uv add`. Created `h2h/` packa
 task 2) and root `main.py` entry point. Verified `uv run main.py` starts a real
 server and `GET /` returns 200; verified `h2h.stats` imports without Flask. Tests in
 `tests/test_app.py`. No issues.
+
+## Task 2: Per-arrow score PMF from handicap (complete)
+Implemented `h2h.stats.per_arrow_pmf`, decomposing the same ring-tail terms
+`archeryutils.HandicapScheme._s_bar` uses internally (`exp(-((arrow_radius +
+ring_radius)/sigma_r)**2)`) into per-ring hit probabilities instead of just their
+mean, by taking successive differences of the ring "tail" (miss-beyond-this-ring)
+probabilities. Verified against archeryutils across 5 handicaps x 2 target faces
+(Portsmouth, WA18): PMF sums to 1, all probabilities >= 0, and
+`sum(score*prob) == archeryutils.arrow_score(handicap, target)` to within 1e-6 -
+this numerically confirms the hand-derived telescoping-sum decomposition is
+correct. Tests in `tests/test_stats.py`. No issues.

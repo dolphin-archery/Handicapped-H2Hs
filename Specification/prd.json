@@ -19,7 +19,7 @@
       "For the same inputs, the PMF's expected value (`sum(score * prob)`) matches `archeryutils`'s `HandicapScheme.arrow_score(handicap, target)` within floating point tolerance.",
       "All PMF probabilities are >= 0."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 3,
