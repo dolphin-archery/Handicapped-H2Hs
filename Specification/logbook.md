@@ -41,3 +41,12 @@ probabilities. Verified against archeryutils across 5 handicaps x 2 target faces
 `sum(score*prob) == archeryutils.arrow_score(handicap, target)` to within 1e-6 -
 this numerically confirms the hand-derived telescoping-sum decomposition is
 correct. Tests in `tests/test_stats.py`. No issues.
+
+## Task 3: n_pass score distribution via convolution (complete)
+Implemented `h2h.stats.n_pass_score_distribution` via exact discrete
+self-convolution (`numpy.convolve`) of the per-arrow PMF, n_pass-1 times. Verified
+sums to 1, mean scales linearly with n_pass (matches n_pass * archeryutils mean),
+n_pass=1 reproduces the input PMF exactly, and n_pass<1 raises ValueError. Tested
+at n_pass in {1, 6, 12, 60} (60 being the full round) - even at 60 arrows this is
+computationally trivial, so no need for a Gaussian/CLT approximation or Monte
+Carlo fallback. Tests in `tests/test_stats.py`. No issues.

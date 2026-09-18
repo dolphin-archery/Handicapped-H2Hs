@@ -30,7 +30,7 @@
       "The resulting distribution's expected value equals `n_pass * arrow_score(handicap, target)` within floating point tolerance.",
       "For n_pass = 1, the result is identical to the input per-arrow PMF."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 4,
