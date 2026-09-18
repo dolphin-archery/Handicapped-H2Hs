@@ -146,3 +146,93 @@ Suggested follow-ups (out of scope for this prd, listed for awareness):
 deliberately unimplemented per `Specification/humanSpec.md`; a round-selection
 dropdown (currently Portsmouth-only, Assumption 1) and a dynamic archer-count
 setup form (Assumption 10) would be reasonable v2 additions.
+
+## Feedback 1 - Base Functionality
+
+Scope: implemented every item under `Specification/feedback.md`'s "Feedback 1"
+heading (tasks 11-14 below, added to `prd.json` per `Specification/feedbackPrompt.md`'s
+process); explicitly did not touch anything under its "Future Feedback - DO NOT
+IMPLEMENT YET" heading (UI redesign, rotations/brackets, overall scoring system,
+results printouts, publication).
+
+### Task 11: Pass score validation and integer display (complete)
+Added `h2h.models.MAX_SCORE_PER_ARROW = 10` (hard-coded per the feedback) and
+`_validate_score`, used by `Match.record_pass` so validation applies regardless
+of caller (web or tests). Rejects non-whole numbers and anything outside
+`[0, n_pass * 10]`, with a message naming the actual bound (e.g. "Score must be
+between 0 and 120 for a 12-arrow pass, got 121."). `h2h/app.py`'s `record_pass`
+route catches `ValueError` and re-renders the match page with the message
+instead of a 500; a separate non-numeric-input case ("abc") is caught before it
+reaches validation and given its own message. `Pass.score_a`/`score_b` are now
+`int` (coerced in `_validate_score`), so they render without a trailing ".0" --
+no template changes needed once the underlying type was fixed. Tested via
+`tests/test_models.py` (validation logic) and `tests/test_app.py` (HTTP-layer
+error messages), plus a manual curl check of all four error paths against the
+real server.
+
+### Task 12: Per-pass equivalent handicap (complete)
+Added `h2h.stats.equivalent_handicap`, which builds a one-off
+`archeryutils.rounds.Round` of `n_pass` arrows at the match's target and calls
+`archeryutils`'s own `handicap_from_score` rootfinder -- reusing existing,
+tested machinery rather than inventing a new estimator. Returns `None` for a
+zero score (undefined handicap). New `Pass.handicap_a`/`handicap_b` fields,
+computed in `record_pass`, shown as new table columns in `match.html`. Verified
+this saturates in a documented, expected way for very low handicaps whose
+expected score rounds to the round's maximum (excluded from the round-trip test
+with a comment explaining why, not silently ignored). Tests in
+`tests/test_stats.py` and `tests/test_models.py`.
+
+### Task 13: Interactive single-graph distribution chart (complete)
+Reworked charts from static per-pass PNGs to one interactive graph. Removed
+`h2h/charts.py` (matplotlib) and its `/match/<idx>/pass/<n>/chart.png` route
+and the `matplotlib` dependency entirely (`uv remove matplotlib`), since the
+feedback's requirements -- hover tooltips, smoothed curves, both archers on one
+graph, toggleable historical markers -- need real interactivity that a static
+image can't provide. Replaced with:
+- `h2h/chart_data.py`: pure-Python, Flask-independent builder for a JSON
+  payload (both archers' distribution points trimmed to a sensible x-range, a
+  shared y-axis ceiling, and every scored pass's raw scores). The x-range is
+  centred on both distributions' combined mean +/- 4 standard deviations,
+  shifted (not shrunk) to fit `[0, n_pass*10]` so a distribution whose mean
+  sits at the very top of the range (e.g. a very low handicap) still gets a
+  full-width window rather than being clipped -- caught by a test with two
+  handicap-0 archers before fixing the range calculation.
+- `h2h/static/match_chart.js`: renders both archers' distributions as one
+  Chart.js line chart (`tension: 0.35`, filled, so a discrete PMF still reads
+  as a smooth shaded curve without fabricating a different underlying
+  distribution), using `interaction: {mode: 'index'}` for the "hover to see
+  both archers' values" requirement. Each pass's actual scores are drawn as
+  two-point vertical dashed "marker" datasets (a lightweight trick avoiding a
+  second charting plugin); a `tooltip.filter` callback hides marker datasets
+  from the hover tooltip so it only shows the two PDFs. Only the latest pass's
+  markers are shown by default; a checkbox (`#show-previous-passes`) swaps in
+  every scored pass's markers on change. Chart.js is loaded from a pinned CDN
+  version (`chart.js@4.4.4`, confirmed reachable).
+- `match.html`'s advanced-mode block now renders a `<canvas id="match-chart">`
+  plus the checkbox, with the chart payload embedded via
+  `window.MATCH_CHART_DATA = {{ chart_data|tojson }}`.
+
+**Verification limitation:** no headless-browser tool (chromium-cli,
+Playwright, etc.) is available in this Windows environment (checked: not on
+`PATH`), so the actual JS rendering, tooltip behaviour, and checkbox
+interaction could not be visually confirmed in a real browser. What was
+verified: `chart_data.py`'s output via unit tests (`tests/test_chart_data.py`);
+the rendered page's HTML/JSON via a live `uv run main.py` server and curl
+(correct script ordering, valid embedded JSON, canvas/checkbox present, static
+JS served at `/static/match_chart.js`); and manual review of `match_chart.js`
+against the documented Chart.js v4 API (`parsing:false` with `{x,y}` points,
+linear scale, `interaction.mode: 'index'`, `tooltip.filter`). **The user should
+open `/match/<idx>` in advanced mode in an actual browser to confirm the
+interactive behaviour before relying on it.**
+
+### Task 14: Subscript typesetting for underscore identifiers (complete)
+Replaced user-visible "n_pass" text with `n<sub>pass</sub>` in `setup.html`,
+`matches.html`, and `match.html`, and "sigma_r" with `&sigma;<sub>r</sub>` in
+the maths explanation. Also reworded the invalid-`n_pass` `ValueError` message
+in `h2h/models.py` to avoid the raw identifier entirely ("Arrows per pass must
+be one of ..." rather than "n_pass=7 does not..."), since that message is shown
+as plain (HTML-escaped) text on the setup page and couldn't otherwise carry a
+`<sub>` tag. Verified no user-facing "n_pass" (or "(n_pass)") text remains via
+a dedicated test and a template grep.
+
+Final suite after all of Feedback 1: 126 tests passing.

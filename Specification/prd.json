@@ -124,7 +124,7 @@
       "0 and n_pass * 10 (the inclusive boundaries) are accepted.",
       "A recorded score renders without a trailing '.0' in the match page."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 12,
@@ -136,7 +136,7 @@
       "A lower pass score implies a numerically larger (worse) AGB handicap than a higher pass score.",
       "The equivalent-handicap column is visible in the match page's pass table once a pass is scored."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 13,

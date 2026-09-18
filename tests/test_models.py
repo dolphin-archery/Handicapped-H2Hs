@@ -69,3 +69,73 @@ def test_result_before_complete_raises():
     match = Match(strong, weak, n_pass=12)
     with pytest.raises(RuntimeError):
         match.result()
+
+
+# --- Feedback 1: score validation ---------------------------------------
+
+
+def test_negative_score_is_rejected():
+    """A score below 0 must be rejected and must not record anything."""
+    strong, weak = make_archers()
+    match = Match(strong, weak, n_pass=12)
+    with pytest.raises(ValueError):
+        match.record_pass(0, score_a=-1, score_b=50)
+    assert not match.passes[0].is_scored
+
+
+def test_score_above_max_is_rejected():
+    """A score above n_pass * MAX_SCORE_PER_ARROW must be rejected."""
+    strong, weak = make_archers()
+    match = Match(strong, weak, n_pass=12)  # max possible = 120
+    with pytest.raises(ValueError):
+        match.record_pass(0, score_a=121, score_b=50)
+    assert not match.passes[0].is_scored
+
+
+def test_non_integer_score_is_rejected():
+    """A non-whole-number score must be rejected."""
+    strong, weak = make_archers()
+    match = Match(strong, weak, n_pass=12)
+    with pytest.raises(ValueError):
+        match.record_pass(0, score_a=100.5, score_b=50)
+
+
+def test_whole_number_float_score_is_accepted_and_stored_as_int():
+    """A score like 100.0 is accepted and stored as a plain int."""
+    strong, weak = make_archers()
+    match = Match(strong, weak, n_pass=12)
+    match.record_pass(0, score_a=100.0, score_b=50.0)
+    assert match.passes[0].score_a == 100
+    assert isinstance(match.passes[0].score_a, int)
+
+
+def test_boundary_scores_zero_and_max_are_accepted():
+    """0 and n_pass * MAX_SCORE_PER_ARROW are valid (inclusive) boundaries."""
+    strong, weak = make_archers()
+    match = Match(strong, weak, n_pass=12)
+    match.record_pass(0, score_a=0, score_b=120)
+    assert match.passes[0].score_a == 0
+    assert match.passes[0].score_b == 120
+
+
+# --- Feedback 1: equivalent handicap per pass ----------------------------
+
+
+def test_equivalent_handicap_recorded_for_nonzero_scores():
+    """A nonzero pass score gets a recorded equivalent handicap for both archers."""
+    strong, weak = make_archers()
+    match = Match(strong, weak, n_pass=12)
+    match.record_pass(0, score_a=100, score_b=50)
+    assert match.passes[0].handicap_a is not None
+    assert match.passes[0].handicap_b is not None
+
+
+def test_equivalent_handicap_is_none_for_zero_score():
+    """A zero pass score has an undefined equivalent handicap (None)."""
+    strong, weak = make_archers()
+    match = Match(strong, weak, n_pass=12)
+    match.record_pass(0, score_a=0, score_b=50)
+    assert match.passes[0].handicap_a is None
+    assert match.passes[0].handicap_b is None or isinstance(
+        match.passes[0].handicap_b, float
+    )

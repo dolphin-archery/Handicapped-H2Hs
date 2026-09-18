@@ -120,3 +120,38 @@ def test_decide_pass_winner_full_tie_is_a_genuine_coin_flip():
         for seed in range(50)
     }
     assert outcomes == {"a", "b"}
+
+
+# --- Feedback 1: equivalent_handicap -------------------------------------
+
+
+def test_equivalent_handicap_none_for_zero_score():
+    """A score of 0 has an undefined equivalent handicap."""
+    assert stats.equivalent_handicap(0, 12, _PORTSMOUTH_TARGET) is None
+
+
+@pytest.mark.parametrize("handicap", [25, 45, 70])
+def test_equivalent_handicap_round_trips_through_expected_score(handicap):
+    """Feeding a handicap's own expected n_pass score back in recovers ~that handicap.
+
+    Deliberately avoids very low handicaps: their expected n_pass score
+    saturates near the maximum achievable score, where archeryutils treats
+    the score<->handicap mapping as a boundary case (many handicaps round to
+    the same maximum score) rather than a like-for-like mean estimate, so a
+    round-trip comparison there is not meaningful.
+    """
+    n_pass = 12
+    pmf = stats.per_arrow_pmf(handicap, _PORTSMOUTH_TARGET)
+    dist = stats.n_pass_score_distribution(pmf, n_pass)
+    expected_score = round(sum(s * p for s, p in dist.items()))
+
+    implied = stats.equivalent_handicap(expected_score, n_pass, _PORTSMOUTH_TARGET)
+
+    assert implied == pytest.approx(handicap, abs=2.0)
+
+
+def test_equivalent_handicap_worse_score_gives_worse_handicap():
+    """A lower pass score must imply a numerically larger (worse) AGB handicap."""
+    better = stats.equivalent_handicap(110, 12, _PORTSMOUTH_TARGET)
+    worse = stats.equivalent_handicap(60, 12, _PORTSMOUTH_TARGET)
+    assert worse > better

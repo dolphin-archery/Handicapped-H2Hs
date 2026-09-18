@@ -18,6 +18,45 @@ TOTAL_ARROWS = 60
 VALID_N_PASS = tuple(n for n in range(1, TOTAL_ARROWS + 1) if TOTAL_ARROWS % n == 0)
 DEFAULT_N_PASS = 12
 
+# Hard-coded per Specification/feedback.md ("hard code max score per arrow to 10
+# for now"); revisit if a target face other than a 10-ring face is supported.
+MAX_SCORE_PER_ARROW = 10
+
+
+def _validate_score(score: float, n_pass: int) -> int:
+    """Validate a raw pass score and coerce it to an in-range integer.
+
+    Parameters
+    ----------
+    score : float
+        Score to validate; must represent a whole number.
+    n_pass : int
+        Number of arrows in the pass this score is for.
+
+    Returns
+    -------
+    int
+        The validated score.
+
+    Raises
+    ------
+    ValueError
+        If `score` is not a whole number, or is outside
+        `[0, n_pass * MAX_SCORE_PER_ARROW]`.
+    """
+    if not float(score).is_integer():
+        msg = f"Score must be a whole number, got {score}."
+        raise ValueError(msg)
+    score = int(score)
+    max_score = n_pass * MAX_SCORE_PER_ARROW
+    if not (0 <= score <= max_score):
+        msg = (
+            f"Score must be between 0 and {max_score} for a {n_pass}-arrow "
+            f"pass, got {score}."
+        )
+        raise ValueError(msg)
+    return score
+
 
 def default_round() -> tuple[au_rounds.Round, targets.Target]:
     """Return the default 60-arrow round and its canonical target.
@@ -65,19 +104,24 @@ class Pass:
     ----------
     pass_index : int
         0-based index of this pass within the match.
-    score_a, score_b : float | None
+    score_a, score_b : int | None
         Recorded pass score for each archer, or None if not yet entered.
     percentile_a, percentile_b : float | None
         Each archer's percentile for this pass, once scored.
+    handicap_a, handicap_b : float | None
+        Full-round-equivalent AGB handicap implied by that pass score (see
+        `h2h.stats.equivalent_handicap`), or None if the score was 0.
     winner : str | None
         "a", "b", or None if not yet scored.
     """
 
     pass_index: int
-    score_a: float | None = None
-    score_b: float | None = None
+    score_a: int | None = None
+    score_b: int | None = None
     percentile_a: float | None = None
     percentile_b: float | None = None
+    handicap_a: float | None = None
+    handicap_b: float | None = None
     winner: str | None = None
 
     @property
@@ -114,8 +158,8 @@ class Match:
     ) -> None:
         if n_pass not in VALID_N_PASS:
             msg = (
-                f"n_pass={n_pass} does not evenly divide a {TOTAL_ARROWS}-arrow "
-                f"round. Must be one of {VALID_N_PASS}."
+                f"Arrows per pass must be one of {VALID_N_PASS} so a "
+                f"{TOTAL_ARROWS}-arrow round divides evenly; got {n_pass}."
             )
             raise ValueError(msg)
 
@@ -164,18 +208,31 @@ class Match:
         pass_index : int
             Index of the pass being scored.
         score_a, score_b : float
-            Raw scores shot by archer_a and archer_b for this pass.
+            Raw scores shot by archer_a and archer_b for this pass; each must
+            be a whole number in `[0, n_pass * MAX_SCORE_PER_ARROW]`.
 
         Returns
         -------
         Pass
             The updated Pass object.
+
+        Raises
+        ------
+        ValueError
+            If either score is not a whole number or is out of range. Raised
+            before anything is recorded, so a rejected call leaves the pass
+            untouched.
         """
+        score_a = _validate_score(score_a, self.n_pass)
+        score_b = _validate_score(score_b, self.n_pass)
+
         p = self.passes[pass_index]
         p.score_a = score_a
         p.score_b = score_b
         p.percentile_a = stats.percentile(self._dist_a, score_a)
         p.percentile_b = stats.percentile(self._dist_b, score_b)
+        p.handicap_a = stats.equivalent_handicap(score_a, self.n_pass, self.target)
+        p.handicap_b = stats.equivalent_handicap(score_b, self.n_pass, self.target)
         p.winner = stats.decide_pass_winner(
             p.percentile_a, score_a, p.percentile_b, score_b
         )

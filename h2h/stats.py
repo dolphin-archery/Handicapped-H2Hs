@@ -13,10 +13,12 @@ in isolation.
 from __future__ import annotations
 
 import random
+import warnings
 
 import numpy as np
 
 from archeryutils import handicaps as hc
+from archeryutils import rounds as au_rounds
 from archeryutils import targets
 
 _AGB_SCHEME = hc.handicap_scheme("AGB")
@@ -133,6 +135,41 @@ def percentile(distribution: dict[float, float], observed_score: float) -> float
         under `distribution`, in [0, 1].
     """
     return float(sum(p for score, p in distribution.items() if score <= observed_score))
+
+
+def equivalent_handicap(score: int, n_pass: int, target: targets.Target) -> float | None:
+    """Full-round-equivalent AGB handicap implied by a single pass score.
+
+    Purely for display: converts an n_pass-arrow score into "what handicap
+    would produce this score on average", using archeryutils's own
+    rootfinder over a one-pass round of `n_pass` arrows at `target`. This is
+    a much noisier estimate than the handicap the archer already holds --
+    see Testing/idea_evaluation.md's discussion of single-observation
+    estimation uncertainty -- but is a familiar, intuitive number for
+    archers to see alongside a raw pass score.
+
+    Parameters
+    ----------
+    score : int
+        Score shot over `n_pass` arrows.
+    n_pass : int
+        Number of arrows in that pass.
+    target : archeryutils.targets.Target
+        Target face used for the pass.
+
+    Returns
+    -------
+    float | None
+        The implied decimal handicap, or None if `score` is 0 (a handicap is
+        undefined for a zero score).
+    """
+    if score <= 0:
+        return None
+
+    virtual_round = au_rounds.Round("pass", [au_rounds.Pass(n_pass, target)])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        return float(_AGB_SCHEME.handicap_from_score(score, virtual_round))
 
 
 def decide_pass_winner(
