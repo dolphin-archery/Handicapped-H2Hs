@@ -10,12 +10,22 @@
 - any use of _ to represent subscript should be typset as subscript and not display the _
 
 # Future Feedback - DO NOT IMPLEMENT YET
+## Functional
 - n_archers input
-- Accounting for bowstyle varaition
+- Accounting for different variation in per pass score between different bowstyles. 
+    - map distribution score inputs to numeric classifications and compare percentiles of these? Or use a fudge factor?
 - Bowstyle dropdown
 - Different faces/distances (default same for all, option to change for each)
-- UI
-- Rotations and brackets
-- Overall scoring system
+- Rotations for group of archers
+
+## Graphs
+- Keep current score one
+- Add handicap one as well (toggle)
+
+## Outputs
+- Overall scoring system for groups of archers
 - Results print outs
+
+## UI and Deployment
+- UI, get existing design from online - may need something more than flask?
 - Publication to existing webpage/githubpages
