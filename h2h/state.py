@@ -3,34 +3,29 @@
 Per AISpec.md section 3/Assumption 7: single machine, single scorer, no
 database, no persistence across process restarts. A single global instance
 is deliberately used instead of Flask sessions/cookies, since this is a
-single-user local tool for one scorer running one set of matches at a time.
+single-user local tool for one scorer running one event at a time.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from .models import Archer, Event, Match, RoundMode
+from .models import Archer, Event, RoundMode
 from .rotation import Rotation, build_schedule
 
 
 @dataclass
 class SessionState:
-    """All state for the current event (and, until prd task 24 retires it,
-    the older fixed-pair "match" flow it is superseding).
+    """All state for the current event.
 
     Attributes
     ----------
     mode : str
         "basic" or "advanced" -- controls UI detail level.
     n_pass : int
-        Arrows per pass. Shared by both the old and new flows.
-    matches : list[Match]
-        (Old flow, task 24 will remove.) One Match per archer pair.
-    unpaired : Archer | None
-        (Old flow.) An archer left over from an odd-sized entry list.
+        Arrows per rotation's pass.
     n_archers, total_arrows, round_mode : int | int | RoundMode
-        Stage 1 event configuration (new flow).
+        Stage 1 event configuration.
     schedule : list[Rotation] | None
         The rotation schedule built at the end of Stage 1, over archer
         *positions* -- set before archer identities are known.
@@ -40,33 +35,12 @@ class SessionState:
 
     mode: str = "basic"
     n_pass: int = 12
-    matches: list[Match] = field(default_factory=list)
-    unpaired: Archer | None = None
 
     n_archers: int | None = None
     total_arrows: int = 60
     round_mode: RoundMode = RoundMode.INDOOR_PORTSMOUTH
     schedule: list[Rotation] | None = None
     event: Event | None = None
-
-    def start_matches(self, archers: list[Archer], n_pass: int) -> None:
-        """Reset state and build fresh matches from sequential archer pairs.
-
-        Parameters
-        ----------
-        archers : list[Archer]
-            Archers in entry order; paired as (0,1), (2,3), ...
-        n_pass : int
-            Arrows per pass to use for every match in this set.
-        """
-        pairs = list(zip(archers[0::2], archers[1::2], strict=False))
-        new_matches = [Match(archer_a, archer_b, n_pass) for archer_a, archer_b in pairs]
-
-        # Only commit state once every match has validated successfully, so
-        # an invalid n_pass never leaves the session in a half-updated state.
-        self.n_pass = n_pass
-        self.matches = new_matches
-        self.unpaired = archers[-1] if len(archers) % 2 == 1 else None
 
     def start_stage1(
         self, n_archers: int, total_arrows: int, n_pass: int, round_mode: RoundMode
@@ -140,11 +114,9 @@ class SessionState:
         self.mode = "advanced" if self.mode == "basic" else "basic"
 
     def reset(self) -> None:
-        """Clear all event/match state back to a fresh session."""
+        """Clear all event state back to a fresh session."""
         self.mode = "basic"
         self.n_pass = 12
-        self.matches = []
-        self.unpaired = None
         self.n_archers = None
         self.total_arrows = 60
         self.round_mode = RoundMode.INDOOR_PORTSMOUTH

@@ -518,3 +518,43 @@ meant for a content-area form/button must be scoped past the nav, not just
 Tests in `tests/test_pair_chart_data.py` (payload correctness) and
 `tests/test_event_routes.py` (route behaviour, link visibility only in
 advanced mode). Full suite 204 passed. No outstanding issues.
+
+### Task 24: Retire the old fixed-pair flow and migrate tests (complete)
+Removed everything specific to the old single-pair flow, now fully
+superseded by tasks 15-23:
+- `h2h/models.py`: deleted `Match`, `Pass`, `default_round()`, and the
+  fixed-60 constants `TOTAL_ARROWS`/`VALID_N_PASS`/`DEFAULT_N_PASS` (all
+  exclusively used by the old flow -- confirmed by grep before deleting, not
+  assumed). Kept `_validate_score`/`MAX_SCORE_PER_ARROW` (used by `Event`
+  too) and dropped the now-unused `archeryutils.rounds` import.
+- `h2h/chart_data.py`: deleted `build_match_chart_data` and the `Match`
+  import; `build_pair_chart_data` and its shared `_mean_and_std`/
+  `_display_range` helpers remain.
+- `h2h/state.py`: deleted `matches`/`unpaired` fields and `start_matches`.
+- `h2h/app.py`: deleted the old `/`, `/start`, `/matches`, `/match/<idx>`,
+  `/match/<idx>/pass` routes and the `_match_status` helper. `/` now
+  redirects to `/event/stage1` (the new flow's natural front door) instead
+  of serving the old setup page. `toggle_mode`/`reset` now fall back to/
+  redirect to `stage1` instead of the removed `setup` endpoint.
+- Deleted `h2h/templates/setup.html`, `matches.html`, `match.html`.
+- `h2h/templates/base.html`: nav now links to Stage 1 setup, event results,
+  and the handicap calculator (previously: the old setup/matches pages).
+- Deleted `tests/test_models.py` (old `Match`/`Pass` tests, superseded by
+  `tests/test_event.py`), `tests/test_chart_data.py` (superseded by
+  `tests/test_pair_chart_data.py`), and `tests/test_integration.py` (old-flow
+  end-to-end test; task 25 adds its rotation-based replacement). Reduced
+  `tests/test_app.py` to the two truly generic infra checks (index redirects
+  to Stage 1; stats importable without Flask) since everything else it used
+  to cover now lives in `tests/test_event_routes.py`.
+
+Verified via grep for every old-flow symbol/endpoint name
+(`Match`, `build_match_chart_data`, `default_round`, `VALID_N_PASS`,
+`TOTAL_ARROWS`, `NUM_SETUP_ROWS`, and `url_for` calls to the removed
+endpoints) across both `.py` and `.html` files: zero hits, confirming no dead
+references were left behind. Full suite passed immediately after the
+cleanup (166 tests, down from 204 -- the difference is entirely the deleted
+old-flow test files, not a loss of coverage of anything still in the
+codebase). Also re-ran a full curl-based smoke test of `uv run main.py`
+end-to-end (stage1 -> stage2 -> score a rotation -> results shows the
+pairwise outcome) to confirm the live app still works after the cleanup, not
+just the test suite.

@@ -286,7 +286,7 @@
       "The full test suite passes with no references to the removed Match-based routes/behaviour.",
       "Grep confirms no leftover dead template files or unused imports from the old flow."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 25,

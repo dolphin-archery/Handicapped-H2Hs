@@ -18,8 +18,9 @@
 <body>
   <nav>
     <div>
-      <a href="{{ url_for('setup') }}">Setup</a>
-      <a href="{{ url_for('matches') }}">Matches</a>
+      <a href="{{ url_for('stage1') }}">Setup</a>
+      <a href="{{ url_for('event_results') }}">Results</a>
+      <a href="{{ url_for('handicap_calculator') }}">Handicap calculator</a>
       <a href="{{ url_for('reset') }}">Reset</a>
     </div>
     <form method="post" action="{{ url_for('toggle_mode') }}">

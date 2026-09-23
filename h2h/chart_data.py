@@ -1,4 +1,4 @@
-"""Chart data for the match page's interactive distribution graph.
+"""Chart data for the pair-chart page's interactive distribution graph.
 
 Builds a JSON-serialisable payload consumed by the client-side Chart.js
 rendering in `h2h/static/match_chart.js`: each archer's score-distribution
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 
-from .models import Event, Match
+from .models import Event
 
 # How many standard deviations either side of the mean to display by
 # default; trims the "full score range" per Specification/feedback.md.
@@ -65,64 +65,13 @@ def _display_range(
     return math.floor(x_min), math.ceil(x_max)
 
 
-def build_match_chart_data(match: Match) -> dict:
-    """Build the JSON payload for a match's interactive distribution chart.
-
-    Parameters
-    ----------
-    match : h2h.models.Match
-        The match to build chart data for.
-
-    Returns
-    -------
-    dict
-        JSON-serialisable structure: each archer's name/handicap and
-        (score, probability) points over a shared, trimmed x-range; the
-        y-axis ceiling to use for vertical pass-score markers; and every
-        scored pass's raw scores, in order.
-    """
-    dist_a = match.distribution_for("a")
-    dist_b = match.distribution_for("b")
-    max_possible = match.n_pass * 10  # kept in sync with MAX_SCORE_PER_ARROW
-
-    x_min, x_max = _display_range(dist_a, dist_b, max_possible)
-
-    def points(dist: dict[float, float]) -> list[dict[str, float]]:
-        return [
-            {"x": score, "y": prob}
-            for score, prob in sorted(dist.items())
-            if x_min <= score <= x_max
-        ]
-
-    y_max = max(max(dist_a.values()), max(dist_b.values())) * 1.15
-
-    passes = [
-        {"index": p.pass_index, "score_a": p.score_a, "score_b": p.score_b}
-        for p in match.passes
-        if p.is_scored
-    ]
-
-    return {
-        "archer_a": {"name": match.archer_a.name, "handicap": match.archer_a.handicap},
-        "archer_b": {"name": match.archer_b.name, "handicap": match.archer_b.handicap},
-        "distribution_a": points(dist_a),
-        "distribution_b": points(dist_b),
-        "x_min": x_min,
-        "x_max": x_max,
-        "y_max": y_max,
-        "passes": passes,
-    }
-
-
 def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     """Build the JSON payload for a pair-of-archers' interactive distribution chart.
 
-    Replaces `build_match_chart_data` for the rotation-based `Event` model
-    (Specification/feedback.md "Feedback 2"): each archer's distribution
-    comes from their own resolved target (`Event.distribution_for`), and the
-    marked passes are only those this specific pair has actually shared
-    under the rotation schedule (usually one, but possibly more -- see
-    AISpec.md Assumption 13).
+    Each archer's distribution comes from their own resolved target
+    (`Event.distribution_for`), and the marked passes are only those this
+    specific pair has actually shared under the rotation schedule (usually
+    one, but possibly more -- see AISpec.md Assumption 13).
 
     Parameters
     ----------
@@ -135,7 +84,10 @@ def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     Returns
     -------
     dict
-        Same shape as `build_match_chart_data`'s return value.
+        JSON-serialisable structure: each archer's name/handicap and
+        (score, probability) points over a shared, trimmed x-range; the
+        y-axis ceiling to use for vertical pass-score markers; and every
+        rotation this pair has shared, with each archer's raw score.
     """
     dist_a = event.distribution_for(a)
     dist_b = event.distribution_for(b)
