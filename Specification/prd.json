@@ -175,7 +175,7 @@
       "Requesting more rotations than a full round-robin needs repeats the schedule from the start for the extra rotations.",
       "n_archers=2 produces a single rotation with one pair and no bye."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 16,

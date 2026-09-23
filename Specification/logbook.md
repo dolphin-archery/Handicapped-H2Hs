@@ -295,3 +295,19 @@ correctly picked the less-improbable performance as the winner. This is a
 cosmetic display-precision point (very extreme percentiles are indistinguishable
 at 1 decimal place), not a defect, and wasn't something Feedback 2 asked to fix,
 so left as-is -- noted here in case it's raised again later.
+
+### Task 15: Round-robin rotation scheduler (complete)
+Added `h2h/rotation.py` (`Rotation` dataclass, `build_schedule`), independent
+of both Flask and the stats engine. Uses the standard "circle method": fix
+position 0, pair position i with position (n-1-i), rotate the rest each round
+(`arr = [arr[0], arr[-1], *arr[1:-1]]`). Odd `n_archers` gets a `None` bye
+placeholder appended before scheduling. `build_schedule` truncates or cycles a
+full round-robin to the requested rotation count (Assumption 12/13 in this
+file / AISpec.md Assumption 13). Verified full pair-coverage-exactly-once for
+even (no byes) and odd (one bye each, byes distributed one per archer) archer
+counts from 3-8, no self-pairing/duplicates within a rotation, truncation is a
+prefix, cycling repeats from the start, n_archers=2 gives one pair no bye, and
+invalid inputs (n_archers<2, negative rotations) raise. Tests in
+`tests/test_rotation.py`; all 17 passed first run (hand-derivation of the
+circle method traced through by hand for n=3 and n=4 before coding matched the
+test results exactly). No issues.
