@@ -299,6 +299,6 @@
       "Outdoor mode: all archers use the same fixed target regardless of bowstyle.",
       "Restarting the app (fresh SessionState) clears all event state, consistent with Assumption 7."
     ],
-    "completed": false
+    "completed": true
   }
 ]

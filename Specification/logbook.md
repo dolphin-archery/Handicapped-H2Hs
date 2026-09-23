@@ -558,3 +558,48 @@ codebase). Also re-ran a full curl-based smoke test of `uv run main.py`
 end-to-end (stage1 -> stage2 -> score a rotation -> results shows the
 pairwise outcome) to confirm the live app still works after the cleanup, not
 just the test suite.
+
+### Task 25: End-to-end integration check for the rotation flow (complete)
+Wrote a fresh `tests/test_integration.py` exercising the full HTTP flow for
+the scenarios prd.json specified:
+- Even `n_archers` (4): runs a full round-robin through the real routes and
+  confirms every archer appears in the final results.
+- Odd `n_archers` (5): walks all 5 rotations of the full round-robin,
+  asserting each rotation's scoring page shows exactly 5 participant boxes
+  (2 pairs + 1 bye) and the word "bye" appears, then confirms the results
+  page shows a bye-labelled opponent for each of the 5 rotations.
+- Indoor mode with mixed bowstyles: confirms directly via `resolve_target`
+  that Compound resolves to the `10_zone_compound` system while Recurve
+  resolves to `10_zone` for the same round, then exercises the same setup
+  through the HTTP flow.
+- Outdoor mode: confirms every `Bowstyle` resolves to the identical target
+  (system and distance) via `resolve_target`.
+- Fresh app/state: a second, independently-constructed client never sees the
+  first client's event (the in-memory analogue of a restart, per Assumption 7).
+
+A generic HTML-parsing helper (`run_full_event`) discovers each rotation's
+actual participant indices from the rendered scoring page rather than
+hard-coding them, so tests stay correct regardless of exactly how the
+scheduler orders things. Caught and fixed a bug in that helper while writing
+it: the first attempt double-split on `"_"` after already isolating the
+`score_<i>` value, which crashed with an `IndexError` for any single-digit
+archer index (no second `"_"` left to split on) -- simplified to a single
+`split('"')[0]` once the correct substring was already isolated.
+
+Final suite for all of Feedback 2: 171 tests passing. All 25 prd.json tasks
+now `"completed": true`.
+
+**Summary of what Feedback 2 delivered, for anyone picking this up later:**
+archers now rotate through a round-robin schedule (built at Stage 1, before
+names are known) instead of one fixed pair for the whole round; a two-stage
+setup separates event-wide config from per-archer details; an indoor/outdoor
+round-mode toggle exists, with indoor Compound archers correctly using
+`archeryutils`'s indoor-compound scoring variant; results are tracked both
+per-pass and as aggregated pairwise outcomes (deliberately no leaderboard);
+the interactive distribution chart now works per-pair against the `Event`
+model; and a standalone score-to-handicap calculator was added. Explicitly
+not built (see AISpec.md Assumption 14 and the "Out of scope" list): the
+alternative "sit out + additional rotation" bye mode and its toggle, and
+everything under `Specification/feedback.md`'s "Future Feedback" heading
+(per-archer scoring method/face/distance, a leaderboard, results print-outs,
+UI redesign, and publication/deployment).
