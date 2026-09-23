@@ -7,6 +7,7 @@ round, split into equal `n_pass`-arrow passes, per AISpec.md section 6.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
 from archeryutils import load_rounds
 from archeryutils import rounds as au_rounds
@@ -72,6 +73,76 @@ def default_round() -> tuple[au_rounds.Round, targets.Target]:
     """
     rnd = load_rounds.AGB_indoor.portsmouth
     return rnd, rnd.passes[0].target
+
+
+class Bowstyle(str, Enum):
+    """The three bowstyles offered in the archer setup dropdown.
+
+    Per Specification/feedback.md "Feedback 2": deliberately a smaller set
+    than archeryutils's own `AGB_bowstyles`, which includes several more
+    categories not asked for here.
+    """
+
+    RECURVE = "Recurve"
+    COMPOUND = "Compound"
+    BAREBOW = "Barebow"
+
+
+class RoundMode(str, Enum):
+    """The round-mode choices offered at event setup (AISpec.md section 5.1)."""
+
+    INDOOR_PORTSMOUTH = "indoor_portsmouth"
+    INDOOR_WA18 = "indoor_wa18"
+    OUTDOOR = "outdoor"
+
+
+def _outdoor_target() -> targets.Target:
+    """The single fixed outdoor target used for every bowstyle (Assumption 12).
+
+    Returns
+    -------
+    archeryutils.targets.Target
+        WA720's 70m / 122cm 10-zone target.
+    """
+    return load_rounds.WA_outdoor.wa720_70.passes[0].target
+
+
+def resolve_target(round_mode: RoundMode, bowstyle: Bowstyle) -> targets.Target:
+    """Resolve an archer's effective target from round mode and bowstyle.
+
+    Per AISpec.md section 5.2a: indoor Compound archers use the AGB
+    indoor-compound scoring variant (same face/distance, only the X-ring
+    scores 10) of whichever indoor round is in use; indoor Recurve/Barebow use
+    the plain variant; outdoor mode uses one single fixed target regardless of
+    bowstyle (Assumption 12).
+
+    Parameters
+    ----------
+    round_mode : RoundMode
+        The event's round mode.
+    bowstyle : Bowstyle
+        The archer's bowstyle.
+
+    Returns
+    -------
+    archeryutils.targets.Target
+        The target to compute this archer's score distribution against.
+    """
+    if round_mode is RoundMode.OUTDOOR:
+        return _outdoor_target()
+
+    is_compound = bowstyle is Bowstyle.COMPOUND
+    if round_mode is RoundMode.INDOOR_PORTSMOUTH:
+        rnd = (
+            load_rounds.AGB_indoor.portsmouth_compound
+            if is_compound
+            else load_rounds.AGB_indoor.portsmouth
+        )
+    else:  # RoundMode.INDOOR_WA18
+        rnd = (
+            load_rounds.WA_indoor.wa18_compound if is_compound else load_rounds.WA_indoor.wa18
+        )
+    return rnd.passes[0].target
 
 
 @dataclass

@@ -188,7 +188,7 @@
       "Outdoor mode resolves to the same fixed target regardless of bowstyle (Recurve, Compound, and Barebow all get an identical Target).",
       "The resolved target's `indoor` flag is correct in each case (True for both indoor rounds, False for outdoor), so per_arrow_pmf's automatic arrow-diameter selection is unaffected."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 17,

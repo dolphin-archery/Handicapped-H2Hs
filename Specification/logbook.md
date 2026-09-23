@@ -311,3 +311,19 @@ invalid inputs (n_archers<2, negative rotations) raise. Tests in
 `tests/test_rotation.py`; all 17 passed first run (hand-derivation of the
 circle method traced through by hand for n=3 and n=4 before coding matched the
 test results exactly). No issues.
+
+### Task 16: Per-archer target resolution (round mode x bowstyle) (complete)
+Added `Bowstyle` and `RoundMode` enums and `resolve_target` to `h2h/models.py`.
+Confirmed via a quick archeryutils inspection first (documented in this
+session): `portsmouth_compound`/`wa18_compound` have the *same* diameter/
+distance/indoor flag as their plain counterparts, only `scoring_system`
+differs (`10_zone` vs `10_zone_compound`), so the arrow-diameter difference
+(indoor vs outdoor) is already handled automatically by `per_arrow_pmf`
+reading `target.indoor` -- no extra work needed for that part of the feedback.
+Outdoor mode always resolves to the same fixed target (`wa720_70`'s, per
+Assumption 12) regardless of bowstyle. Verified all combinations in the
+resolution table match archeryutils's real round objects, and outdoor mode
+truly ignores bowstyle. Tests in `tests/test_target_resolution.py`; full
+suite still green (150 passed) after this change. No issues; `default_round()`
+(used only by the soon-to-be-retired `Match`, task 24) was left alone rather
+than refactored now, to avoid touching code this task doesn't need to.
