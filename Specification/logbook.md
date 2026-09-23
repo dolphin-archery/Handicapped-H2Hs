@@ -362,3 +362,38 @@ score in a batch leaves the whole rotation unrecorded; same handicap +
 different bowstyle gives different distributions indoors but identical ones
 outdoors (task 16 correctly wired through). Tests in `tests/test_event.py`;
 full suite 162 passed. No outstanding issues.
+
+### Task 18: Stage 1 setup UI (event configuration) (complete)
+Added `SessionState.start_stage1`/`start_stage2` (validates then builds the
+rotation schedule via task 15, only committing state on success -- same
+validate-before-commit pattern as the original `start_matches` bug fix from
+Feedback 1), and `/event/stage1` (GET+POST) + `stage1.html`. A placeholder
+`/event/stage2` route was added purely so Stage 1's redirect has a valid
+target; task 19 replaces it properly. n_pass is chosen via the same
+range-slider-plus-JS-array pattern as the old flow, but the divisor list is
+now recomputed client-side from whatever `total_arrows` currently holds
+(vanilla JS `divisors(n)`), rather than a fixed server-provided list.
+
+Verified via the real-browser method established earlier this session
+(headless Edge + ephemeral Selenium) rather than assuming the JS was correct,
+and this caught a genuine bug: the "snap to nearest valid n_pass" logic read
+its own hidden input's live value as the "preferred" n_pass to snap towards,
+so retyping a multi-digit `total_arrows` digit-by-digit (e.g. clearing and
+typing "40") caused each keystroke's snapped result to feed into the next
+keystroke's snap target, drifting away from the archer's actual original
+preference (observed: typing "40" after a default of 12 landed on 4, not the
+correct nearest-divisor-of-40-to-12 answer of 10). Fixed by tracking the
+user's intended n_pass in a separate variable (`preferredNPass`), updated only
+when the user moves the slider itself, never by the total_arrows-driven
+snapping logic. Re-verified after the fix: typing "40" now correctly lands on
+10. This is the second real bug this session's browser verification has
+caught (the first was Feedback 1's session-state mutation-before-validation
+bug) -- reinforces that this verification step is worth doing, not a
+formality.
+
+Tests in `tests/test_event_routes.py` (new file, kept separate from
+`tests/test_app.py` since task 24 replaces that file wholesale): GET renders,
+valid submission redirects, non-dividing n_pass rejected with a clear message,
+changing total_arrows changes which n_pass values are accepted, n_archers<2
+rejected, outdoor mode works without a meaningful indoor_round value. Full
+suite 176 passed.

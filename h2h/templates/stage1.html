@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Event setup - Stage 1</h1>
+<p>Set up the event as a whole. Archer names, bowstyles, and handicaps are entered next, in Stage 2.</p>
+{% if error %}
+<p class="warning">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="{{ url_for('stage1_submit') }}">
+  <div class="row">
+    <label>Number of archers:
+      <input type="number" name="n_archers" id="n_archers" min="2" step="1" value="{{ n_archers }}" required>
+    </label>
+  </div>
+
+  <div class="row">
+    <label>Total arrows:
+      <input type="number" name="total_arrows" id="total_arrows" min="1" step="1" value="{{ total_arrows }}" required>
+    </label>
+  </div>
+
+  <div class="row">
+    <label for="n_pass_slider">Arrows per pass (n<sub>pass</sub>): <span id="n_pass_label">{{ n_pass }}</span></label><br>
+    <input type="range" id="n_pass_slider" min="0" max="0" step="1" value="0">
+    <input type="hidden" id="n_pass_value" name="n_pass" value="{{ n_pass }}">
+  </div>
+
+  <div class="row">
+    <label><input type="radio" name="round_mode" value="indoor" id="round_mode_indoor"
+        {% if round_mode != 'outdoor' %}checked{% endif %}> Indoor</label>
+    <label style="margin-left: 1rem;"><input type="radio" name="round_mode" value="outdoor" id="round_mode_outdoor"
+        {% if round_mode == 'outdoor' %}checked{% endif %}> Outdoor</label>
+  </div>
+
+  <div class="row" id="indoor_round_choice">
+    <label><input type="radio" name="indoor_round" value="portsmouth"
+        {% if round_mode != 'indoor_wa18' %}checked{% endif %}> Portsmouth</label>
+    <label style="margin-left: 1rem;"><input type="radio" name="indoor_round" value="wa18"
+        {% if round_mode == 'indoor_wa18' %}checked{% endif %}> WA 18</label>
+  </div>
+
+  <button type="submit">Continue to Stage 2</button>
+</form>
+
+<script>
+  function divisors(n) {
+    const out = [];
+    for (let i = 1; i <= n; i++) {
+      if (n % i === 0) out.push(i);
+    }
+    return out;
+  }
+
+  const totalArrowsInput = document.getElementById("total_arrows");
+  const slider = document.getElementById("n_pass_slider");
+  const label = document.getElementById("n_pass_label");
+  const hidden = document.getElementById("n_pass_value");
+
+  let validNPass = [];
+  // The user's intended n_pass, tracked separately from the (possibly
+  // snapped) displayed value -- so re-typing total_arrows digit-by-digit
+  // doesn't drift away from what the user actually asked for by feeding a
+  // just-snapped intermediate value back in as the new "preference".
+  let preferredNPass = {{ n_pass }};
+
+  function rebuildSlider() {
+    const total = parseInt(totalArrowsInput.value, 10) || 1;
+    validNPass = divisors(total);
+    slider.max = validNPass.length - 1;
+    let idx = validNPass.indexOf(preferredNPass);
+    if (idx === -1) {
+      // snap to the closest valid value, without changing preferredNPass
+      idx = 0;
+      let bestDiff = Infinity;
+      validNPass.forEach((v, i) => {
+        const diff = Math.abs(v - preferredNPass);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          idx = i;
+        }
+      });
+    }
+    slider.value = idx;
+    label.textContent = validNPass[idx];
+    hidden.value = validNPass[idx];
+  }
+
+  totalArrowsInput.addEventListener("input", rebuildSlider);
+  slider.addEventListener("input", () => {
+    const value = validNPass[parseInt(slider.value, 10)];
+    preferredNPass = value;
+    label.textContent = value;
+    hidden.value = value;
+  });
+
+  rebuildSlider();
+
+  function updateIndoorVisibility() {
+    const isIndoor = document.getElementById("round_mode_indoor").checked;
+    document.getElementById("indoor_round_choice").hidden = !isIndoor;
+  }
+  document.getElementById("round_mode_indoor").addEventListener("change", updateIndoorVisibility);
+  document.getElementById("round_mode_outdoor").addEventListener("change", updateIndoorVisibility);
+  updateIndoorVisibility();
+</script>
+{% endblock %}

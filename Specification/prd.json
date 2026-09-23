@@ -216,7 +216,7 @@
       "n_archers < 2 is rejected with a clear error.",
       "Selecting indoor requires (and outdoor omits) the Portsmouth/WA18 sub-choice in the submitted form."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 19,

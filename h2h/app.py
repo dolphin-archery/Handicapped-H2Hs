@@ -12,7 +12,7 @@ from __future__ import annotations
 from flask import Flask, redirect, render_template, request, url_for
 
 from .chart_data import build_match_chart_data
-from .models import Archer, VALID_N_PASS
+from .models import VALID_N_PASS, Archer, RoundMode
 from .state import SessionState
 
 NUM_SETUP_ROWS = 20
@@ -115,6 +115,42 @@ def create_app(state: SessionState | None = None) -> Flask:
         except ValueError as exc:
             return match_view(idx, error=str(exc))
         return redirect(url_for("match_view", idx=idx))
+
+    @app.get("/event/stage1")
+    def stage1(error: str | None = None):
+        return render_template(
+            "stage1.html",
+            n_archers=session.n_archers or 4,
+            total_arrows=session.total_arrows,
+            n_pass=session.n_pass,
+            round_mode=session.round_mode.value,
+            error=error,
+        )
+
+    @app.post("/event/stage1")
+    def stage1_submit():
+        try:
+            n_archers = int(request.form["n_archers"])
+            total_arrows = int(request.form["total_arrows"])
+            n_pass = int(request.form["n_pass"])
+            if request.form.get("round_mode") == "outdoor":
+                round_mode = RoundMode.OUTDOOR
+            elif request.form.get("indoor_round") == "wa18":
+                round_mode = RoundMode.INDOOR_WA18
+            else:
+                round_mode = RoundMode.INDOOR_PORTSMOUTH
+            session.start_stage1(n_archers, total_arrows, n_pass, round_mode)
+        except (ValueError, KeyError) as exc:
+            return stage1(error=str(exc) or "Invalid input.")
+        return redirect(url_for("stage2"))
+
+    @app.get("/event/stage2")
+    def stage2():
+        # Placeholder until prd task 19 builds this out; stage1 just needs a
+        # valid redirect target to exist.
+        if session.schedule is None:
+            return redirect(url_for("stage1"))
+        return "Stage 2 placeholder"
 
     @app.post("/mode")
     def toggle_mode():
