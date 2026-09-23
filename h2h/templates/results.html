@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Event results</h1>
+
+{% if not event.is_complete %}
+<p><a href="{{ url_for('event_rotation') }}">Continue scoring (rotation {{ event.next_rotation_index() + 1 }} of {{ event.schedule|length }})</a></p>
+{% else %}
+<p>Event complete.</p>
+{% endif %}
+
+<h2>Pairwise results</h2>
+<p>Every pair of archers who have shared at least one rotation so far. This is a set of head-to-head results, not a ranked leaderboard.</p>
+{% if not pairwise %}
+<p>No pairs have shared a rotation yet.</p>
+{% else %}
+<table>
+  <thead>
+    <tr><th>Archer A</th><th>Archer B</th><th>Wins A</th><th>Wins B</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    {% for pr in pairwise %}
+    <tr>
+      <td>{{ event.archers[pr.archer_a].name }}</td>
+      <td>{{ event.archers[pr.archer_b].name }}</td>
+      <td>{{ pr.wins_a }}</td>
+      <td>{{ pr.wins_b }}</td>
+      <td>
+        {% if pr.outcome == 'draw' %}
+        <span class="draw">Draw</span>
+        {% else %}
+        {{ event.archers[pr.outcome].name }} wins
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>Per-pass results</h2>
+{% for rv in rotations_view %}
+<h3>Rotation {{ rv.index + 1 }}</h3>
+<table>
+  <thead>
+    <tr><th>Archer</th><th>Score</th><th>Percentile</th><th>Equiv. handicap</th><th>Opponent</th><th>Won?</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rv.results %}
+    <tr>
+      <td>{{ event.archers[r.archer_index].name }}</td>
+      <td>{{ r.score }}</td>
+      <td>{{ '%.1f%%'|format(r.percentile * 100) }}</td>
+      <td>{{ '%.1f'|format(r.handicap) if r.handicap is not none else '-' }}</td>
+      <td>{{ event.archers[r.opponent_index].name if r.opponent_index is not none else 'bye' }}</td>
+      <td>{{ 'Yes' if r.won else ('No' if r.won is not none else '-') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endfor %}
+{% endblock %}

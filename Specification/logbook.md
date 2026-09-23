@@ -437,3 +437,24 @@ single box; submitting valid scores advances to the next rotation; an invalid
 score is rejected with a clear message; once the event is complete,
 `/event/rotation` redirects onward instead of prompting for a rotation that
 doesn't exist. Full suite 185 passed. No issues.
+
+### Task 21: Per-pass and pairwise results display (complete)
+Replaced the `/event/results` placeholder with a real view: a pairwise-
+results table (one row per pair that has shared >=1 rotation, from
+`Event.all_pairwise_results()`) and, below it, a per-rotation breakdown of
+every scored pass (grouped by rotation, from `Event.results` filtered by
+`rotation_index`). Deliberately no ranking/points-total column anywhere, per
+AISpec.md section 5.4's explicit exclusion of a leaderboard.
+
+Caught a self-inflicted false-positive while testing: an early version of
+`test_results_page_does_not_show_a_ranked_leaderboard` did a naive substring
+search for the word "leaderboard", which failed against the page's own
+prose ("a set of head-to-head results, not a ranked leaderboard") -- that
+sentence is deliberate, helpful UX clarifying what the view is/isn't, not an
+actual leaderboard feature. Fixed the test to check for real leaderboard
+markers (a "Rank"/"Points"/"Total" table header) instead of the word itself.
+
+Tests in `tests/test_event_routes.py`: a scored rotation's results appear on
+the page; a pairwise result appears once a pair has shared a pass; no
+pairwise results are shown before any scoring; no ranking/points table is
+rendered. Full suite 189 passed. No outstanding issues.

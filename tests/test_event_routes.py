@@ -207,3 +207,62 @@ def test_event_complete_redirects_to_results():
     client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
     resp = client.get("/event/rotation", follow_redirects=True)
     assert resp.status_code == 200
+
+
+# --- Task 21: per-pass and pairwise results display -----------------------
+
+
+def test_results_page_shows_scored_rotation():
+    """After scoring a rotation, its per-pass results appear on the results page."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)
+    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    resp = client.get("/event/results")
+    assert resp.status_code == 200
+    assert b"Alice" in resp.data
+    assert b"Bob" in resp.data
+    assert b"100" in resp.data
+    assert b"60" in resp.data
+
+
+def test_results_page_shows_pairwise_result():
+    """After a pair shares a pass, their pairwise result appears."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)
+    client.post("/event/rotation", data={"score_0": "120", "score_1": "0"})
+    resp = client.get("/event/results")
+    assert b"wins" in resp.data.lower()
+
+
+def test_results_page_before_any_scoring_shows_no_pairwise_results():
+    """Before any rotation is scored, no pairwise results should be shown."""
+    client = make_client()
+    complete_stage1(client, n_archers=4, total_arrows=36, n_pass=12)
+    complete_stage2(
+        client,
+        [
+            ("A1", "Recurve", 15),
+            ("A2", "Compound", 25),
+            ("A3", "Barebow", 35),
+            ("A4", "Recurve", 45),
+        ],
+    )
+    resp = client.get("/event/results")
+    assert resp.status_code == 200
+    assert b"No pairs have shared a rotation yet" in resp.data
+
+
+def test_results_page_does_not_show_a_ranked_leaderboard():
+    """The results page must not compute/display a single ranked score total.
+
+    The page's own prose may mention "leaderboard" to clarify that this view
+    is deliberately NOT one (see results.html) -- that's fine. What must be
+    absent is an actual ranking: a "Rank"/"Points" column or table.
+    """
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)
+    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    resp = client.get("/event/results")
+    assert b"<th>Rank</th>" not in resp.data
+    assert b"<th>Points</th>" not in resp.data
+    assert b"<th>Total</th>" not in resp.data

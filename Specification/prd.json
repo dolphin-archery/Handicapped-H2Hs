@@ -251,7 +251,7 @@
       "The pairwise-results view shows an entry for every pair that has shared a rotation so far, with the correct win/loss/draw, and no entry for pairs that haven't met yet.",
       "The pairwise-results view does not compute or display any single ranked score/points total across all archers."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 22,

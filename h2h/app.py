@@ -231,10 +231,22 @@ def create_app(state: SessionState | None = None) -> Flask:
 
     @app.get("/event/results")
     def event_results():
-        # Placeholder until prd task 21 builds this out.
         if session.event is None:
             return redirect(url_for("stage1"))
-        return "Event results placeholder"
+        event = session.event
+
+        rotations_view = []
+        for idx in range(len(event.schedule)):
+            rotation_results = [r for r in event.results if r.rotation_index == idx]
+            if rotation_results:
+                rotations_view.append({"index": idx, "results": rotation_results})
+
+        return render_template(
+            "results.html",
+            event=event,
+            rotations_view=rotations_view,
+            pairwise=event.all_pairwise_results(),
+        )
 
     @app.get("/event/handicap-calculator")
     def handicap_calculator():
