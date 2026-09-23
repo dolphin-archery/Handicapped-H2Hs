@@ -12,7 +12,7 @@ from __future__ import annotations
 from flask import Flask, redirect, render_template, request, url_for
 
 from .chart_data import build_match_chart_data
-from .models import VALID_N_PASS, Archer, RoundMode
+from .models import VALID_N_PASS, Archer, Bowstyle, RoundMode
 from .state import SessionState
 
 NUM_SETUP_ROWS = 20
@@ -145,12 +145,57 @@ def create_app(state: SessionState | None = None) -> Flask:
         return redirect(url_for("stage2"))
 
     @app.get("/event/stage2")
-    def stage2():
-        # Placeholder until prd task 19 builds this out; stage1 just needs a
-        # valid redirect target to exist.
-        if session.schedule is None:
+    def stage2(error: str | None = None):
+        if session.schedule is None or session.n_archers is None:
             return redirect(url_for("stage1"))
-        return "Stage 2 placeholder"
+        return render_template(
+            "stage2.html",
+            n_archers=session.n_archers,
+            bowstyles=list(Bowstyle),
+            error=error,
+        )
+
+    @app.post("/event/stage2")
+    def stage2_submit():
+        if session.schedule is None or session.n_archers is None:
+            return redirect(url_for("stage1"))
+        try:
+            archers = []
+            for i in range(session.n_archers):
+                name = request.form.get(f"name_{i}", "").strip()
+                handicap_raw = request.form.get(f"handicap_{i}", "").strip()
+                bowstyle_raw = request.form.get(f"bowstyle_{i}", "").strip()
+                if not name or not handicap_raw or not bowstyle_raw:
+                    msg = f"Row {i + 1}: name, handicap, and bowstyle are all required."
+                    raise ValueError(msg)
+                try:
+                    bowstyle = Bowstyle(bowstyle_raw)
+                except ValueError:
+                    msg = f"Row {i + 1}: '{bowstyle_raw}' is not a valid bowstyle."
+                    raise ValueError(msg) from None
+                try:
+                    handicap = float(handicap_raw)
+                except ValueError:
+                    msg = f"Row {i + 1}: handicap must be a number."
+                    raise ValueError(msg) from None
+                archers.append(Archer(name=name, handicap=handicap, bowstyle=bowstyle))
+            session.start_stage2(archers)
+        except ValueError as exc:
+            return stage2(error=str(exc))
+        return redirect(url_for("event_rotation"))
+
+    @app.get("/event/rotation")
+    def event_rotation():
+        # Placeholder until prd task 20 builds this out; stage2 just needs a
+        # valid redirect target to exist.
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        return "Rotation scoring placeholder"
+
+    @app.get("/event/handicap-calculator")
+    def handicap_calculator():
+        # Placeholder until prd task 22 builds this out.
+        return "Handicap calculator placeholder"
 
     @app.post("/mode")
     def toggle_mode():

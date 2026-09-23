@@ -397,3 +397,23 @@ valid submission redirects, non-dividing n_pass rejected with a clear message,
 changing total_arrows changes which n_pass values are accepted, n_archers<2
 rejected, outdoor mode works without a meaningful indoor_round value. Full
 suite 176 passed.
+
+### Task 19: Stage 2 setup UI (archer details) (complete)
+Added `/event/stage2` (GET renders exactly `session.n_archers` rows; redirects
+to Stage 1 if Stage 1 hasn't been completed) and its POST handler, which
+validates every row (name/bowstyle/handicap all required, bowstyle must be one
+of the three `Bowstyle` values, handicap must parse as a number) before
+calling `SessionState.start_stage2` to bind archers to the Stage 1 schedule
+and build the `Event`. Bowstyle uses a real `<select>` dropdown (not free
+text), matching AISpec.md section 5.2's requirement.
+
+Added placeholder routes for `/event/rotation` (task 20) and
+`/event/handicap-calculator` (task 22) purely so Stage 1 -> Stage 2 -> "start
+event" redirects, and Stage 2's link to the calculator, have valid targets
+before those tasks build them out properly -- same pattern used for Stage 2's
+own placeholder in task 18's commit.
+
+Tests in `tests/test_event_routes.py`: exactly n_archers rows rendered,
+reaching Stage 2 without Stage 1 redirects back, valid submission creates the
+event, missing/invalid bowstyle rejected with a clear error. Full suite 180
+passed. No issues.

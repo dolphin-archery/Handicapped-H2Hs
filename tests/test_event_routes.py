@@ -77,3 +77,63 @@ def test_outdoor_mode_does_not_require_indoor_round_choice():
         "/event/stage1", data=stage1_form(round_mode="outdoor"), follow_redirects=True
     )
     assert resp.status_code == 200
+
+
+# --- Task 19: Stage 2 setup UI -------------------------------------------
+
+
+def stage2_form(archers):
+    """Build a /event/stage2 form payload from (name, bowstyle, handicap) tuples."""
+    form = {}
+    for i, (name, bowstyle, handicap) in enumerate(archers):
+        form[f"name_{i}"] = name
+        form[f"bowstyle_{i}"] = bowstyle
+        form[f"handicap_{i}"] = str(handicap)
+    return form
+
+
+def complete_stage1(client, n_archers=3, total_arrows=60, n_pass=12, round_mode="indoor"):
+    """Run Stage 1 so Stage 2 is reachable."""
+    client.post("/event/stage1", data=stage1_form(n_archers=n_archers, total_arrows=total_arrows, n_pass=n_pass, round_mode=round_mode))
+
+
+def test_stage2_renders_exactly_n_archers_rows():
+    """Stage 2 must show exactly as many rows as Stage 1's n_archers."""
+    client = make_client()
+    complete_stage1(client, n_archers=5)
+    resp = client.get("/event/stage2")
+    assert resp.status_code == 200
+    for i in range(5):
+        assert f'name="name_{i}"'.encode() in resp.data
+    assert b'name="name_5"' not in resp.data
+
+
+def test_stage2_without_stage1_redirects_to_stage1():
+    """Reaching Stage 2 without completing Stage 1 must redirect back."""
+    client = make_client()
+    resp = client.get("/event/stage2", follow_redirects=True)
+    assert b"Event setup - Stage 1" in resp.data
+
+
+def test_valid_stage2_submission_creates_event():
+    """Submitting valid archer details for every row starts the event."""
+    client = make_client()
+    complete_stage1(client, n_archers=2)
+    resp = client.post(
+        "/event/stage2",
+        data=stage2_form([("Alice", "Recurve", 20), ("Bob", "Compound", 30)]),
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+
+def test_stage2_missing_bowstyle_rejected():
+    """A missing/invalid bowstyle must be rejected with a clear error."""
+    client = make_client()
+    complete_stage1(client, n_archers=2)
+    resp = client.post(
+        "/event/stage2",
+        data=stage2_form([("Alice", "", 20), ("Bob", "Compound", 30)]),
+    )
+    assert resp.status_code == 200
+    assert b"required" in resp.data or b"bowstyle" in resp.data.lower()

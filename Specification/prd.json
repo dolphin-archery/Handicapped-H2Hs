@@ -228,7 +228,7 @@
       "A missing or invalid bowstyle value is rejected with a clear error (dropdown only offers the three valid values).",
       "Attempting to reach Stage 2 without having completed Stage 1 redirects back to Stage 1 instead of erroring."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 20,
