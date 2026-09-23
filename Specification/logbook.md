@@ -327,3 +327,38 @@ truly ignores bowstyle. Tests in `tests/test_target_resolution.py`; full
 suite still green (150 passed) after this change. No issues; `default_round()`
 (used only by the soon-to-be-retired `Match`, task 24) was left alone rather
 than refactored now, to avoid touching code this task doesn't need to.
+
+### Task 17: Event data model (complete)
+Added `Event`, `PassResult`, `PairwiseResult` to `h2h/models.py`. `Event`
+precomputes each archer's own distribution at construction (handicap + task
+16's `resolve_target`), validates the schedule's archer indices are in range,
+and `record_rotation` validates all of a rotation's scores atomically before
+recording anything (mirroring the old `Match.record_pass` pattern) then
+derives per-archer `PassResult`s (percentile, equivalent handicap, and
+winner/None) plus updates queryable pairwise results. `pairwise_result(a, b)`
+returns `None` until that pair has shared a rotation, then aggregates wins
+across however many passes they've actually shared -- this generalises the old
+`Match.result()` without needing a separate "match" object per pair.
+`Archer.bowstyle`'s type was widened from `str | None` to `Bowstyle | None`
+(still optional at the dataclass level, since the old `Match` flow never reads
+it; Stage 2's form, task 19, is what will actually enforce a valid selection).
+
+Caught and fixed one design mistake while writing `Event.__init__`: an early
+draft tried to compute the schedule's max archer index in one overly clever
+one-line conditional expression indexing `r.pairs[0]` directly, which was both
+hard to read and fragile (would break if a rotation ever had zero pairs);
+replaced with a plain loop over every rotation's full participant list before
+writing any tests against it.
+
+Verified: each archer's distribution sums to 1 and is precomputed
+independently; an out-of-range schedule index is rejected; recording a
+rotation computes percentiles from each archer's own distribution; missing or
+extra archers in a submitted score set are rejected; a bye archer's pass is
+recorded with `won=None` and never appears in any pairwise result; pairwise
+results are `None` before a shared rotation and correctly reflect the winner
+after one; `all_pairwise_results()` only grows as rotations are actually
+scored; `next_rotation_index`/`is_complete` advance correctly; an invalid
+score in a batch leaves the whole rotation unrecorded; same handicap +
+different bowstyle gives different distributions indoors but identical ones
+outdoors (task 16 correctly wired through). Tests in `tests/test_event.py`;
+full suite 162 passed. No outstanding issues.

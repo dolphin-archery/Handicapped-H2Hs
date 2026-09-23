@@ -203,7 +203,7 @@
       "Invalid scores (non-integer, out of range) are rejected via the same validation as before, leaving the rotation unrecorded.",
       "Two archers with different bowstyles under indoor mode get correctly different target-based distributions (task 16 wired through)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 18,

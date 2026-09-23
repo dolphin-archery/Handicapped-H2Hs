@@ -14,6 +14,7 @@ from archeryutils import rounds as au_rounds
 from archeryutils import targets
 
 from . import stats
+from .rotation import Rotation
 
 TOTAL_ARROWS = 60
 VALID_N_PASS = tuple(n for n in range(1, TOTAL_ARROWS + 1) if TOTAL_ARROWS % n == 0)
@@ -128,11 +129,11 @@ def resolve_target(round_mode: RoundMode, bowstyle: Bowstyle) -> targets.Target:
     archeryutils.targets.Target
         The target to compute this archer's score distribution against.
     """
-    if round_mode is RoundMode.OUTDOOR:
+    if round_mode == RoundMode.OUTDOOR:
         return _outdoor_target()
 
-    is_compound = bowstyle is Bowstyle.COMPOUND
-    if round_mode is RoundMode.INDOOR_PORTSMOUTH:
+    is_compound = bowstyle == Bowstyle.COMPOUND
+    if round_mode == RoundMode.INDOOR_PORTSMOUTH:
         rnd = (
             load_rounds.AGB_indoor.portsmouth_compound
             if is_compound
@@ -156,15 +157,17 @@ class Archer:
     handicap : float
         Current AGB (2023 scheme) handicap. The sole skill input used in
         calculations.
-    bowstyle : str | None
-        Optional display-only label; never used in any calculation (per
-        the exclusion of the bowstyle-variance correction in
-        Specification/humanSpec.md).
+    bowstyle : Bowstyle | None
+        Required for events using `Event`/`resolve_target` (indoor mode uses
+        it to pick the Compound scoring variant, per AISpec.md section 5.2a).
+        Optional here (default None) only because the older, single-pair
+        `Match` flow never reads it; `sigma_r` itself remains bowstyle-blind
+        either way (Specification/humanSpec.md).
     """
 
     name: str
     handicap: float
-    bowstyle: str | None = None
+    bowstyle: Bowstyle | None = None
 
 
 @dataclass
@@ -344,3 +347,270 @@ class Match:
         if wins_b > wins_a:
             return "b"
         return "draw"
+
+
+@dataclass(frozen=True)
+class PassResult:
+    """One archer's recorded result for one rotation's pass.
+
+    Attributes
+    ----------
+    rotation_index : int
+        Which rotation this pass belongs to.
+    archer_index : int
+        Index into `Event.archers` of the archer this result is for.
+    score : int
+        The score they shot.
+    percentile : float
+        Their percentile under their own score distribution.
+    handicap : float | None
+        Full-round-equivalent handicap implied by `score` (None if `score`
+        is 0).
+    opponent_index : int | None
+        Index of the archer they faced this rotation, or None if they had
+        the bye.
+    won : bool | None
+        Whether they won the pass, or None if they had the bye (no
+        opponent to compare against).
+    """
+
+    rotation_index: int
+    archer_index: int
+    score: int
+    percentile: float
+    handicap: float | None
+    opponent_index: int | None
+    won: bool | None
+
+
+@dataclass(frozen=True)
+class PairwiseResult:
+    """Aggregated head-to-head result between two archers.
+
+    Attributes
+    ----------
+    archer_a, archer_b : int
+        The two archers' indices.
+    wins_a, wins_b : int
+        How many of their shared passes each won.
+    """
+
+    archer_a: int
+    archer_b: int
+    wins_a: int
+    wins_b: int
+
+    @property
+    def outcome(self) -> int | str:
+        """int | str: the winning archer's index, or "draw"."""
+        if self.wins_a > self.wins_b:
+            return self.archer_a
+        if self.wins_b > self.wins_a:
+            return self.archer_b
+        return "draw"
+
+
+class Event:
+    """A full H2H event: archers rotating opponents every n_pass arrows.
+
+    Replaces the old fixed-pair `Match` (Specification/feedback.md
+    "Feedback 2"). Each archer's score distribution depends only on their
+    own handicap and resolved target (`resolve_target`) -- not on who they
+    face -- so it is precomputed once per archer at construction time.
+
+    Parameters
+    ----------
+    archers : list[Archer]
+        Archers in schedule-position order (archer i corresponds to
+        `schedule`'s archer-index i).
+    n_pass : int
+        Number of arrows per rotation's pass.
+    round_mode : RoundMode
+        The event's round mode; combined with each archer's bowstyle to
+        resolve their target (AISpec.md section 5.2a).
+    schedule : list[h2h.rotation.Rotation]
+        The rotation schedule (built by `h2h.rotation.build_schedule` before
+        archers were known -- see AISpec.md section 5.1).
+
+    Attributes
+    ----------
+    results : list[PassResult]
+        Every recorded result so far, across all rotations.
+    """
+
+    def __init__(
+        self,
+        archers: list[Archer],
+        n_pass: int,
+        round_mode: RoundMode,
+        schedule: list[Rotation],
+    ) -> None:
+        max_index = -1
+        for rotation in schedule:
+            participants = [p for pair in rotation.pairs for p in pair]
+            if rotation.bye is not None:
+                participants.append(rotation.bye)
+            if participants:
+                max_index = max(max_index, max(participants))
+        if max_index >= len(archers):
+            msg = (
+                f"Schedule references archer index {max_index}, but only "
+                f"{len(archers)} archers were provided."
+            )
+            raise ValueError(msg)
+
+        self.archers = archers
+        self.n_pass = n_pass
+        self.round_mode = round_mode
+        self.schedule = schedule
+        self.results: list[PassResult] = []
+
+        self._targets = [resolve_target(round_mode, a.bowstyle) for a in archers]
+        self._distributions = [
+            stats.n_pass_score_distribution(stats.per_arrow_pmf(a.handicap, t), n_pass)
+            for a, t in zip(archers, self._targets, strict=True)
+        ]
+
+    def target_for(self, archer_index: int) -> targets.Target:
+        """archeryutils.targets.Target: the resolved target for an archer."""
+        return self._targets[archer_index]
+
+    def distribution_for(self, archer_index: int) -> dict[float, float]:
+        """dict[float, float]: an archer's own n_pass score distribution."""
+        return self._distributions[archer_index]
+
+    def next_rotation_index(self) -> int | None:
+        """int | None: index of the next unscored rotation, or None if done."""
+        scored = {r.rotation_index for r in self.results}
+        for i in range(len(self.schedule)):
+            if i not in scored:
+                return i
+        return None
+
+    @property
+    def is_complete(self) -> bool:
+        """bool: whether every rotation has been scored."""
+        return self.next_rotation_index() is None
+
+    def record_rotation(self, rotation_index: int, scores: dict[int, float]) -> list[PassResult]:
+        """Record every archer's score for a rotation and derive results.
+
+        Parameters
+        ----------
+        rotation_index : int
+            Index of the rotation being scored.
+        scores : dict[int, float]
+            Mapping of archer index to raw score, covering exactly the
+            archers active in this rotation (every paired archer, plus the
+            bye archer if there is one).
+
+        Returns
+        -------
+        list[PassResult]
+            The results recorded for this rotation, one per participant.
+
+        Raises
+        ------
+        ValueError
+            If `scores`' keys don't exactly match the rotation's
+            participants, or any score is invalid (see `_validate_score`).
+            Raised before anything is recorded.
+        """
+        rotation = self.schedule[rotation_index]
+        expected = {p for pair in rotation.pairs for p in pair}
+        if rotation.bye is not None:
+            expected.add(rotation.bye)
+        if set(scores) != expected:
+            msg = (
+                f"Scores must be provided for exactly rotation {rotation_index}'s "
+                f"participants {sorted(expected)}; got {sorted(scores)}."
+            )
+            raise ValueError(msg)
+
+        validated = {idx: _validate_score(score, self.n_pass) for idx, score in scores.items()}
+
+        results: list[PassResult] = []
+        for a, b in rotation.pairs:
+            score_a, score_b = validated[a], validated[b]
+            pct_a = stats.percentile(self._distributions[a], score_a)
+            pct_b = stats.percentile(self._distributions[b], score_b)
+            winner = stats.decide_pass_winner(pct_a, score_a, pct_b, score_b)
+            results.append(
+                PassResult(
+                    rotation_index=rotation_index,
+                    archer_index=a,
+                    score=score_a,
+                    percentile=pct_a,
+                    handicap=stats.equivalent_handicap(score_a, self.n_pass, self._targets[a]),
+                    opponent_index=b,
+                    won=(winner == "a"),
+                )
+            )
+            results.append(
+                PassResult(
+                    rotation_index=rotation_index,
+                    archer_index=b,
+                    score=score_b,
+                    percentile=pct_b,
+                    handicap=stats.equivalent_handicap(score_b, self.n_pass, self._targets[b]),
+                    opponent_index=a,
+                    won=(winner == "b"),
+                )
+            )
+
+        if rotation.bye is not None:
+            bye_idx = rotation.bye
+            score_bye = validated[bye_idx]
+            results.append(
+                PassResult(
+                    rotation_index=rotation_index,
+                    archer_index=bye_idx,
+                    score=score_bye,
+                    percentile=stats.percentile(self._distributions[bye_idx], score_bye),
+                    handicap=stats.equivalent_handicap(
+                        score_bye, self.n_pass, self._targets[bye_idx]
+                    ),
+                    opponent_index=None,
+                    won=None,
+                )
+            )
+
+        self.results.extend(results)
+        return results
+
+    def pairwise_result(self, a: int, b: int) -> PairwiseResult | None:
+        """Aggregated head-to-head result between two archers so far.
+
+        Parameters
+        ----------
+        a, b : int
+            The two archers' indices.
+
+        Returns
+        -------
+        PairwiseResult | None
+            None if `a` and `b` have not yet shared a rotation.
+        """
+        wins_a = sum(1 for r in self.results if r.archer_index == a and r.opponent_index == b and r.won)
+        wins_b = sum(1 for r in self.results if r.archer_index == b and r.opponent_index == a and r.won)
+        shared = any(r.archer_index == a and r.opponent_index == b for r in self.results)
+        if not shared:
+            return None
+        return PairwiseResult(archer_a=a, archer_b=b, wins_a=wins_a, wins_b=wins_b)
+
+    def all_pairwise_results(self) -> list[PairwiseResult]:
+        """Every pairwise result for pairs that have shared at least one rotation.
+
+        Returns
+        -------
+        list[PairwiseResult]
+            Sorted by (archer_a, archer_b) for deterministic display.
+        """
+        pairs = sorted(
+            {
+                tuple(sorted((r.archer_index, r.opponent_index)))
+                for r in self.results
+                if r.opponent_index is not None
+            }
+        )
+        return [self.pairwise_result(a, b) for a, b in pairs]
