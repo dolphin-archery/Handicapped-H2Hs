@@ -148,7 +148,7 @@
       "Every distribution point falls within the reported x-range.",
       "Scored passes appear in the payload in order with their raw scores; no scored passes gives an empty list.",
       "The match page in advanced mode renders a canvas#match-chart, embeds the chart payload as window.MATCH_CHART_DATA, and does not render either in basic mode.",
-      "NOTE: the client-side rendering (h2h/static/match_chart.js) -- actual curve smoothness, hover tooltip content, and the checkbox toggling markers -- could not be visually verified in this environment (no headless-browser tool available); verified server-side output only (valid embedded JSON, correct script ordering, static file served). Manual browser verification is recommended before relying on this."
+      "UPDATE: subsequently verified in a real headless-Edge browser (via an ephemeral Selenium install) during Feedback 2 processing -- confirmed the chart renders two curve datasets, the checkbox correctly adds/removes prior passes' marker datasets (verified via Chart.js's own dataset list and a screenshot), and no JS console errors occur (aside from an unrelated favicon 404)."
     ],
     "completed": true
   },
@@ -162,5 +162,143 @@
       "The invalid-n_pass error message is reworded to avoid the raw identifier."
     ],
     "completed": true
+  },
+  {
+    "id": 15,
+    "name": "Round-robin rotation scheduler",
+    "description": "Add h2h/rotation.py: a Flask- and stats-independent module generating a round-robin ('circle method') rotation schedule over n_archers positions (0..n_archers-1) for a requested number of rotations. Odd n_archers gets a bye slot each rotation (one archer index with no opponent that rotation). If requested rotations < a full round-robin's length, truncate; if more, cycle the schedule from the start to fill the rest (Specification/AISpec.md Assumption 13).",
+    "tests": [
+      "For even n_archers, a full-length schedule has every archer paired with every other archer exactly once across n_archers-1 rotations, and no archer has a bye.",
+      "For odd n_archers, a full-length schedule has n_archers rotations, each with exactly one archer on the bye, and every archer has exactly one bye across the full schedule.",
+      "No rotation pairs an archer with themselves, and no archer appears twice (as two different opponents) within the same rotation.",
+      "Requesting fewer rotations than a full round-robin needs returns a truncated prefix of the full schedule.",
+      "Requesting more rotations than a full round-robin needs repeats the schedule from the start for the extra rotations.",
+      "n_archers=2 produces a single rotation with one pair and no bye."
+    ],
+    "completed": false
+  },
+  {
+    "id": 16,
+    "name": "Per-archer target resolution (round mode x bowstyle)",
+    "description": "Add a function resolving an archer's effective archeryutils Target from the event's round mode (indoor+Portsmouth/WA18, or outdoor) and the archer's bowstyle, per Specification/AISpec.md section 5.2a: indoor Compound uses the *_compound scoring-system variant (portsmouth_compound / wa18_compound) of the same face/distance; indoor Recurve/Barebow use the plain variant; outdoor uses one single fixed target (AISpec.md Assumption 12: wa720_70's target) for every bowstyle.",
+    "tests": [
+      "Indoor Portsmouth + Compound resolves to portsmouth_compound's target (same diameter/distance as portsmouth, scoring_system '10_zone_compound').",
+      "Indoor Portsmouth + Recurve or Barebow resolves to portsmouth's own target ('10_zone').",
+      "Indoor WA18 + Compound resolves to wa18_compound's target; + Recurve/Barebow resolves to wa18's target.",
+      "Outdoor mode resolves to the same fixed target regardless of bowstyle (Recurve, Compound, and Barebow all get an identical Target).",
+      "The resolved target's `indoor` flag is correct in each case (True for both indoor rounds, False for outdoor), so per_arrow_pmf's automatic arrow-diameter selection is unaffected."
+    ],
+    "completed": false
+  },
+  {
+    "id": 17,
+    "name": "Event data model (replaces fixed-pair Match)",
+    "description": "Add h2h.models.Event, Rotation, and result-tracking structures per Specification/AISpec.md section 6, replacing the old single-pair Match for new code (existing Match-based tests/routes are migrated in later tasks, not kept alongside). Event holds archers, total_arrows, n_pass, round_mode, the rotation schedule (task 15), and each archer's own precomputed n_pass score distribution (handicap + task-16-resolved target, independent of opponent). Provides recording a rotation's scores (validating each score per the existing MAX_SCORE_PER_ARROW rule), computing each archer's percentile/equivalent handicap for that pass, deciding each pair's pass winner, and maintaining a running pairwise result (win/loss/draw) per pair of archers who have shared at least one rotation.",
+    "tests": [
+      "Constructing an Event with n_archers/total_arrows/n_pass computes a schedule of total_arrows // n_pass rotations via task 15.",
+      "Recording a rotation's scores for all its pairs (and bye archer, if any) computes each participant's percentile and equivalent handicap using their OWN resolved target/distribution, not a shared one.",
+      "A bye archer's pass is recorded (score + percentile) but produces no winner and does not appear in any pairwise result.",
+      "After a pair shares one pass, querying that pair's pairwise result returns a win/loss based on that pass's winner.",
+      "If a pair shares multiple passes (schedule cycling, task 15), their pairwise result aggregates across all shared passes (majority; even split is a draw), mirroring the old Match.result() semantics.",
+      "Invalid scores (non-integer, out of range) are rejected via the same validation as before, leaving the rotation unrecorded.",
+      "Two archers with different bowstyles under indoor mode get correctly different target-based distributions (task 16 wired through)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 18,
+    "name": "Stage 1 setup UI (event configuration)",
+    "description": "Build the Stage 1 page per Specification/AISpec.md section 5.1: n_archers (integer, >=2), total_arrows (default 60), n_pass (snap control restricted to divisors of the CHOSEN total_arrows, not a fixed set), round mode (indoor -> Portsmouth/WA18 sub-choice, or outdoor). Submitting validates inputs, builds the rotation schedule (task 15) over n_archers positions, stores it in session state, and proceeds to Stage 2 (task 19) with exactly n_archers archer-detail rows expected.",
+    "tests": [
+      "Submitting valid Stage 1 inputs stores a schedule with the correct number of rotations and redirects to Stage 2.",
+      "n_pass values that don't divide the chosen total_arrows are rejected server-side with a clear error, re-rendering Stage 1 without crashing.",
+      "Changing total_arrows changes which n_pass values are offered/accepted (e.g. total_arrows=40 accepts n_pass=8 but not n_pass=12).",
+      "n_archers < 2 is rejected with a clear error.",
+      "Selecting indoor requires (and outdoor omits) the Portsmouth/WA18 sub-choice in the submitted form."
+    ],
+    "completed": false
+  },
+  {
+    "id": 19,
+    "name": "Stage 2 setup UI (archer details)",
+    "description": "Build the Stage 2 page per Specification/AISpec.md section 5.2: exactly n_archers rows (from Stage 1, not a generic fixed count) collecting name, bowstyle (dropdown: Recurve/Compound/Barebow, required), and handicap. Submitting binds these Archers to the Stage 1 schedule's positions in entry order and constructs the Event (task 17), then proceeds to the rotation-scoring view (task 20).",
+    "tests": [
+      "Stage 2 renders exactly n_archers rows, matching whatever n_archers was chosen in Stage 1.",
+      "Submitting valid archer details for all rows creates an Event and redirects to the rotation-scoring view.",
+      "A missing or invalid bowstyle value is rejected with a clear error (dropdown only offers the three valid values).",
+      "Attempting to reach Stage 2 without having completed Stage 1 redirects back to Stage 1 instead of erroring."
+    ],
+    "completed": false
+  },
+  {
+    "id": 20,
+    "name": "Rotation scoring UI",
+    "description": "Build the per-rotation scoring page per Specification/AISpec.md section 5.3: for the event's current (first not-fully-scored) rotation, show one score-entry box per archer in each pair (grouped by pair) plus a single box for the bye archer's score if there is one that rotation. Submitting records all of that rotation's scores via Event (task 17) in one action and advances to the next rotation (or shows event-complete state once every rotation is scored).",
+    "tests": [
+      "The scoring page for a rotation shows exactly the right set of input boxes: one pair per matched pair, plus the bye archer's single box if n_archers is odd that rotation.",
+      "Submitting a rotation's scores for all pairs (and bye, if present) records them and advances next_pass_index()-equivalent to the following rotation.",
+      "An invalid score anywhere in the submitted rotation is rejected with a specific error and does not partially record the rotation.",
+      "After the final rotation is scored, the page indicates the event is complete rather than prompting for another rotation."
+    ],
+    "completed": false
+  },
+  {
+    "id": 21,
+    "name": "Per-pass and pairwise results display",
+    "description": "Display both result levels from Specification/AISpec.md section 5.4: a per-rotation table of every scored pass (score/percentile/equivalent handicap per archer, winner if paired), and a pairwise-results view listing every pair of archers who have shared at least one rotation with their aggregated win/loss/draw -- explicitly NOT a ranked leaderboard across all archers (out of scope).",
+    "tests": [
+      "After scoring a rotation, the per-pass table shows that rotation's results for every participant, matching the Event object's recorded PassResults.",
+      "The pairwise-results view shows an entry for every pair that has shared a rotation so far, with the correct win/loss/draw, and no entry for pairs that haven't met yet.",
+      "The pairwise-results view does not compute or display any single ranked score/points total across all archers."
+    ],
+    "completed": false
+  },
+  {
+    "id": 22,
+    "name": "Static handicap conversion tool",
+    "description": "Add a standalone page/route per Specification/AISpec.md section 5.5: pick Portsmouth or WA18, enter a full-round score, see the resulting AGB handicap to 1 decimal place, computed via archeryutils's real Portsmouth/WA18 Round objects (not a synthetic partial round). Reachable from Stage 2 and independently from the nav at any time; its result is never stored against any archer or wired into the event.",
+    "tests": [
+      "Submitting a valid Portsmouth score returns the correct handicap to 1 decimal place, matching archeryutils.handicaps.handicap_scheme('AGB').handicap_from_score directly on the real Portsmouth round.",
+      "Submitting a valid WA18 score returns the correct handicap similarly against the real WA18 round.",
+      "An out-of-range or non-numeric score shows a friendly error instead of a 500.",
+      "The tool is reachable from the nav independent of where the scorer currently is in event setup/scoring."
+    ],
+    "completed": false
+  },
+  {
+    "id": 23,
+    "name": "Adapt advanced-mode charts to per-pair-with-shared-history",
+    "description": "Update h2h/chart_data.py and the advanced-mode UI to build a distribution chart for each pair of archers who have shared at least one rotation (per Specification/AISpec.md section 5.6), rather than one fixed match's two archers. Each archer's distribution now comes from their own resolved target (task 16), not a shared match target. Preserve the existing behaviour verified for Feedback 1: trimmed x-range, shared y-axis, only-latest-pass markers by default with a checkbox for all shared passes.",
+    "tests": [
+      "build_match_chart_data (or its Event-based equivalent) produces a valid payload for any pair that has shared at least one rotation, using each archer's own distribution.",
+      "Two archers with different resolved targets (e.g. different bowstyles indoors) get visibly different distribution curves in the payload.",
+      "No chart payload/canvas is generated for a pair that hasn't shared a rotation yet.",
+      "Re-verify in a real browser (per the working method established for task 13) that the checkbox still correctly toggles prior shared passes' markers under the new per-pair data source."
+    ],
+    "completed": false
+  },
+  {
+    "id": 24,
+    "name": "Retire the old fixed-pair setup/scoring routes and migrate tests",
+    "description": "Remove the old single-stage setup page and fixed-pair Match-based routes/templates now superseded by tasks 18-21, and update/replace the existing test suite (tests/test_app.py, tests/test_models.py, tests/test_integration.py, tests/test_chart_data.py) to exercise the new two-stage, rotation-based flow instead. Do not leave dead/unreachable old routes or templates behind.",
+    "tests": [
+      "No route still references the old single-pair Match model or the old one-stage setup form.",
+      "The full test suite passes with no references to the removed Match-based routes/behaviour.",
+      "Grep confirms no leftover dead template files or unused imports from the old flow."
+    ],
+    "completed": false
+  },
+  {
+    "id": 25,
+    "name": "End-to-end integration check for the rotation flow",
+    "description": "Write an integration test exercising the full new flow end to end: Stage 1 -> Stage 2 -> score every rotation -> confirm per-pass and pairwise results are correct, for both an even and an odd n_archers case (covering bye handling), and for both indoor (with mixed bowstyles) and outdoor round modes.",
+    "tests": [
+      "Even n_archers: full event completes, every archer's pairwise results match the expected round-robin coverage (everyone faces everyone once, given enough rotations).",
+      "Odd n_archers: each rotation has exactly one bye archer whose pass is recorded with no winner, and byes are distributed as the scheduler intends.",
+      "Indoor mode with a mix of Compound and Recurve/Barebow archers: verify (via h2h.stats/h2h.models directly, as an independent check) that the Compound archer's recorded equivalent handicap/percentile used the compound-scoring target, not the plain one.",
+      "Outdoor mode: all archers use the same fixed target regardless of bowstyle.",
+      "Restarting the app (fresh SessionState) clears all event state, consistent with Assumption 7."
+    ],
+    "completed": false
   }
 ]
