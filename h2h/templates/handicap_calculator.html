@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Score-to-handicap calculator</h1>
+<p>A convenience tool for working out a starting handicap. This result is not stored against any archer.</p>
+
+{% if error %}
+<p class="warning">{{ error }}</p>
+{% endif %}
+{% if result is not none %}
+<p><strong>Handicap: {{ result }}</strong></p>
+{% endif %}
+
+<form method="post" action="{{ url_for('handicap_calculator_submit') }}">
+  <div class="row">
+    <label><input type="radio" name="round" value="portsmouth" checked> Portsmouth</label>
+    <label style="margin-left: 1rem;"><input type="radio" name="round" value="wa18"> WA 18</label>
+  </div>
+  <div class="row">
+    <label>Full round score: <input type="number" step="1" name="score" required></label>
+  </div>
+  <button type="submit">Calculate</button>
+</form>
+{% endblock %}

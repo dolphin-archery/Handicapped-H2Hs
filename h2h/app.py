@@ -9,8 +9,10 @@ not a multi-tenant service.
 
 from __future__ import annotations
 
+from archeryutils import load_rounds
 from flask import Flask, redirect, render_template, request, url_for
 
+from . import stats
 from .chart_data import build_match_chart_data
 from .models import VALID_N_PASS, Archer, Bowstyle, RoundMode
 from .state import SessionState
@@ -249,9 +251,25 @@ def create_app(state: SessionState | None = None) -> Flask:
         )
 
     @app.get("/event/handicap-calculator")
-    def handicap_calculator():
-        # Placeholder until prd task 22 builds this out.
-        return "Handicap calculator placeholder"
+    def handicap_calculator(result: float | None = None, error: str | None = None):
+        return render_template(
+            "handicap_calculator.html", result=result, error=error
+        )
+
+    @app.post("/event/handicap-calculator")
+    def handicap_calculator_submit():
+        round_choice = request.form.get("round", "portsmouth")
+        rnd = (
+            load_rounds.AGB_indoor.portsmouth
+            if round_choice == "portsmouth"
+            else load_rounds.WA_indoor.wa18
+        )
+        try:
+            score = float(request.form.get("score", ""))
+            handicap = stats.handicap_for_round_score(score, rnd)
+        except ValueError:
+            return handicap_calculator(error="Enter a valid score for the chosen round.")
+        return handicap_calculator(result=round(handicap, 1))
 
     @app.post("/mode")
     def toggle_mode():

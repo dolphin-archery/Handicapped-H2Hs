@@ -263,7 +263,7 @@
       "An out-of-range or non-numeric score shows a friendly error instead of a 500.",
       "The tool is reachable from the nav independent of where the scorer currently is in event setup/scoring."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 23,

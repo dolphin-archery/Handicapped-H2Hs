@@ -458,3 +458,22 @@ Tests in `tests/test_event_routes.py`: a scored rotation's results appear on
 the page; a pairwise result appears once a pair has shared a pass; no
 pairwise results are shown before any scoring; no ranking/points table is
 rendered. Full suite 189 passed. No outstanding issues.
+
+### Task 22: Static handicap conversion tool (complete)
+Replaced the `/event/handicap-calculator` placeholder with a real tool: pick
+Portsmouth or WA18, enter a full-round score, get the AGB handicap to 1dp.
+Added `h2h.stats.handicap_for_round_score(score, rnd)` -- a thin public
+wrapper distinct from `equivalent_handicap` (which builds a synthetic partial
+round for a single pass): this one takes a real, complete
+`archeryutils.rounds.Round` directly, per AISpec.md section 5.5's explicit
+"not a synthetic partial round" requirement. Added to expose the
+functionality without reaching into `stats`'s private `_AGB_SCHEME` from
+`app.py`. The result is never stored against an archer or wired into the
+event -- it's a standalone GET+POST pair with no session-state involvement
+beyond rendering the form.
+
+Tests in `tests/test_handicap_calculator.py`: the wrapper matches calling
+archeryutils directly on both real rounds; valid Portsmouth/WA18 scores return
+the correct handicap; invalid input shows a friendly error, not a 500; the
+page is reachable with no event set up at all (independent of setup
+progress). Full suite 196 passed. No issues.

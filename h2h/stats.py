@@ -172,6 +172,35 @@ def equivalent_handicap(score: int, n_pass: int, target: targets.Target) -> floa
         return float(_AGB_SCHEME.handicap_from_score(score, virtual_round))
 
 
+def handicap_for_round_score(score: float, rnd: au_rounds.Round) -> float:
+    """AGB handicap for a score on a real, complete round.
+
+    Thin public wrapper around the AGB scheme's own rootfinder, for the
+    standalone score-to-handicap calculator (AISpec.md section 5.5) -- uses
+    a real `archeryutils.rounds.Round` (e.g. the actual Portsmouth or WA18
+    round), not a synthetic partial one like `equivalent_handicap`.
+
+    Parameters
+    ----------
+    score : float
+        Score achieved on the full round.
+    rnd : archeryutils.rounds.Round
+        The round shot.
+
+    Returns
+    -------
+    float
+        The decimal AGB handicap for that score.
+
+    Raises
+    ------
+    ValueError
+        If `score` is not a valid score for `rnd` (see
+        `archeryutils`'s `handicap_from_score`).
+    """
+    return float(_AGB_SCHEME.handicap_from_score(score, rnd))
+
+
 def decide_pass_winner(
     percentile_a: float,
     score_a: float,
