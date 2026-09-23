@@ -25,6 +25,27 @@ The following assumptions were made when turning `Specification/humanSpec.md` in
     control, to avoid losing already-typed rows on a page reload without adding
     client-side JS state management.
 
+Assumptions 1, 3, 4, 5, 9, and 10 above are superseded by Feedback 2 (see
+`Specification/AISpec.md` section 7 for the full, current list, numbered 1-14 -
+superseded ones are struck through there with a note on what replaced them,
+rather than deleted, so the history of why is kept). New assumptions from
+Feedback 2 worth calling out here:
+
+11. Outdoor mode uses one single fixed target (WA720's 70m/122cm face) for every
+    bowstyle, rather than modelling the real per-bowstyle outdoor distance
+    differences (e.g. Compound at 50m) - that would require "different distance
+    per archer", which `Specification/feedback.md` explicitly defers to a future
+    "Advanced mode".
+12. Rotation scheduling uses the standard round-robin "circle method"; if fewer
+    rotations are available than a full round-robin needs the schedule is
+    truncated, if more are available it repeats from the start.
+13. Of the two bye-handling modes `Specification/feedback.md` asked to toggle
+    between, only "shoot alone, no comparison" is implemented (confirmed via
+    clarifying question); the "sit out + additional rotation" alternative's
+    fairness mechanics were never fully specified, so it -- and the toggle
+    itself -- are not built. Flagged prominently in case the toggle was actually
+    wanted now.
+
 # Implementation History
 
 ## Task 1: Project scaffolding and dependencies (complete)
@@ -236,3 +257,41 @@ as plain (HTML-escaped) text on the setup page and couldn't otherwise carry a
 a dedicated test and a template grep.
 
 Final suite after all of Feedback 1: 126 tests passing.
+
+## Feedback 2 kickoff: clarifying questions + checkbox re-verification
+
+`Specification/feedback.md`'s "Feedback 2" section opens with an explicit
+instruction to ask before implementing anything unclear. Before touching
+`AISpec.md`, asked four clarifying questions (via AskUserQuestion) covering the
+biggest architecture-affecting ambiguities: how results should be tracked once
+archers rotate opponents (answer: per-pass wins AND aggregated pairwise
+results); what a bye archer's pass means (answer: shoot alone, no comparison);
+what the indoor/outdoor toggle should actually cover (answer: indoor Compound
+must use archeryutils's compound scoring variant, and confirmed the arrow-
+diameter difference archeryutils already handles); and whether the "add toggle
+to plot all ends" note was the same checkbox already built in Feedback 1 or
+something new (the user said they hadn't seen it working, might be missing).
+
+That last point was worth investigating properly rather than re-asserting the
+same "couldn't verify, no browser tool" caveat as Feedback 1's task 13 note.
+Found Microsoft Edge is actually installed on this machine
+(`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`), so drove it
+headlessly via an ephemeral Selenium install (`uv run --with selenium --with
+webdriver-manager python ...` -- not added to the project's own dependencies).
+This confirmed the checkbox genuinely works: unchecked, the chart has 4
+datasets (2 curves + latest pass's 2 markers); checked, it grows to 6 (adds the
+previous pass's 2 markers); a screenshot showing both states was captured; no
+JS console errors occurred (aside from an unrelated favicon 404). Updated
+prd.json task 13's note accordingly. Lesson for future verification work in
+this environment: check for an installed browser binary before assuming
+headless browser testing is impossible.
+
+Also independently verified (given the surprising-looking result of a much
+stronger archer "losing" a pass with a much higher raw score) that the
+percentile-based decision is working as intended, not a tie-break bug: two
+percentiles that both display as "0.0%" (rounding) were confirmed via direct
+computation to be genuinely different (6.0e-39 vs 8.8e-15), so the system
+correctly picked the less-improbable performance as the winner. This is a
+cosmetic display-precision point (very extreme percentiles are indistinguishable
+at 1 decimal place), not a defect, and wasn't something Feedback 2 asked to fix,
+so left as-is -- noted here in case it's raised again later.
