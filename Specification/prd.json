@@ -275,7 +275,7 @@
       "No chart payload/canvas is generated for a pair that hasn't shared a rotation yet.",
       "Re-verify in a real browser (per the working method established for task 13) that the checkbox still correctly toggles prior shared passes' markers under the new per-pair data source."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 24,

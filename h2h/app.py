@@ -13,7 +13,7 @@ from archeryutils import load_rounds
 from flask import Flask, redirect, render_template, request, url_for
 
 from . import stats
-from .chart_data import build_match_chart_data
+from .chart_data import build_match_chart_data, build_pair_chart_data
 from .models import VALID_N_PASS, Archer, Bowstyle, RoundMode
 from .state import SessionState
 
@@ -248,6 +248,21 @@ def create_app(state: SessionState | None = None) -> Flask:
             event=event,
             rotations_view=rotations_view,
             pairwise=event.all_pairwise_results(),
+        )
+
+    @app.get("/event/pair/<int:a>/<int:b>")
+    def pair_chart(a: int, b: int):
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        event = session.event
+        if event.pairwise_result(a, b) is None:
+            return redirect(url_for("event_results"))
+        return render_template(
+            "pair_chart.html",
+            event=event,
+            a=a,
+            b=b,
+            chart_data=build_pair_chart_data(event, a, b),
         )
 
     @app.get("/event/handicap-calculator")

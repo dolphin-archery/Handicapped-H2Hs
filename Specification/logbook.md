@@ -477,3 +477,44 @@ archeryutils directly on both real rounds; valid Portsmouth/WA18 scores return
 the correct handicap; invalid input shows a friendly error, not a 500; the
 page is reachable with no event set up at all (independent of setup
 progress). Full suite 196 passed. No issues.
+
+### Task 23: Adapt advanced-mode charts to per-pair-with-shared-history (complete)
+Added `h2h.chart_data.build_pair_chart_data(event, a, b)` alongside (not
+replacing yet -- task 24 removes the old one) `build_match_chart_data`,
+sharing the same `_mean_and_std`/`_display_range` trimming logic. Sources
+each archer's distribution from `Event.distribution_for` (so different
+bowstyles indoors correctly produce different curves) and each shared pass
+from `Event.results`, matching up the two `PassResult`s for a given
+`rotation_index` (one from each archer's perspective) into a single
+`{score_a, score_b}` entry. Added `/event/pair/<a>/<b>` + `pair_chart.html`
+(redirects to results if that pair hasn't shared a rotation yet), reusing
+`h2h/static/match_chart.js` unchanged -- it was already generic (reads
+`window.MATCH_CHART_DATA`, looks for `#match-chart`/`#show-previous-passes`)
+so no JS changes were needed, only a new server-side payload source. Linked
+from `results.html`'s pairwise table via a "View chart" column, shown only in
+advanced mode.
+
+Re-verified the checkbox behaviour in a real browser as this task's own test
+criteria required (not just trusting the JS is unchanged so "it must still
+work"), and hit a genuine detour: an early verification script used a generic
+`"form button"` CSS selector to click the rotation-scoring form's submit
+button, which actually matched the *nav's mode-toggle form* instead (the
+first `<form><button>` in DOM order, since the nav sits above the page
+content in `base.html`) -- so the "score submission" was silently just
+toggling mode, the rotation was never recorded, and the results page
+correctly (if confusingly) reported "no pairs have shared a rotation yet".
+Traced this step-by-step (printing mode state after every click) before
+concluding it was the test script's selector specificity at fault, not an
+app bug -- fixed by scoping the selector to
+`form[action='/event/rotation'] button`. With that fix, re-verified
+end-to-end: Stage 1 -> Stage 2 -> two scored rotations -> advanced mode ->
+results page's "View chart" link -> pair chart page showing 4 datasets
+(2 curves + latest pass's markers) before the checkbox and 6 after, no
+console errors. Worth remembering for future verification work in this
+codebase: `nav` renders before `{% block content %}`, so any CSS selector
+meant for a content-area form/button must be scoped past the nav, not just
+"the first form/button on the page".
+
+Tests in `tests/test_pair_chart_data.py` (payload correctness) and
+`tests/test_event_routes.py` (route behaviour, link visibility only in
+advanced mode). Full suite 204 passed. No outstanding issues.

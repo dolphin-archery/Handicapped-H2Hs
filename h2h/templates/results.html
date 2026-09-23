@@ -15,7 +15,7 @@
 {% else %}
 <table>
   <thead>
-    <tr><th>Archer A</th><th>Archer B</th><th>Wins A</th><th>Wins B</th><th>Result</th></tr>
+    <tr><th>Archer A</th><th>Archer B</th><th>Wins A</th><th>Wins B</th><th>Result</th><th></th></tr>
   </thead>
   <tbody>
     {% for pr in pairwise %}
@@ -29,6 +29,11 @@
         <span class="draw">Draw</span>
         {% else %}
         {{ event.archers[pr.outcome].name }} wins
+        {% endif %}
+      </td>
+      <td>
+        {% if mode == 'advanced' %}
+        <a href="{{ url_for('pair_chart', a=pr.archer_a, b=pr.archer_b) }}">View chart</a>
         {% endif %}
       </td>
     </tr>

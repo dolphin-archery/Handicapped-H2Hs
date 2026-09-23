@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 
-from .models import Match
+from .models import Event, Match
 
 # How many standard deviations either side of the mean to display by
 # default; trims the "full score range" per Specification/feedback.md.
@@ -105,6 +105,72 @@ def build_match_chart_data(match: Match) -> dict:
     return {
         "archer_a": {"name": match.archer_a.name, "handicap": match.archer_a.handicap},
         "archer_b": {"name": match.archer_b.name, "handicap": match.archer_b.handicap},
+        "distribution_a": points(dist_a),
+        "distribution_b": points(dist_b),
+        "x_min": x_min,
+        "x_max": x_max,
+        "y_max": y_max,
+        "passes": passes,
+    }
+
+
+def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
+    """Build the JSON payload for a pair-of-archers' interactive distribution chart.
+
+    Replaces `build_match_chart_data` for the rotation-based `Event` model
+    (Specification/feedback.md "Feedback 2"): each archer's distribution
+    comes from their own resolved target (`Event.distribution_for`), and the
+    marked passes are only those this specific pair has actually shared
+    under the rotation schedule (usually one, but possibly more -- see
+    AISpec.md Assumption 13).
+
+    Parameters
+    ----------
+    event : h2h.models.Event
+        The event both archers belong to.
+    a, b : int
+        The two archers' indices. Must have shared at least one rotation
+        (see `Event.pairwise_result`); this function does not check that.
+
+    Returns
+    -------
+    dict
+        Same shape as `build_match_chart_data`'s return value.
+    """
+    dist_a = event.distribution_for(a)
+    dist_b = event.distribution_for(b)
+    max_possible = event.n_pass * 10
+
+    x_min, x_max = _display_range(dist_a, dist_b, max_possible)
+
+    def points(dist: dict[float, float]) -> list[dict[str, float]]:
+        return [
+            {"x": score, "y": prob}
+            for score, prob in sorted(dist.items())
+            if x_min <= score <= x_max
+        ]
+
+    y_max = max(max(dist_a.values()), max(dist_b.values())) * 1.15
+
+    results_a = {
+        r.rotation_index: r for r in event.results if r.archer_index == a and r.opponent_index == b
+    }
+    results_b = {
+        r.rotation_index: r for r in event.results if r.archer_index == b and r.opponent_index == a
+    }
+    shared_rotations = sorted(set(results_a) & set(results_b))
+    passes = [
+        {
+            "index": idx,
+            "score_a": results_a[idx].score,
+            "score_b": results_b[idx].score,
+        }
+        for idx in shared_rotations
+    ]
+
+    return {
+        "archer_a": {"name": event.archers[a].name, "handicap": event.archers[a].handicap},
+        "archer_b": {"name": event.archers[b].name, "handicap": event.archers[b].handicap},
         "distribution_a": points(dist_a),
         "distribution_b": points(dist_b),
         "x_min": x_min,

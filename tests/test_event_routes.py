@@ -252,6 +252,48 @@ def test_results_page_before_any_scoring_shows_no_pairwise_results():
     assert b"No pairs have shared a rotation yet" in resp.data
 
 
+def test_pair_chart_page_renders_for_a_shared_pair():
+    """A pair that has shared a rotation gets a working chart page."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)
+    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    resp = client.get("/event/pair/0/1")
+    assert resp.status_code == 200
+    assert b'id="match-chart"' in resp.data
+    assert b"MATCH_CHART_DATA" in resp.data
+
+
+def test_pair_chart_redirects_for_an_unshared_pair():
+    """A pair that has never shared a rotation redirects back to results."""
+    client = make_client()
+    complete_stage1(client, n_archers=4, total_arrows=36, n_pass=12)
+    complete_stage2(
+        client,
+        [
+            ("A1", "Recurve", 15),
+            ("A2", "Compound", 25),
+            ("A3", "Barebow", 35),
+            ("A4", "Recurve", 45),
+        ],
+    )
+    resp = client.get("/event/pair/0/1", follow_redirects=True)
+    assert resp.status_code == 200
+
+
+def test_results_link_to_chart_only_shown_in_advanced_mode():
+    """The 'View chart' link must only appear in advanced mode."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)
+    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+
+    resp_basic = client.get("/event/results")
+    assert b"View chart" not in resp_basic.data
+
+    client.post("/mode", data={"next": "/event/results"})
+    resp_advanced = client.get("/event/results")
+    assert b"View chart" in resp_advanced.data
+
+
 def test_results_page_does_not_show_a_ranked_leaderboard():
     """The results page must not compute/display a single ranked score total.
 
