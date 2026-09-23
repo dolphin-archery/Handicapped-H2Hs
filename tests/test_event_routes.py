@@ -137,3 +137,73 @@ def test_stage2_missing_bowstyle_rejected():
     )
     assert resp.status_code == 200
     assert b"required" in resp.data or b"bowstyle" in resp.data.lower()
+
+
+# --- Task 20: rotation scoring UI ----------------------------------------
+
+
+def complete_stage2(client, archers):
+    """Run Stage 2 with the given (name, bowstyle, handicap) tuples."""
+    return client.post("/event/stage2", data=stage2_form(archers), follow_redirects=True)
+
+
+def start_two_archer_event(client, n_pass=12):
+    """Set up a minimal 2-archer event, ready for rotation scoring."""
+    complete_stage1(client, n_archers=2, total_arrows=n_pass, n_pass=n_pass)
+    complete_stage2(client, [("Alice", "Recurve", 15), ("Bob", "Compound", 45)])
+
+
+def test_rotation_page_shows_correct_boxes_for_a_pair():
+    """A rotation with one pair (no bye) shows exactly two score boxes."""
+    client = make_client()
+    start_two_archer_event(client)
+    resp = client.get("/event/rotation")
+    assert resp.status_code == 200
+    assert b'name="score_0"' in resp.data
+    assert b'name="score_1"' in resp.data
+
+
+def test_rotation_page_shows_bye_box_for_odd_archers():
+    """An odd-archer event's bye rotation shows a single box for the bye archer."""
+    client = make_client()
+    complete_stage1(client, n_archers=3, total_arrows=36, n_pass=12)
+    complete_stage2(
+        client,
+        [("Alice", "Recurve", 15), ("Bob", "Compound", 45), ("Carol", "Barebow", 30)],
+    )
+    resp = client.get("/event/rotation")
+    assert resp.status_code == 200
+    assert b"bye" in resp.data.lower()
+
+
+def test_submitting_a_rotation_advances_to_the_next_one():
+    """Submitting valid scores for the current rotation advances the event."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)  # total_arrows == n_pass -> 1 rotation
+    resp = client.post(
+        "/event/rotation",
+        data={"score_0": "100", "score_1": "60"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+
+def test_invalid_score_in_rotation_rejected_with_clear_error():
+    """An invalid score anywhere in the rotation must be rejected, not partially recorded."""
+    client = make_client()
+    start_two_archer_event(client)
+    resp = client.post(
+        "/event/rotation",
+        data={"score_0": "abc", "score_1": "60"},
+    )
+    assert resp.status_code == 200
+    assert b"must be a number" in resp.data
+
+
+def test_event_complete_redirects_to_results():
+    """Once every rotation is scored, /event/rotation redirects to results."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)  # single rotation
+    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    resp = client.get("/event/rotation", follow_redirects=True)
+    assert resp.status_code == 200

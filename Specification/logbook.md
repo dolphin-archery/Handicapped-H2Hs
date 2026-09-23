@@ -417,3 +417,23 @@ Tests in `tests/test_event_routes.py`: exactly n_archers rows rendered,
 reaching Stage 2 without Stage 1 redirects back, valid submission creates the
 event, missing/invalid bowstyle rejected with a clear error. Full suite 180
 passed. No issues.
+
+### Task 20: Rotation scoring UI (complete)
+Added `/event/rotation` (GET+POST) + `rotation.html`, replacing the task-19
+placeholder. GET reads `event.next_rotation_index()`: if the event is already
+complete it redirects to `/event/results` (task 21, itself placeholdered here
+the same way stage2/rotation were placeholdered by earlier tasks); otherwise
+it shows one score box per pair (grouped under a heading) plus a single box
+for the bye archer if there is one. POST reads exactly the current rotation's
+participant indices from the form, converts each to float (a friendly
+per-archer error, e.g. "Bob's score must be a number.", if that fails) and
+hands the whole dict to `Event.record_rotation` in one call, so an invalid
+score anywhere is rejected before anything is recorded -- same pattern as
+`Event.record_rotation`'s own internal validate-then-commit ordering.
+
+Tests in `tests/test_event_routes.py`: a paired rotation shows exactly the
+right score boxes; an odd-archer event's bye rotation shows the bye archer's
+single box; submitting valid scores advances to the next rotation; an invalid
+score is rejected with a clear message; once the event is complete,
+`/event/rotation` redirects onward instead of prompting for a rotation that
+doesn't exist. Full suite 185 passed. No issues.

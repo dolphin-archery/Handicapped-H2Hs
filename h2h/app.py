@@ -185,12 +185,56 @@ def create_app(state: SessionState | None = None) -> Flask:
         return redirect(url_for("event_rotation"))
 
     @app.get("/event/rotation")
-    def event_rotation():
-        # Placeholder until prd task 20 builds this out; stage2 just needs a
-        # valid redirect target to exist.
+    def event_rotation(error: str | None = None):
         if session.event is None:
             return redirect(url_for("stage1"))
-        return "Rotation scoring placeholder"
+        event = session.event
+        idx = event.next_rotation_index()
+        if idx is None:
+            return redirect(url_for("event_results"))
+        rotation = event.schedule[idx]
+        return render_template(
+            "rotation.html",
+            event=event,
+            rotation_index=idx,
+            rotation=rotation,
+            error=error,
+        )
+
+    @app.post("/event/rotation")
+    def event_rotation_submit():
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        event = session.event
+        idx = event.next_rotation_index()
+        if idx is None:
+            return redirect(url_for("event_results"))
+        rotation = event.schedule[idx]
+        participants = [p for pair in rotation.pairs for p in pair]
+        if rotation.bye is not None:
+            participants.append(rotation.bye)
+
+        try:
+            scores = {}
+            for archer_idx in participants:
+                raw = request.form.get(f"score_{archer_idx}", "")
+                try:
+                    scores[archer_idx] = float(raw)
+                except ValueError:
+                    name = event.archers[archer_idx].name
+                    msg = f"{name}'s score must be a number."
+                    raise ValueError(msg) from None
+            event.record_rotation(idx, scores)
+        except ValueError as exc:
+            return event_rotation(error=str(exc))
+        return redirect(url_for("event_rotation"))
+
+    @app.get("/event/results")
+    def event_results():
+        # Placeholder until prd task 21 builds this out.
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        return "Event results placeholder"
 
     @app.get("/event/handicap-calculator")
     def handicap_calculator():

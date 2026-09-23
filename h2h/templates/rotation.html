@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Rotation {{ rotation_index + 1 }} of {{ event.schedule|length }}</h1>
+<p>n<sub>pass</sub> = {{ event.n_pass }}</p>
+
+{% if error %}
+<p class="warning">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="{{ url_for('event_rotation_submit') }}">
+  {% for a, b in rotation.pairs %}
+  <div class="row">
+    <h3>{{ event.archers[a].name }} vs {{ event.archers[b].name }}</h3>
+    <label>{{ event.archers[a].name }} score (0-{{ event.n_pass * 10 }}):
+      <input type="number" step="1" min="0" max="{{ event.n_pass * 10 }}" name="score_{{ a }}" required>
+    </label><br>
+    <label>{{ event.archers[b].name }} score (0-{{ event.n_pass * 10 }}):
+      <input type="number" step="1" min="0" max="{{ event.n_pass * 10 }}" name="score_{{ b }}" required>
+    </label>
+  </div>
+  {% endfor %}
+
+  {% if rotation.bye is not none %}
+  <div class="row">
+    <h3>{{ event.archers[rotation.bye].name }} (bye - no opponent this rotation)</h3>
+    <label>{{ event.archers[rotation.bye].name }} score (0-{{ event.n_pass * 10 }}):
+      <input type="number" step="1" min="0" max="{{ event.n_pass * 10 }}" name="score_{{ rotation.bye }}" required>
+    </label>
+  </div>
+  {% endif %}
+
+  <button type="submit">Submit rotation</button>
+</form>
+
+<p><a href="{{ url_for('event_results') }}">View results so far</a></p>
+{% endblock %}

@@ -240,7 +240,7 @@
       "An invalid score anywhere in the submitted rotation is rejected with a specific error and does not partially record the rotation.",
       "After the final rotation is scored, the page indicates the event is complete rather than prompting for another rotation."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 21,
