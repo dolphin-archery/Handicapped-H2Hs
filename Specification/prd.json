@@ -898,7 +898,7 @@
       "Invalid settings (n_lookback or start_weight below 1, or not an integer) raise ValueError when updating is on and are ignored when it is off.",
       "The full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 65,

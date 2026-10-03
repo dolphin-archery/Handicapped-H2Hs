@@ -1857,3 +1857,25 @@ awkward names, partial pass, zero total, default clock, PDF text incl. the stamp
 a note that a long heading may wrap inside its cell, filenames carrying the stamp equal to the stamp in
 the contents, a real-clock filename pattern, redirects, links, liveness), and the integration test. Suite:
 839 passed.
+
+### Task 64: Handicap moving average - event model (complete)
+`Event` gained `update_handicaps` (default False), `n_lookback` and `start_weight` (whole numbers >= 1,
+validated with a ValueError when updating is on, ignored and not kept when off). The fixed per-archer
+distributions computed at construction are gone: `Event.handicap_for(archer, rotation=None)` gives the
+handicap an archer has for a pass - the entered one when updating is off or they have no earlier scored
+pass, otherwise `(start_weight * H0 + m * H_recent) / (start_weight + m)` with `m = min(n_lookback, passes
+they scored in earlier rotations)`, `H_recent` the equivalent handicap of their last `m` scores over `m *
+n_pass` arrows on their own target (150 if that total is 0, which has none; the equivalent handicap is
+cached per archer, total and `m`), clamped to 0-150 - and `Event.distribution_for(archer, rotation=None)`
+builds (and caches per archer and handicap) the distribution for that handicap. `record_match` scores a
+pass with the distributions of that pass's rotation, so a pass keeps the handicap it was scored with, and
+because the handicap depends only on rotations before the pass, correcting the current pass's scores
+never changes it. The chart payload already called `distribution_for(a)` so it follows the current
+pass without a change. With updating off everything is byte-identical (all 839 earlier tests passed
+unchanged before the new ones were added). Sat-out passes add nothing and bye passes count, since only
+scored results are counted. Tests (25): off equals the plain distribution and the settings are ignored;
+the formula for passes 1 and 2, only the last `n_lookback` passes used, fewer passes than the lookback,
+the defaults reading every arrow so far; a zero total taken as 150 and the 0-150 clamp; sat-out vs bye;
+two archers on different targets; the current pass's handicap unchanged by re-saving and a recorded
+percentile unchanged by later passes; the percentile and the curves for a later pass using the updated
+handicap; and validation. Suite: 864 passed.

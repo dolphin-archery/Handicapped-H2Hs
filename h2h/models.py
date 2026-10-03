@@ -561,6 +561,16 @@ class Event:
         The rotation schedule (built by `h2h.rotation.build_schedule` or, when
         bye archers sit out, `build_sit_out_schedule`, before archers were
         known -- see AISpec.md sections 5.1 and 5.3).
+    update_handicaps : bool, default=False
+        Whether each archer's handicap is updated as the event goes on, as a weighted average
+        of their entered handicap and their recent shooting (AISpec.md section 5.2c). Off,
+        every archer's entered handicap is used for every pass.
+    n_lookback : int | None, default=None
+        With updating on: how many of an archer's most recent passes are used to work out
+        their handicap (a whole number >= 1). Ignored when updating is off.
+    start_weight : int | None, default=None
+        With updating on: how many passes' worth of arrows the entered handicap counts for
+        (a whole number >= 1). Ignored when updating is off.
 
     Attributes
     ----------
@@ -577,7 +587,15 @@ class Event:
         n_pass: int,
         target_setup: TargetSetup,
         schedule: list[Rotation],
+        update_handicaps: bool = False,
+        n_lookback: int | None = None,
+        start_weight: int | None = None,
     ) -> None:
+        if update_handicaps:
+            for name, value in (("n_lookback", n_lookback), ("start_weight", start_weight)):
+                if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                    msg = f"{name} must be a whole number of at least 1, got {value!r}."
+                    raise ValueError(msg)
         max_index = -1
         for rotation in schedule:
             referenced = [p for match in rotation.matches for p in match if p is not None]
@@ -605,18 +623,87 @@ class Event:
         self._targets = [
             resolve_target(a.target_setup or target_setup, a.bowstyle) for a in archers
         ]
-        self._distributions = [
-            stats.n_pass_score_distribution(stats.per_arrow_pmf(a.handicap, t), n_pass)
-            for a, t in zip(archers, self._targets, strict=True)
-        ]
+        self.update_handicaps = update_handicaps
+        self.n_lookback = n_lookback if update_handicaps else None
+        self.start_weight = start_weight if update_handicaps else None
+        self._distribution_cache: dict[tuple[int, float], dict[float, float]] = {}
+        self._recent_handicap_cache: dict[tuple[int, int, int], float] = {}
 
     def target_for(self, archer_index: int) -> targets.Target:
         """archeryutils.targets.Target: the resolved target for an archer."""
         return self._targets[archer_index]
 
-    def distribution_for(self, archer_index: int) -> dict[float, float]:
-        """dict[float, float]: an archer's own n_pass score distribution."""
-        return self._distributions[archer_index]
+    def handicap_for(self, archer_index: int, rotation_index: int | None = None) -> float:
+        """The handicap an archer has for a pass (AISpec.md section 5.2c).
+
+        With updating off, always the entered handicap. With it on, a weighted average of the
+        entered handicap `H0` and the handicap implied by the archer's last `m` scores, where
+        `m = min(n_lookback, passes they have scored in earlier rotations)`:
+        `(start_weight * H0 + m * H_recent) / (start_weight + m)`, kept within
+        `[MIN_HANDICAP, MAX_HANDICAP]`. `H_recent` is the equivalent handicap of the total of
+        those `m` scores over `m * n_pass` arrows on the archer's own target (the maximum
+        handicap if that total is 0, which has none). With no earlier pass the handicap is `H0`.
+        It depends only on rotations before `rotation_index`, so correcting that pass's own
+        scores never changes it.
+
+        Parameters
+        ----------
+        archer_index : int
+            The archer.
+        rotation_index : int | None, default=None
+            The rotation (pass); defaults to the current one.
+
+        Returns
+        -------
+        float
+            The handicap the archer's score distribution for that pass is built from.
+        """
+        rotation = self.current_rotation_index if rotation_index is None else rotation_index
+        entered = self.archers[archer_index].handicap
+        if not self.update_handicaps:
+            return entered
+        earlier = sorted(
+            (r for r in self.results if r.archer_index == archer_index and r.rotation_index < rotation),
+            key=lambda r: r.rotation_index,
+        )
+        m = min(self.n_lookback, len(earlier))
+        if m == 0:
+            return entered
+        total = sum(r.score for r in earlier[-m:])
+        key = (archer_index, total, m)
+        if key not in self._recent_handicap_cache:
+            recent = stats.equivalent_handicap(total, m * self.n_pass, self._targets[archer_index])
+            self._recent_handicap_cache[key] = MAX_HANDICAP if recent is None else recent
+        recent = self._recent_handicap_cache[key]
+        average = (self.start_weight * entered + m * recent) / (self.start_weight + m)
+        return min(max(average, MIN_HANDICAP), MAX_HANDICAP)
+
+    def distribution_for(
+        self, archer_index: int, rotation_index: int | None = None
+    ) -> dict[float, float]:
+        """An archer's own `n_pass` score distribution for a pass.
+
+        Built from their target and `handicap_for` that pass; identical for every pass when
+        handicaps are not updated. Cached per archer and handicap.
+
+        Parameters
+        ----------
+        archer_index : int
+            The archer.
+        rotation_index : int | None, default=None
+            The rotation (pass); defaults to the current one.
+
+        Returns
+        -------
+        dict[float, float]
+            Pass score -> probability, as `h2h.stats.n_pass_score_distribution` returns.
+        """
+        handicap = self.handicap_for(archer_index, rotation_index)
+        key = (archer_index, handicap)
+        if key not in self._distribution_cache:
+            pmf = stats.per_arrow_pmf(handicap, self._targets[archer_index])
+            self._distribution_cache[key] = stats.n_pass_score_distribution(pmf, self.n_pass)
+        return self._distribution_cache[key]
 
     def max_score_for(self, archer_index: int) -> int:
         """int: the highest pass score possible on an archer's own target.
@@ -666,8 +753,8 @@ class Event:
         h2h.stats.TieBreakRequired
             If the percentiles and scores are tied and `closest` is None.
         """
-        pct_a = stats.percentile(self._distributions[a], score_a)
-        pct_b = stats.percentile(self._distributions[b], score_b)
+        pct_a = stats.percentile(self.distribution_for(a, rotation_index), score_a)
+        pct_b = stats.percentile(self.distribution_for(b, rotation_index), score_b)
         closest_side = None if closest is None else ("a" if closest == a else "b")
         decision = stats.decide_pass_winner(pct_a, score_a, pct_b, score_b, closest_side)
         winner = decision.winner
@@ -715,7 +802,7 @@ class Event:
             rotation_index=rotation_index,
             archer_index=archer,
             score=score,
-            percentile=stats.percentile(self._distributions[archer], score),
+            percentile=stats.percentile(self.distribution_for(archer, rotation_index), score),
             handicap=stats.equivalent_handicap(score, self.n_pass, self._targets[archer]),
             opponent_index=None,
             won=None,

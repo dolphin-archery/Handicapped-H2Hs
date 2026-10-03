@@ -225,3 +225,18 @@ def test_pair_never_sharing_a_rotation_still_produces_a_valid_payload():
     data = build_pair_chart_data(event, 0, 1)
     assert data["archer_a"]["passes"] == [] and data["archer_b"]["passes"] == []
     assert 0.0 <= data["x_min"] <= data["x_max"]
+
+
+def test_the_curves_use_the_current_passes_updated_handicap():
+    """With handicap updating on, after a poor pass the next pass's curve differs from the constant one."""
+    def build(update):
+        archers = [Archer("A", 30, Bowstyle.RECURVE), Archer("B", 40, Bowstyle.RECURVE)]
+        event = Event(archers, 12, PORTSMOUTH, build_schedule(2, 2), update_handicaps=update,
+                      n_lookback=1 if update else None, start_weight=2 if update else None)
+        event.record_match({0: 80, 1: 100})
+        event.advance()
+        return build_pair_chart_data(event, 0, 1)
+
+    updated, constant = build(True), build(False)
+    assert updated["distribution_a"] != constant["distribution_a"]
+    assert updated["distribution_b"] != constant["distribution_b"]
