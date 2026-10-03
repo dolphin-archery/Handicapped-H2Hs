@@ -137,3 +137,25 @@ def test_reset_restores_shoot_byes_default():
     state.start_stage1(5, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=False)
     state.reset()
     assert state.shoot_byes is True
+
+
+# --- Graph view (Feedback 4) ------------------------------------------------
+
+
+def test_graph_view_defaults_to_off_and_toggles():
+    """Graph view starts off, flips on each toggle, and there is no string `mode` any more."""
+    state = SessionState()
+    assert state.graph_view is False
+    state.toggle_graph_view()
+    assert state.graph_view is True
+    state.toggle_graph_view()
+    assert state.graph_view is False
+    assert not hasattr(state, "mode")
+
+
+def test_reset_turns_graph_view_off():
+    """reset() restores the default of graph view off."""
+    state = SessionState()
+    state.toggle_graph_view()
+    state.reset()
+    assert state.graph_view is False

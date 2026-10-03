@@ -438,7 +438,7 @@
       "The results page shows 'View chart' links only when graph view is on.",
       "Toggling graph view preserves entered scores and the current pass."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 35,

@@ -20,8 +20,9 @@ class SessionState:
 
     Attributes
     ----------
-    mode : str
-        "basic" or "advanced" -- controls UI detail level.
+    graph_view : bool
+        Whether the optional charts and explanation are shown (Specification/
+        feedback.md "Feedback 4" renamed the old advanced mode to graph view).
     n_pass : int
         Arrows per rotation's pass.
     n_archers, total_arrows, round_mode : int | int | RoundMode
@@ -37,7 +38,7 @@ class SessionState:
         The full event, built once Stage 2 binds archers to `schedule`.
     """
 
-    mode: str = "basic"
+    graph_view: bool = False
     n_pass: int = 12
 
     n_archers: int | None = None
@@ -129,13 +130,13 @@ class SessionState:
 
         self.event = Event(archers, self.n_pass, self.round_mode, self.schedule)
 
-    def toggle_mode(self) -> None:
-        """Switch between "basic" and "advanced" display modes."""
-        self.mode = "advanced" if self.mode == "basic" else "basic"
+    def toggle_graph_view(self) -> None:
+        """Switch graph view (charts and explanation) on or off."""
+        self.graph_view = not self.graph_view
 
     def reset(self) -> None:
         """Clear all event state back to a fresh session."""
-        self.mode = "basic"
+        self.graph_view = False
         self.n_pass = 12
         self.n_archers = None
         self.total_arrows = 60

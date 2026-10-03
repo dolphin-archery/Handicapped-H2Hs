@@ -32,7 +32,7 @@
         {% endif %}
       </td>
       <td>
-        {% if mode == 'advanced' %}
+        {% if graph_view %}
         <a href="{{ url_for('pair_chart', a=pr.archer_a, b=pr.archer_b) }}">View chart</a>
         {% endif %}
       </td>

@@ -907,3 +907,52 @@ decision was how many extra passes "No" needs - Assumption 15 in
 `Specification/AISpec.md`; the rule lives in `h2h/rotation.py`'s
 `build_sit_out_schedule` if a different one is wanted. Not touched: everything
 under "Future Plans - DO NOT IMPLEMENT YET". Final suite: 410 tests passing.
+
+
+## Feedback 4 - Stage 3 pairings, target setup, graph view, summary table
+
+Scope: every item under `Specification/feedback.md`'s "Feedback 4" heading
+(prd tasks 34-44); nothing under "Future Plans - DO NOT IMPLEMENT YET" other
+than what Feedback 4 itself promoted out of it (the simple/advanced setup
+toggle, redrawing pairings, the reset confirmation, the graph view rename and
+the handicap range check). `Specification/AISpec.md` was updated first
+(sections 1-6, new 5.2b and 5.8, and Assumptions 22-30; Assumptions 1 and 12 are
+superseded again), then `prd.json`.
+
+Assumptions made (full text in `Specification/AISpec.md` section 7):
+- **22** - indoor vs outdoor is inferred from the distance: indoor iff <= 25 m.
+  I surveyed every round in `archeryutils` as asked ("check this"): nothing
+  beyond 30 m is flagged indoor (confirming the expectation), the indoor rounds
+  sit at 18 m, 25 m, 20 yd and 25 yd plus one 30 m round (the 80 cm Stafford),
+  and every other 30 m round is outdoor - so 30 m is genuinely ambiguous and a
+  pure distance rule cannot be perfect there. Chosen: 30 m / 30 yd and up are
+  outdoor.
+- **23** - the compound reduced 10 applies only when the distance is indoor
+  (Feedback 2's wording was "if indoor", and `archeryutils` uses
+  `10_zone_compound` only for indoor rounds). Feedback 4's "still have the
+  reduced size 10" could be read as "at every distance"; flagged for the user.
+- **24** - the standard option lists (8 metric + 8 imperial distances, faces 40,
+  60, 80, 122 cm); every combination was checked to work at handicaps 0-150.
+- **25** - Stage 3's assignment is a random permutation of archers over schedule
+  positions, drawn when Stage 2 is submitted and redrawn on request.
+- **26** - graph view is one session-wide setting whose toggle appears only on
+  match pages; the results page's "View chart" links still follow it.
+- **27-30** - reset confirmation page (POST to reset), the 0-150 handicap range,
+  "-" in unscored overview cells, and Advanced setup being rejected server-side.
+
+### Task 34: Rename advanced mode to graph view; toggle only on score-input pages (complete)
+`SessionState.mode` ("basic"/"advanced") became a boolean `graph_view` (default
+off) with `toggle_graph_view()`; the route is now `POST /graph-view` (the old
+`/mode` is gone - a test asserts 404). The context processor injects
+`graph_view` instead of `mode`; the chart/explanation condition on the match
+page, the chart condition in `app.py`, and the results page's "View chart" links
+all read it, so behaviour is unchanged apart from the name. The toggle form moved
+out of `base.html`'s nav into `match.html` (the only score-input page), reading
+"Graph view: off (turn on)" / "Graph view: on (turn off)" and returning to the
+page it was pressed on. Tests: the existing advanced-mode tests were renamed and
+repointed, and new ones assert the toggle form is on match pages and on none of
+the overview, results, Stage 1, Stage 2, calculator or pair-history pages, that
+no template or rendered page says "advanced mode", "basic mode" or "Mode:", and
+that toggling keeps scores and the current pass. Suite: 418 passed. The README
+still describes the old nav toggle; it is rewritten with the rest of the docs in
+task 44.

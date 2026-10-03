@@ -553,18 +553,18 @@ def test_pair_chart_redirects_for_an_unshared_pair():
     assert resp.status_code == 200
 
 
-def test_results_link_to_chart_only_shown_in_advanced_mode():
-    """The 'View chart' link must only appear in advanced mode."""
+def test_results_link_to_chart_only_shown_with_graph_view_on():
+    """The 'View chart' link must only appear while graph view is on."""
     client = make_client()
     start_two_archer_event(client, n_pass=12)
     save_match(client, 0, {0: 100, 1: 60})
 
-    resp_basic = client.get("/event/results")
-    assert b"View chart" not in resp_basic.data
+    resp_off = client.get("/event/results")
+    assert b"View chart" not in resp_off.data
 
-    client.post("/mode", data={"next": "/event/results"})
-    resp_advanced = client.get("/event/results")
-    assert b"View chart" in resp_advanced.data
+    client.post("/graph-view", data={"next": "/event/results"})
+    resp_on = client.get("/event/results")
+    assert b"View chart" in resp_on.data
 
 
 def test_results_page_does_not_show_a_ranked_leaderboard():
@@ -586,9 +586,9 @@ def test_results_page_does_not_show_a_ranked_leaderboard():
 # --- Per-match results and charts on the match pages (Feedback 3) -----------
 
 
-def go_advanced(client):
-    """Switch the session to advanced mode."""
-    client.post("/mode", data={"next": "/event/rotation"})
+def turn_on_graph_view(client):
+    """Switch the session's graph view on."""
+    client.post("/graph-view", data={"next": "/event/rotation"})
 
 
 def embedded_chart_payload(html):
@@ -633,29 +633,29 @@ def test_match_page_lists_every_pass_the_pair_has_shared():
     assert "<th>Pass</th>" in page
 
 
-def test_bye_match_page_shows_own_result_and_no_chart_in_either_mode():
+def test_bye_match_page_shows_own_result_and_no_chart_either_way():
     """A bye match shows the archer's own result, and never a chart."""
     client, state = make_client_and_state()
     start_three_archer_event(client, shoot_byes=True)
     bye_archer = state.event.schedule[0].bye
     save_match(client, 1, {bye_archer: 70})  # the bye match is listed after the pair
 
-    basic = client.get("/event/match/1").data.decode()
-    assert ">70<" in basic and "bye" in basic.lower()
-    assert 'id="match-chart"' not in basic
+    view_off = client.get("/event/match/1").data.decode()
+    assert ">70<" in view_off and "bye" in view_off.lower()
+    assert 'id="match-chart"' not in view_off
 
-    go_advanced(client)
-    advanced = client.get("/event/match/1").data.decode()
-    assert ">70<" in advanced
-    assert 'id="match-chart"' not in advanced
-    assert "no distribution chart" in advanced
+    turn_on_graph_view(client)
+    view_on = client.get("/event/match/1").data.decode()
+    assert ">70<" in view_on
+    assert 'id="match-chart"' not in view_on
+    assert "no distribution chart" in view_on
 
 
-def test_advanced_match_page_renders_chart_even_before_any_scoring():
-    """Advanced mode: the chart, checkbox, payload and maths appear before the first pass."""
+def test_graph_view_match_page_renders_chart_even_before_any_scoring():
+    """Graph view on: the chart, checkbox, payload and maths appear before the first pass."""
     client = make_client()
     start_two_archer_event(client)
-    go_advanced(client)
+    turn_on_graph_view(client)
     page = client.get("/event/match/0").data.decode()
     assert 'id="match-chart"' in page
     assert 'id="show-previous-passes"' in page
@@ -666,18 +666,18 @@ def test_advanced_match_page_renders_chart_even_before_any_scoring():
     assert payload["distribution_a"] and payload["distribution_b"]
 
 
-def test_advanced_match_page_chart_gains_the_scored_pass():
+def test_graph_view_match_page_chart_gains_the_scored_pass():
     """After saving, the embedded payload carries the pass's scores for the markers."""
     client = make_client()
     start_two_archer_event(client)
-    go_advanced(client)
+    turn_on_graph_view(client)
     save_match(client, 0, {0: 100, 1: 60})
     payload = embedded_chart_payload(client.get("/event/match/0").data.decode())
     assert [(p["score_a"], p["score_b"]) for p in payload["passes"]] == [(100, 60)]
 
 
-def test_basic_match_page_has_no_chart_or_maths_explanation():
-    """Basic mode shows none of the advanced-only content on a match page."""
+def test_match_page_with_graph_view_off_has_no_chart_or_maths_explanation():
+    """Graph view off shows none of the graph-view content on a match page."""
     client = make_client()
     start_two_archer_event(client)
     save_match(client, 0, {0: 100, 1: 60})
@@ -709,3 +709,83 @@ def test_chart_maths_and_results_table_markup_is_not_duplicated_across_templates
         ("<th>Equiv. handicap</th>", "_results_table.html"),
     ):
         assert [name for name, src in sources.items() if needle in src] == [owner]
+
+
+# --- Graph view (Feedback 4: renamed from advanced mode) --------------------
+
+
+def started_pair_with_a_shared_pass():
+    """A client + state with a 2-archer event whose only match has been scored."""
+    client, state = make_client_and_state()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 100, 1: 60})
+    return client, state
+
+
+def test_post_graph_view_flips_the_setting_and_redirects_to_next():
+    """POST /graph-view toggles the session setting and returns to the page it came from."""
+    client, state = make_client_and_state()
+    assert state.graph_view is False
+    resp = client.post("/graph-view", data={"next": "/event/match/0"})
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/event/match/0")
+    assert state.graph_view is True
+    client.post("/graph-view", data={"next": "/event/match/0"})
+    assert state.graph_view is False
+
+
+def test_the_old_mode_endpoint_no_longer_exists():
+    """POST /mode (the old basic/advanced toggle) is gone."""
+    client = make_client()
+    assert client.post("/mode", data={"next": "/"}).status_code == 404
+
+
+def test_graph_view_toggle_is_on_match_pages_only():
+    """The toggle form appears on match pages and on no summary/setup page."""
+    client, _ = started_pair_with_a_shared_pass()
+    toggle = b'action="/graph-view"'
+    assert toggle in client.get("/event/match/0").data
+    for url in (
+        "/event/rotation",
+        "/event/results",
+        "/event/stage1",
+        "/event/stage2",
+        "/event/handicap-calculator",
+        "/event/pair/0/1",
+    ):
+        assert toggle not in client.get(url).data, url
+
+
+def test_graph_view_button_text_shows_the_current_state():
+    """The button reads 'Graph view: off' by default and 'Graph view: on' after toggling."""
+    client = make_client()
+    start_two_archer_event(client)
+    assert b"Graph view: off" in client.get("/event/match/0").data
+    client.post("/graph-view", data={"next": "/event/match/0"})
+    assert b"Graph view: on" in client.get("/event/match/0").data
+
+
+def test_nothing_user_facing_calls_it_advanced_or_basic_mode():
+    """The old 'advanced mode' / 'basic mode' wording is gone from templates and pages."""
+    templates = Path(__file__).resolve().parent.parent / "h2h" / "templates"
+    for template in templates.glob("*.html"):
+        source = template.read_text(encoding="utf-8").lower()
+        assert "advanced mode" not in source, template.name
+        assert "basic mode" not in source, template.name
+
+    client, _ = started_pair_with_a_shared_pass()
+    for url in ("/event/rotation", "/event/match/0", "/event/results"):
+        page = client.get(url).data.decode().lower()
+        assert "advanced mode" not in page and "basic mode" not in page
+        assert "mode:" not in page
+
+
+def test_toggling_graph_view_keeps_scores_and_the_current_pass():
+    """Switching graph view on and off loses nothing."""
+    client, state = started_pair_with_a_shared_pass()
+    before = list(state.event.results)
+    client.post("/graph-view", data={"next": "/event/match/0"})
+    client.post("/graph-view", data={"next": "/event/match/0"})
+    assert state.event.results == before
+    assert state.event.current_rotation_index == 0
+    assert b"Alice 100 - 60 Bob" in client.get("/event/rotation").data

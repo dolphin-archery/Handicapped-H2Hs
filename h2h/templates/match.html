@@ -11,6 +11,14 @@
 <p>Pass {{ rotation_index + 1 }} of {{ event.schedule|length }} &middot;
   <a href="{{ url_for('event_rotation') }}">Back to overview</a></p>
 
+{# Graph view is a session-wide setting, but its toggle lives only on score-input pages. #}
+<form method="post" action="{{ url_for('toggle_graph_view') }}" class="row">
+  <input type="hidden" name="next" value="{{ request.path }}">
+  <button type="submit">
+    Graph view: {{ 'on' if graph_view else 'off' }} (turn {{ 'off' if graph_view else 'on' }})
+  </button>
+</form>
+
 {% if error %}
 <p class="warning">{{ error }}</p>
 {% endif %}
@@ -44,7 +52,7 @@
 {% with results=history, show_pass=true %}{% include "_results_table.html" %}{% endwith %}
 {% endif %}
 
-{% if mode == 'advanced' %}
+{% if graph_view %}
   {% if chart_data %}
   {% include "_pair_chart.html" %}
   {% else %}

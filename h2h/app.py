@@ -36,8 +36,8 @@ def create_app(state: SessionState | None = None) -> Flask:
     session = state if state is not None else SessionState()
 
     @app.context_processor
-    def inject_mode():
-        return {"mode": session.mode}
+    def inject_graph_view():
+        return {"graph_view": session.graph_view}
 
     @app.get("/")
     def index():
@@ -201,7 +201,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         -------
         flask.Response | str
             The rendered match page (this pass's score form, the pair's
-            results so far, and in advanced mode the pair's distribution
+            results so far, and with graph view on the pair's distribution
             chart), or a redirect to the overview if
             `match_index` is not a match of the current pass (or to Stage 1 if
             no event exists).
@@ -222,7 +222,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         # only this pass's result and, with no opponent, no chart.
         history = results if b is None else event.pair_results(a, b)
         chart_data = None
-        if b is not None and session.mode == "advanced":
+        if b is not None and session.graph_view:
             chart_data = build_pair_chart_data(event, a, b)
         return render_template(
             "match.html",
@@ -331,9 +331,9 @@ def create_app(state: SessionState | None = None) -> Flask:
             return handicap_calculator(error="Enter a valid score for the chosen round.")
         return handicap_calculator(result=round(handicap, 1))
 
-    @app.post("/mode")
-    def toggle_mode():
-        session.toggle_mode()
+    @app.post("/graph-view")
+    def toggle_graph_view():
+        session.toggle_graph_view()
         return redirect(request.form.get("next") or url_for("stage1"))
 
     @app.get("/reset")

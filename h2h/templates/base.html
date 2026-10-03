@@ -24,12 +24,6 @@
       <a href="{{ url_for('handicap_calculator') }}">Handicap calculator</a>
       <a href="{{ url_for('reset') }}">Reset</a>
     </div>
-    <form method="post" action="{{ url_for('toggle_mode') }}">
-      <input type="hidden" name="next" value="{{ request.path }}">
-      <button type="submit">
-        Mode: {{ mode }} (switch to {{ 'advanced' if mode == 'basic' else 'basic' }})
-      </button>
-    </form>
   </nav>
   {% block content %}{% endblock %}
 </body>
