@@ -122,51 +122,74 @@
 
   /*
    * Inline plugin that writes each marker line's pass number ("P3") on the
-   * chart: rotated text just inside the top of the plot, in the line's colour,
-   * to the left of the line for the first archer and to the right for the
-   * second so two equal scores do not collide. A label that would overlap one
-   * already drawn is moved down below it. The boxes drawn are kept on
-   * chart.markerLabelBoxes ({text, x0, y0, x1, y1} in canvas pixels) so tests
-   * can check them.
+   * chart: rotated text just inside the top of the plot, in the line's colour.
+   * The first archer's labels prefer the left of their line and the second's the
+   * right, so two equal scores do not collide. A side is avoided if the label
+   * would stick out of the plot area (a marker near either edge) or cross another
+   * marker line (two lines a score apart); the label goes on the other side
+   * instead. A label that would still overlap one already drawn is moved down
+   * below it. The boxes drawn are kept on chart.markerLabelBoxes ({text, x0, y0,
+   * x1, y1} in canvas pixels) so tests can check them.
    */
+  const LABEL_WIDTH = 13; // the rotated text's height, in pixels
+  const LABEL_GAP = 3; // between the marker line and its label
   const markerLabels = {
     id: "markerLabels",
     afterDatasetsDraw(chart) {
       const ctx = chart.ctx;
       const area = chart.chartArea;
+      const markers = [];
+      chart.data.datasets.forEach((dataset, index) => {
+        if (dataset.isMarker && chart.isDatasetVisible(index)) {
+          markers.push({ dataset: dataset, x: chart.scales.x.getPixelForValue(dataset.data[0].x) });
+        }
+      });
       const placed = [];
       ctx.save();
       ctx.font = "12px sans-serif";
-      chart.data.datasets.forEach((dataset, index) => {
-        if (!dataset.isMarker || !chart.isDatasetVisible(index)) {
-          return;
-        }
-        const x = chart.scales.x.getPixelForValue(dataset.data[0].x);
+      for (const marker of markers) {
+        const dataset = marker.dataset;
+        const x = marker.x;
         const length = ctx.measureText(dataset.passLabel).width;
-        const leftOfLine = dataset.borderColor === COLOR_A;
-        const x0 = leftOfLine ? x - 3 - 13 : x + 3;
-        let y0 = area.top + 3;
-        for (let moved = true; moved; ) {
-          moved = false;
-          for (const box of placed) {
-            const overlaps =
-              x0 < box.x1 && x0 + 13 > box.x0 && y0 < box.y1 && y0 + length > box.y0;
-            if (overlaps) {
-              y0 = box.y1 + 3;
-              moved = true;
+        const prefersLeft = dataset.borderColor === COLOR_A;
+        let best = null;
+        for (const left of prefersLeft ? [true, false] : [false, true]) {
+          const x0 = left ? x - LABEL_GAP - LABEL_WIDTH : x + LABEL_GAP;
+          const inside = x0 >= area.left && x0 + LABEL_WIDTH <= area.right;
+          const crossings = markers.filter(
+            (other) => other.x !== x && other.x > x0 - 1 && other.x < x0 + LABEL_WIDTH + 1
+          ).length;
+          let y0 = area.top + 3;
+          for (let moved = true; moved; ) {
+            moved = false;
+            for (const box of placed) {
+              if (x0 < box.x1 && x0 + LABEL_WIDTH > box.x0 && y0 < box.y1 && y0 + length > box.y0) {
+                y0 = box.y1 + 3;
+                moved = true;
+              }
             }
           }
+          const cost = (inside ? 0 : 100) + crossings;
+          if (best === null || cost < best.cost) {
+            best = { left: left, x0: x0, y0: y0, cost: cost };
+          }
         }
-        placed.push({ text: dataset.passLabel, x0: x0, y0: y0, x1: x0 + 13, y1: y0 + length });
+        placed.push({
+          text: dataset.passLabel,
+          x0: best.x0,
+          y0: best.y0,
+          x1: best.x0 + LABEL_WIDTH,
+          y1: best.y0 + length,
+        });
         ctx.save();
         ctx.fillStyle = dataset.borderColor;
-        ctx.translate(leftOfLine ? x - 3 : x + 3, y0 + length);
+        ctx.translate(best.left ? x - LABEL_GAP : x + LABEL_GAP, best.y0 + length);
         ctx.rotate(-Math.PI / 2);
         ctx.textAlign = "left";
-        ctx.textBaseline = leftOfLine ? "bottom" : "top";
+        ctx.textBaseline = best.left ? "bottom" : "top";
         ctx.fillText(dataset.passLabel, 0, 0);
         ctx.restore();
-      });
+      }
       ctx.restore();
       chart.markerLabelBoxes = placed;
     },

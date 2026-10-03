@@ -1592,3 +1592,32 @@ rounds, wrong-kind and unknown rounds, page markup, archeryutils-equal results f
 plain/compound and for three outdoor rounds (a forced compound flag ignored), friendly errors
 for bad kind and for five bad scores with and without compound, choices re-shown, and every one
 of the 92 listed rounds giving a finite handicap for a mid-range score. Suite: 792 passed.
+
+### Task 51: Chart front end - pass-number labels, handicap legend, axis from the payload (code; browser check below)
+`match_chart.js` now: draws, unticked, only the markers whose pass is the payload's `current_pass`
+and, ticked, every score of both archers (so later passes gain lines); labels each marker line on
+the chart with its pass number ("P3": rotated text near the top of the plot, in the line's
+colour) through a small inline Chart.js plugin; lists only the two curves in the legend, named
+with their handicaps ("Cat (handicap 40)"); and takes the x-axis min/max from the payload. The
+hover mode (`nearestCurveX`) is unchanged.
+
+Real-browser check #1 (subagent, headless Edge 154 via Selenium, commit df6835c, Chart.js 4.4.4
+from the CDN) of a 4-archer, 3-pass event and of 2-archer events: PASS for the main behaviours -
+a pair that had not met in pass 1 shows, with the box ticked, both archers' pass-1 scores (0
+markers unticked, 2 ticked, 0 again; then 2/4 after scoring pass 2 and 2/6 in pass 3); every
+marker lies inside the x-scale (4 to 120) with scores of 5 and 118; the legend has exactly the
+two "Name (handicap H)" entries and no markers; the heading has no handicap; labels P1/P2/P3
+appear beside their lines in the right colours; console clean (favicon 404 and Edge
+tracking-prevention warnings about the CDN only). It found two real defects, both fixed:
+(1) the label of a marker at the very edge (score 5, 8.4 px past the plot's left edge; score
+118, 0.7 px past the right edge) stuck out of the plot because the server's margin of one
+score unit is only about 7.6 px on a 116-unit axis while a label needs about 16 px, and in a
+tight chart (two lines a score apart, 7.5 px per unit) a label could sit across the neighbouring
+line; the plugin now tries both sides of the line and takes the one that is inside the plot and
+crosses no other marker line, falling back to stacking below an earlier label. (2) Hovering the
+x=5 marker gave the tooltip x=[5, 47]: the low-handicap archer's curve had no points below 47
+because zero-probability scores were left out, so the "nearest" point was 47. The curve points
+are now one per whole score over the whole x-range, zero where the distribution has none, so a
+curve value exists under every marker. (The other 30 of 36 hover probes had already passed, and
+no probe ever returned a marker dataset.) A second browser run on the fixed commit is recorded
+below.

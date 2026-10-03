@@ -140,11 +140,10 @@ def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
         x_max = min(max_possible, max(x_max, max(shot) + _MARKER_MARGIN))
 
     def points(dist: dict[float, float]) -> list[dict[str, float]]:
-        return [
-            {"x": score, "y": prob}
-            for score, prob in sorted(dist.items())
-            if x_min <= score <= x_max
-        ]
+        # One point per whole score across the final range, zero where the distribution has
+        # no probability, so the curve (and its hover tooltip) exists at every score a marker
+        # can be at, however far from this archer's usual scores.
+        return [{"x": score, "y": dist.get(float(score), 0.0)} for score in range(x_min, x_max + 1)]
 
     y_max = max(max(dist_a.values()), max(dist_b.values())) * 1.15
 

@@ -173,17 +173,19 @@ def test_the_range_is_set_by_all_the_scores_so_it_does_not_depend_on_which_are_s
     assert data["x_min"] <= 14  # pass 1's score is in range even though only pass 2 shows by default
 
 
-def test_curve_points_cover_every_score_with_probability_in_the_final_range():
-    """Every integer score in [x_min, x_max] with non-zero probability has a point."""
+def test_each_curve_has_a_point_at_every_whole_score_in_the_final_range_zero_where_impossible():
+    """Full curves: a marker far from one archer's usual scores still has a curve value under it."""
     archers = [Archer("A", 30, Bowstyle.RECURVE), Archer("B", 30, Bowstyle.RECURVE)]
     event = Event(archers, 12, PORTSMOUTH, build_schedule(2, 1))
     event.record_match({0: 30, 1: 110})
     data = build_pair_chart_data(event, 0, 1)
-    for side, curve in (("a", data["distribution_a"]), ("b", data["distribution_b"])):
-        distribution = event.distribution_for(0 if side == "a" else 1)
-        expected = {s for s in distribution if data["x_min"] <= s <= data["x_max"]}
-        assert {p["x"] for p in curve} == expected
-        assert expected  # not empty
+    full_range = list(range(data["x_min"], data["x_max"] + 1))
+    for index, curve in ((0, data["distribution_a"]), (1, data["distribution_b"])):
+        distribution = event.distribution_for(index)
+        assert [p["x"] for p in curve] == full_range
+        assert [p["y"] for p in curve] == [distribution.get(float(x), 0.0) for x in full_range]
+    assert data["distribution_a"][0]["y"] < 1e-100  # a score of 29 at handicap 30: negligible
+    assert any(p["y"] > 0 for p in data["distribution_a"])
 
 
 @pytest.mark.parametrize(
