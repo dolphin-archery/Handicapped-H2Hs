@@ -614,7 +614,7 @@
       "The page no longer contains the 'Results so far' heading or 'Equiv. handicap' / 'Opponent' column headings; the Results page's per-pass tables still do.",
       "The full suite passes with the migrated match-page tests."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 47,

@@ -1,16 +1,13 @@
-{# Table of per-pass results. Expects `event` and `results` (a list of PassResult);
-   set `show_pass` to add a Pass column (used where results span several passes). #}
+{# Table of per-pass results. Expects `event` and `results` (a list of PassResult). #}
 <table>
   <thead>
     <tr>
-      {% if show_pass %}<th>Pass</th>{% endif %}
       <th>Archer</th><th>Score</th><th>Percentile</th><th>Equiv. handicap</th><th>Opponent</th><th>Won?</th>
     </tr>
   </thead>
   <tbody>
     {% for r in results %}
     <tr>
-      {% if show_pass %}<td>{{ r.rotation_index + 1 }}</td>{% endif %}
       <td>{{ event.archers[r.archer_index].name }}</td>
       <td>{{ r.score }}</td>
       <td>{{ '%.1f%%'|format(r.percentile * 100) }}</td>

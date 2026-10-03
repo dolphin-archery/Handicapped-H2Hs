@@ -538,19 +538,6 @@ class Event:
             if r.rotation_index == rotation_index and r.archer_index in archers
         ]
 
-    def pair_results(self, a: int, b: int) -> list[PassResult]:
-        """list[PassResult]: both archers' results for every pass `a` and `b` have shared.
-
-        Ordered by pass, with each pass's two results kept together. Empty if
-        the pair has not shared a scored rotation yet.
-        """
-        shared = [
-            r
-            for r in self.results
-            if (r.archer_index, r.opponent_index) in ((a, b), (b, a))
-        ]
-        return sorted(shared, key=lambda r: r.rotation_index)
-
     def is_match_scored(self, rotation_index: int, match_index: int) -> bool:
         """bool: whether the match at `match_index` in a rotation has scores recorded."""
         match = self.matches(rotation_index)[match_index]

@@ -705,33 +705,76 @@ def start_repeating_pair_event(client):
     complete_stage2(client, [("Alice", "Recurve", 15), ("Bob", "Compound", 45)])
 
 
-def test_match_page_shows_the_pairs_result_after_scoring():
-    """After saving, the match page shows both archers' score, percentile, handicap and winner."""
+def match_page_table(html):
+    """The (headings, rows) of the single table on a match page, as plain text."""
+    assert html.count("<table>") <= 1
+    if "<table>" not in html:
+        return None
+    return overview_table(html)
+
+
+def test_match_page_has_no_results_table_before_scoring_and_one_this_pass_table_after():
+    """After saving, the page has one table: Archer | Score | Percentile | Winner."""
     client = make_client()
     start_two_archer_event(client)
-    assert b"Results so far" not in client.get("/event/match/0").data
+    before = client.get("/event/match/0").data.decode()
+    assert match_page_table(before) is None
+    assert "Results so far" not in before
 
     save_match(client, 0, {0: 120, 1: 0})
     page = client.get("/event/match/0").data.decode()
-    assert "Results so far" in page
-    assert "Alice" in page and "Bob" in page
-    assert ">120<" in page and ">0<" in page
-    assert "%" in page  # percentiles
-    assert ">Yes<" in page and ">No<" in page  # winner / loser
+    headings, rows = match_page_table(page)
+    assert headings == ["Archer", "Score", "Percentile", "Winner"]
+    assert [row[0] for row in rows] == ["Alice", "Bob"]
+    assert [row[1] for row in rows] == ["120", "0"]
+    assert [row[3] for row in rows] == ["Yes", "No"]
+    assert all(re.fullmatch(r"\d+\.\d%", row[2]) for row in rows)
+    assert "Results so far" not in page
 
 
-def test_match_page_lists_every_pass_the_pair_has_shared():
-    """A pair that meets again sees every shared pass on its match page."""
+def test_match_page_table_agrees_with_the_events_recorded_results():
+    """Score, percentile and winner in the table are the Event's own, for several score pairs."""
+    for scores in ({0: 100, 1: 60}, {0: 60, 1: 100}, {0: 118, 1: 119}, {0: 0, 1: 1}):
+        client, state = make_client_and_state()
+        start_two_archer_event(client)
+        save_match(client, 0, scores)
+        _, rows = match_page_table(client.get("/event/match/0").data.decode())
+        results = {r.archer_index: r for r in state.event.results}
+        for index, row in enumerate(rows):
+            assert row[0] == state.event.archers[index].name
+            assert row[1] == str(results[index].score)
+            assert row[2] == f"{results[index].percentile * 100:.1f}%"
+            assert row[3] == ("Yes" if results[index].won else "No")
+
+
+def test_match_page_shows_only_this_pass_not_earlier_passes_of_the_same_pair():
+    """A pair that meets again sees just the new pass's two rows."""
     client = make_client()
     start_repeating_pair_event(client)
     save_match(client, 0, {0: 100, 1: 60})
     client.post("/event/advance")
-    save_match(client, 0, {0: 90, 1: 80})
+    save_match(client, 0, {0: 91, 1: 82})
 
     page = client.get("/event/match/0").data.decode()
-    for score in ("100", "60", "90", "80"):
-        assert f">{score}<" in page
-    assert "<th>Pass</th>" in page
+    _, rows = match_page_table(page)
+    assert [row[1] for row in rows] == ["91", "82"]
+    assert ">100<" not in page and ">60<" not in page
+    assert "<th>Pass</th>" not in page and "Equiv. handicap" not in page and "Opponent" not in page
+
+
+def test_match_page_never_shows_results_against_a_different_opponent():
+    """Each match page lists only its own two archers' scores for the pass."""
+    client, state = make_client_and_state()
+    complete_stage1(client, n_archers=4, total_arrows=36, n_pass=12)
+    complete_stage2(client, [(n, "Recurve", 20 + 5 * i) for i, n in enumerate(("Ann", "Ben", "Cat", "Dan"))])
+    first, second = state.event.matches(0)
+    save_match(client, 0, {p: 61 + p for p in first})
+    save_match(client, 1, {p: 71 + p for p in second})
+    page = client.get("/event/match/0").data.decode()
+    _, rows = match_page_table(page)
+    assert [row[0] for row in rows] == [state.event.archers[p].name for p in first]
+    for p in second:
+        assert state.event.archers[p].name not in rows[0][0] + rows[1][0]
 
 
 def test_bye_match_page_shows_own_result_and_no_chart_either_way():
@@ -902,13 +945,18 @@ def start_event_with_handicaps(client, handicaps):
     complete_stage2(client, [("Alice", "Recurve", handicaps[0]), ("Bob", "Compound", handicaps[1])])
 
 
-def test_match_page_shows_both_archers_handicaps_in_heading_and_beside_score_boxes():
-    """Heading and score labels carry each archer's handicap, before and after scoring."""
+def heading(html):
+    """The text of the page's <h1>, tags removed and whitespace collapsed."""
+    return " ".join(re.sub(r"<[^>]+>", " ", re.search(r"<h1>(.*?)</h1>", html, re.S).group(1)).split())
+
+
+def test_match_page_heading_has_no_handicaps_but_the_score_labels_do():
+    """Feedback 5: names only in the heading; each handicap stays beside its score box."""
     client = make_client()
     start_event_with_handicaps(client, (15, 22.5))
     for expected_state in ("before", "after"):
         page = client.get("/event/match/0").data.decode()
-        assert "Alice (handicap 15) vs Bob (handicap 22.5)" in page, expected_state
+        assert heading(page) == "Alice vs Bob", expected_state
         assert "Alice (handicap 15) score" in page
         assert "Bob (handicap 22.5) score" in page
         save_match(client, 0, {0: 100, 1: 60})
@@ -939,7 +987,7 @@ def test_bye_match_page_shows_the_bye_archers_handicap():
     bye_archer = state.event.schedule[0].bye
     expected = state.event.archers[bye_archer]
     page = client.get("/event/match/1").data.decode()
-    assert f"{expected.name} (handicap {expected.handicap:g}) - bye" in page
+    assert heading(page) == f"{expected.name} - bye, no opponent"
     assert f"{expected.name} (handicap {expected.handicap:g}) score" in page
 
 

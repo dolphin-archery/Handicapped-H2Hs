@@ -346,8 +346,8 @@ def create_app(state: SessionState | None = None) -> Flask:
         Returns
         -------
         flask.Response | str
-            The rendered match page (this pass's score form, the pair's
-            results so far, and with graph view on the pair's distribution
+            The rendered match page (this pass's score form, a table of this
+            pass's results, and with graph view on the pair's distribution
             chart), or a redirect to the overview if
             `match_index` is not a match of the current pass (or to Stage 1 if
             no event exists).
@@ -360,13 +360,12 @@ def create_app(state: SessionState | None = None) -> Flask:
         if not 0 <= match_index < len(matches):
             return redirect(url_for("event_rotation"))
         a, b = matches[match_index]
-        results = event.match_results(idx, (a, b))
+        by_archer = {r.archer_index: r for r in event.match_results(idx, (a, b))}
+        results = [by_archer[i] for i in (a, b) if i in by_archer]  # in match order
         if form_scores is None:
             form_scores = {r.archer_index: r.score for r in results}
 
-        # A pair's history spans every pass the two have shared; a bye match has
-        # only this pass's result and, with no opponent, no chart.
-        history = results if b is None else event.pair_results(a, b)
+        # A bye match has no opponent, so no chart.
         chart_data = None
         if b is not None and session.graph_view:
             chart_data = build_pair_chart_data(event, a, b)
@@ -378,7 +377,6 @@ def create_app(state: SessionState | None = None) -> Flask:
             a=a,
             b=b,
             results=results,
-            history=history,
             chart_data=chart_data,
             form_scores=form_scores,
             error=error,

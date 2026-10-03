@@ -1363,3 +1363,19 @@ test helpers' `score_current_pass` resolves a tie (the mixed-bowstyle integratio
 tests deliberately give same-handicap archers the same score) by ticking the
 lowest-numbered archer. The boxes themselves, the note, the script and their tests
 are still task 47. Suite: 573 passed.
+
+### Task 46: Match page - plain heading and a this-pass-only table (complete)
+The match page's `<h1>` is now just the names ("Alice vs Bob" / "Alice - bye, no
+opponent"); each handicap stays beside its own score box (Assumption 32). The
+"Results so far" section (every pass the pair had shared, with Pass, Equiv.
+handicap and Opponent columns) is replaced by one "This pass" table, shown once
+the match has scores: Archer | Score | Percentile | Winner, one row per archer in
+match order, Winner "Yes"/"No" (a bye shows "-"). Because nothing uses them any
+more I removed `Event.pair_results` (and its two tests), the route's `history`
+plumbing and the `show_pass` option of the shared `_results_table.html` partial;
+the Results page keeps that partial unchanged. Tests: the "pair history" and
+"results so far" tests were rewritten as table tests (headings, rows in match
+order, values equal to the Event's results for four score pairs, only the current
+pass's rows when a pair meets twice, no other match's archers), and the heading
+tests now assert the names-only heading with handicaps in the score labels.
+Suite: 573 passed.
