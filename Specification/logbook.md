@@ -1482,3 +1482,17 @@ far-out low and high scores widening the range, clamping at 0 and 120, an in-ran
 leaving the range unchanged, the range covering an early far-out score, curve points over
 the final range, legend labels, a 5-zone vs 10-zone pair, JSON-serialisable) and the two
 route tests that read the payload. Suite: 726 passed.
+
+Task 49 browser check (subagent, headless Edge 154 via an ephemeral Selenium install, against
+`git archive` of commit 921ebb3, port 5072): PASS on all five points, no console errors
+beyond the favicon 404. Stage 1: Simple selected initially with both dropdowns shown; choosing
+Advanced hides both and shows the "each archer shoots their own target face type, face size
+and distance" note with Continue still enabled; choosing Simple reverses it; "TBA" appears
+nowhere. Stage 2 (3 archers, advanced): headers Name, Bowstyle, Handicap, Target face type,
+Face size, Distance; each row has 16 face types ("10 zone (standard 10-ring face)" selected),
+8 sizes (60 cm selected) and 16 distances in Metric/Imperial groups (20 yd selected). A mixed
+event (Recurve 10 zone 40 cm 18 m; Compound 10 zone compound 40 cm 18 m; Barebow 5 zone 122
+cm 50 yd) reached Stage 3 and the overview; on every match page of all three passes the
+5-zone archer's box was "(0-108)" / max 108, including their bye pass, and the others
+(0-120). Defaults-only submission (2 archers) also reached Stage 3 and the overview. Task 49
+is therefore complete.

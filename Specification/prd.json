@@ -664,7 +664,7 @@
       "Verified in a real browser: toggling Simple/Advanced on Stage 1 hides/shows the dropdowns and the note without disabling Continue; Stage 2 shows the three extra dropdowns per row in advanced mode; no JS console errors.",
       "The full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 50,

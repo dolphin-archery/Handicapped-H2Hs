@@ -3,9 +3,11 @@
  * window.MATCH_CHART_DATA (see h2h/chart_data.py for its shape).
  *
  * Both archers' smoothed score-distribution curves are drawn on one shared
- * chart; vertical dashed lines mark each archer's actual score for a pass.
- * By default only the most recent pass's markers are shown, per
- * Specification/feedback.md; a checkbox reveals every previous pass too.
+ * chart; vertical dashed lines mark the scores the archers have shot, each
+ * labelled on the chart with its pass number ("P3"). By default only the
+ * pass currently being scored is marked; a checkbox adds every earlier pass
+ * of both archers, whoever they were shooting against (Specification/
+ * feedback.md "Feedback 5"). The legend names each archer with their handicap.
  */
 (function () {
   const data = window.MATCH_CHART_DATA;
@@ -30,9 +32,10 @@
     };
   }
 
-  function markerDataset(x, color, label) {
+  function markerDataset(x, color, label, passLabel) {
     return {
       label: label,
+      passLabel: passLabel,
       data: [
         { x: x, y: 0 },
         { x: x, y: data.y_max },
@@ -56,7 +59,12 @@
       for (const p of archer.passes) {
         if (all || p.index === data.current_pass) {
           datasets.push(
-            markerDataset(p.score, color, `${archer.name} pass ${p.index + 1}: ${p.score}`)
+            markerDataset(
+              p.score,
+              color,
+              `${archer.name} pass ${p.index + 1}: ${p.score}`,
+              `P${p.index + 1}`
+            )
           );
         }
       }
@@ -65,8 +73,8 @@
   }
 
   const baseDatasets = [
-    curveDataset(data.distribution_a, COLOR_A, data.archer_a.name),
-    curveDataset(data.distribution_b, COLOR_B, data.archer_b.name),
+    curveDataset(data.distribution_a, COLOR_A, data.archer_a.legend),
+    curveDataset(data.distribution_b, COLOR_B, data.archer_b.legend),
   ];
 
   /*
@@ -112,11 +120,70 @@
     return items;
   };
 
+  /*
+   * Inline plugin that writes each marker line's pass number ("P3") on the
+   * chart: rotated text just inside the top of the plot, in the line's colour,
+   * to the left of the line for the first archer and to the right for the
+   * second so two equal scores do not collide. A label that would overlap one
+   * already drawn is moved down below it. The boxes drawn are kept on
+   * chart.markerLabelBoxes ({text, x0, y0, x1, y1} in canvas pixels) so tests
+   * can check them.
+   */
+  const markerLabels = {
+    id: "markerLabels",
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      const area = chart.chartArea;
+      const placed = [];
+      ctx.save();
+      ctx.font = "12px sans-serif";
+      chart.data.datasets.forEach((dataset, index) => {
+        if (!dataset.isMarker || !chart.isDatasetVisible(index)) {
+          return;
+        }
+        const x = chart.scales.x.getPixelForValue(dataset.data[0].x);
+        const length = ctx.measureText(dataset.passLabel).width;
+        const leftOfLine = dataset.borderColor === COLOR_A;
+        const x0 = leftOfLine ? x - 3 - 13 : x + 3;
+        let y0 = area.top + 3;
+        for (let moved = true; moved; ) {
+          moved = false;
+          for (const box of placed) {
+            const overlaps =
+              x0 < box.x1 && x0 + 13 > box.x0 && y0 < box.y1 && y0 + length > box.y0;
+            if (overlaps) {
+              y0 = box.y1 + 3;
+              moved = true;
+            }
+          }
+        }
+        placed.push({ text: dataset.passLabel, x0: x0, y0: y0, x1: x0 + 13, y1: y0 + length });
+        ctx.save();
+        ctx.fillStyle = dataset.borderColor;
+        ctx.translate(leftOfLine ? x - 3 : x + 3, y0 + length);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "left";
+        ctx.textBaseline = leftOfLine ? "bottom" : "top";
+        ctx.fillText(dataset.passLabel, 0, 0);
+        ctx.restore();
+      });
+      ctx.restore();
+      chart.markerLabelBoxes = placed;
+    },
+  };
+
   const chart = new Chart(canvas, {
     type: "line",
     data: { datasets: baseDatasets.concat(markersFor(false)) },
+    plugins: [markerLabels],
     options: {
       parsing: false,
+      plugins: {
+        legend: {
+          // Only the two curves (named with their handicaps); markers are labelled on the chart.
+          labels: { filter: (item, chartData) => !chartData.datasets[item.datasetIndex].isMarker },
+        },
+      },
       scales: {
         x: {
           type: "linear",
