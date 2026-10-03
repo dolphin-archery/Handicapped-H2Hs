@@ -16,32 +16,15 @@ from .chart_data import build_pair_chart_data
 from .models import (
     MAX_HANDICAP,
     MIN_HANDICAP,
-    METRE,
+    STANDARD_FACE_SIZES_CM,
     Archer,
     Bowstyle,
     IndoorRound,
     TargetSetup,
+    distance_option_groups,
     resolve_indoor_round,
 )
 from .state import SessionState
-
-
-# TEMPORARY bridge (removed when Stage 1 gets its distance/face dropdowns, prd task 42):
-# the old Indoor/Outdoor + Portsmouth/WA 18 form fields are mapped onto a TargetSetup.
-def _bridge_target_setup(form) -> TargetSetup:
-    """Map the old Stage 1 round-mode form fields onto a `TargetSetup`."""
-    if form.get("round_mode") == "outdoor":
-        return TargetSetup(distance=70, unit=METRE, face_cm=122)
-    if form.get("indoor_round") == "wa18":
-        return TargetSetup(distance=18, unit=METRE, face_cm=40)
-    return TargetSetup.parse("20yd", 60)
-
-
-def _bridge_round_mode(setup: TargetSetup) -> str:
-    """Map a `TargetSetup` back onto the old Stage 1 form's round-mode value."""
-    if not setup.indoor:
-        return "outdoor"
-    return "indoor_wa18" if setup.distance_key == "18m" else "indoor_portsmouth"
 
 
 def create_app(state: SessionState | None = None) -> Flask:
@@ -71,24 +54,48 @@ def create_app(state: SessionState | None = None) -> Flask:
         return redirect(url_for("stage1"))
 
     @app.get("/event/stage1")
-    def stage1(error: str | None = None):
+    def stage1(error: str | None = None, setup_mode: str = "simple"):
+        """Event setup form (Stage 1).
+
+        Parameters
+        ----------
+        error : str | None, default=None
+            Message to show above the form (a rejected submission).
+        setup_mode : str, default="simple"
+            Which setup mode to show selected: "simple" or "advanced" (the
+            latter only after a rejected attempt to submit it).
+
+        Returns
+        -------
+        str
+            The rendered form.
+        """
         return render_template(
             "stage1.html",
             n_archers=session.n_archers or 4,
             total_arrows=session.total_arrows,
             n_pass=session.n_pass,
-            round_mode=_bridge_round_mode(session.target_setup),
+            setup_mode=setup_mode,
+            distance_groups=distance_option_groups(),
+            face_sizes=STANDARD_FACE_SIZES_CM,
+            selected_distance=session.target_setup.distance_key,
+            selected_face=session.target_setup.face_cm,
             shoot_byes=session.shoot_byes,
             error=error,
         )
 
     @app.post("/event/stage1")
     def stage1_submit():
+        if request.form.get("setup_mode", "simple") == "advanced":
+            msg = "Advanced setup is not available yet (TBA). Use Simple setup for now."
+            return stage1(error=msg, setup_mode="advanced")
         try:
             n_archers = int(request.form["n_archers"])
             total_arrows = int(request.form["total_arrows"])
             n_pass = int(request.form["n_pass"])
-            target_setup = _bridge_target_setup(request.form)
+            target_setup = TargetSetup.parse(
+                request.form.get("distance", ""), request.form.get("face_cm", "")
+            )
             shoot_byes = request.form.get("shoot_byes", "yes") != "no"
             session.start_stage1(n_archers, total_arrows, n_pass, target_setup, shoot_byes)
         except (ValueError, KeyError) as exc:
@@ -119,6 +126,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         return render_template(
             "stage2.html",
             n_archers=session.n_archers,
+            setup=session.target_setup,
             bowstyles=list(Bowstyle),
             min_handicap=MIN_HANDICAP,
             max_handicap=MAX_HANDICAP,

@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Event setup - Stage 2</h1>
-<p>Enter each of the {{ n_archers }} archers. Bowstyle affects scoring when the round mode is indoor (Compound uses the AGB indoor-compound scoring variant).</p>
+<p>Enter each of the {{ n_archers }} archers. Everyone shoots {{ setup.distance_label }} at a
+  {{ setup.face_cm }} cm face, which counts as {{ 'indoor' if setup.indoor else 'outdoor' }}{% if setup.indoor %},
+  so Compound archers score only the inner ring as 10{% endif %}.</p>
 <p><a href="{{ url_for('handicap_calculator') }}">Need to work out a starting handicap? Use the score-to-handicap calculator.</a></p>
 {% if error %}
 <p class="warning">{{ error }}</p>

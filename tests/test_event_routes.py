@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from h2h.app import create_app
+from h2h.models import DEFAULT_TARGET_SETUP, METRE, TargetSetup
 from h2h.state import SessionState
 
 from .helpers import overview_table, save_match, score_current_pass
@@ -21,14 +22,17 @@ def make_client():
     return create_app(state=SessionState()).test_client()
 
 
-def stage1_form(n_archers=4, total_arrows=60, n_pass=12, round_mode="indoor", indoor_round="portsmouth"):
-    """Build a /event/stage1 form payload."""
+def stage1_form(
+    n_archers=4, total_arrows=60, n_pass=12, distance="20yd", face_cm=60, setup_mode="simple"
+):
+    """Build a /event/stage1 form payload (simple setup: one distance and face for everyone)."""
     return {
         "n_archers": str(n_archers),
         "total_arrows": str(total_arrows),
         "n_pass": str(n_pass),
-        "round_mode": round_mode,
-        "indoor_round": indoor_round,
+        "setup_mode": setup_mode,
+        "distance": distance,
+        "face_cm": str(face_cm),
     }
 
 
@@ -78,13 +82,14 @@ def test_n_archers_below_two_rejected():
     assert b"at least 2" in resp.data
 
 
-def test_outdoor_mode_does_not_require_indoor_round_choice():
-    """Selecting outdoor must work without a meaningful indoor_round value."""
+def test_an_outdoor_distance_is_accepted_like_any_other():
+    """A long (outdoor-class) distance and a big face go through Stage 1 normally."""
     client = make_client()
     resp = client.post(
-        "/event/stage1", data=stage1_form(round_mode="outdoor"), follow_redirects=True
+        "/event/stage1", data=stage1_form(distance="70m", face_cm=122), follow_redirects=True
     )
     assert resp.status_code == 200
+    assert b"Event setup - Stage 2" in resp.data
 
 
 # --- "Shoot byes?" option (Feedback 3) -----------------------------------
@@ -178,9 +183,20 @@ def stage2_form(archers):
     return form
 
 
-def complete_stage1(client, n_archers=3, total_arrows=60, n_pass=12, round_mode="indoor"):
+def complete_stage1(
+    client, n_archers=3, total_arrows=60, n_pass=12, distance="20yd", face_cm=60
+):
     """Run Stage 1 so Stage 2 is reachable."""
-    client.post("/event/stage1", data=stage1_form(n_archers=n_archers, total_arrows=total_arrows, n_pass=n_pass, round_mode=round_mode))
+    client.post(
+        "/event/stage1",
+        data=stage1_form(
+            n_archers=n_archers,
+            total_arrows=total_arrows,
+            n_pass=n_pass,
+            distance=distance,
+            face_cm=face_cm,
+        ),
+    )
 
 
 def test_stage2_renders_exactly_n_archers_rows():
@@ -1133,3 +1149,164 @@ def test_following_the_reset_link_without_confirming_never_loses_scores():
     _, rows = overview_table(client.get("/event/rotation").data.decode())
     assert rows[0][1] == "100 - 60"
     assert state.event is not None
+
+
+# --- Stage 1 simple/advanced setup (Feedback 4) ------------------------------
+
+
+def select_block(page, name):
+    """The HTML of the <select name="..."> element in a page."""
+    start = page.index(f'<select name="{name}"')
+    return page[start : page.index("</select>", start)]
+
+
+def option_values(block):
+    """The value attributes of the <option>s in an HTML block, in order."""
+    return re.findall(r'<option value="([^"]*)"', block)
+
+
+def stage2_intro(page):
+    """The Stage 2 introductory paragraph, as whitespace-normalised text."""
+    start = page.index("Enter each of the")
+    return " ".join(re.sub(r"<[^>]+>", " ", page[start : page.index("</p>", start)]).split())
+
+
+def test_stage1_has_setup_mode_toggle_with_simple_selected_by_default():
+    """A fresh Stage 1 offers Simple (selected) and Advanced setup modes."""
+    page = make_client().get("/event/stage1").data.decode()
+    simple = page[page.index('name="setup_mode" value="simple"') :].split(">")[0]
+    advanced = page[page.index('name="setup_mode" value="advanced"') :].split(">")[0]
+    assert "checked" in simple
+    assert "checked" not in advanced
+
+
+def test_stage1_distance_dropdown_has_exactly_the_standard_options_grouped():
+    """The Distance dropdown has Metric and Imperial groups with the 16 standard distances."""
+    page = make_client().get("/event/stage1").data.decode()
+    block = select_block(page, "distance")
+    assert '<optgroup label="Metric">' in block and '<optgroup label="Imperial">' in block
+    assert option_values(block) == [
+        "18m", "25m", "30m", "40m", "50m", "60m", "70m", "90m",
+        "20yd", "25yd", "30yd", "40yd", "50yd", "60yd", "80yd", "100yd",
+    ]
+    assert '<option value="20yd" selected>20 yd</option>' in block  # the default
+    assert ">18 m</option>" in block and ">100 yd</option>" in block
+
+
+def test_stage1_face_size_dropdown_has_the_four_standard_faces():
+    """The Face size dropdown offers 40, 60, 80 and 122 cm, 60 selected."""
+    block = select_block(make_client().get("/event/stage1").data.decode(), "face_cm")
+    assert option_values(block) == ["40", "60", "80", "122"]
+    assert '<option value="60" selected>60 cm</option>' in block
+
+
+def test_stage1_no_longer_has_the_indoor_outdoor_or_named_round_choices():
+    """The old Indoor/Outdoor and Portsmouth/WA 18 radios are gone from Stage 1."""
+    page = make_client().get("/event/stage1").data.decode()
+    for old in ('name="round_mode"', 'name="indoor_round"', "Portsmouth", "WA 18", "Outdoor"):
+        assert old not in page, old
+
+
+def test_posting_a_simple_setup_stores_it_and_it_is_remembered_on_return():
+    """A chosen distance and face are stored in the session and re-selected on Stage 1."""
+    client, state = make_client_and_state()
+    resp = client.post("/event/stage1", data=stage1_form(distance="50m", face_cm=80))
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/event/stage2")
+    assert state.target_setup == TargetSetup(distance=50, unit=METRE, face_cm=80)
+
+    page = client.get("/event/stage1").data.decode()
+    assert '<option value="50m" selected>' in select_block(page, "distance")
+    assert '<option value="80" selected>' in select_block(page, "face_cm")
+
+
+@pytest.mark.parametrize(
+    ("distance", "face", "expected"),
+    [
+        ("20m", 60, b"standard distances"),
+        ("abc", 60, b"standard distances"),
+        ("", 60, b"standard distances"),
+        ("18m", 50, b"standard face sizes"),
+        ("18m", "abc", b"standard face sizes"),
+    ],
+)
+def test_a_distance_or_face_outside_the_options_is_rejected_and_stores_nothing(
+    distance, face, expected
+):
+    """A forged distance/face value gets a clear message and leaves the session untouched."""
+    client, state = make_client_and_state()
+    resp = client.post("/event/stage1", data=stage1_form(distance=distance, face_cm=face))
+    assert resp.status_code == 200
+    assert expected in resp.data
+    assert state.schedule is None
+    assert state.target_setup == DEFAULT_TARGET_SETUP
+
+
+def test_posting_advanced_mode_is_rejected_with_a_tba_message_and_stores_nothing():
+    """Advanced setup is not built: a forced POST is refused and changes nothing."""
+    client, state = make_client_and_state()
+    client.post("/event/stage1", data=stage1_form(n_archers=4, distance="50m", face_cm=80))
+    schedule_before = state.schedule
+
+    resp = client.post(
+        "/event/stage1",
+        data=stage1_form(n_archers=7, distance="90m", face_cm=122, setup_mode="advanced"),
+    )
+    page = resp.data.decode()
+    assert resp.status_code == 200
+    assert "TBA" in page
+    assert state.schedule is schedule_before
+    assert state.n_archers == 4
+    assert state.target_setup == TargetSetup(distance=50, unit=METRE, face_cm=80)
+    # The re-rendered page has Advanced selected, its message visible, and submit disabled.
+    advanced = page[page.index('name="setup_mode" value="advanced"') :].split(">")[0]
+    assert "checked" in advanced
+    assert '<div id="advanced_setup" >' in page or '<div id="advanced_setup">' in page
+    assert 'id="stage1_submit" disabled' in page
+
+
+def test_advanced_is_refused_even_when_the_other_fields_are_invalid():
+    """The TBA refusal comes first, so a forced advanced POST never reports other errors."""
+    client = make_client()
+    resp = client.post(
+        "/event/stage1",
+        data={"setup_mode": "advanced", "n_archers": "x", "total_arrows": "", "n_pass": "0"},
+    )
+    assert b"TBA" in resp.data
+
+
+def test_the_tba_message_is_in_the_page_but_hidden_while_simple_is_selected():
+    """The advanced section carries the TBA text and starts hidden; submit starts enabled."""
+    page = make_client().get("/event/stage1").data.decode()
+    section = page[page.index('<div id="advanced_setup"') :].split(">")[0]
+    assert "hidden" in section
+    assert "Advanced setup: TBA." in page
+    assert 'id="stage1_submit" disabled' not in page
+
+
+def test_stage2_intro_names_the_distance_face_and_whether_it_counts_as_indoor():
+    """Stage 2 says what everyone shoots, and the reduced-10 note appears only indoors."""
+    client = make_client()
+    complete_stage1(client, n_archers=2, distance="20yd", face_cm=60)
+    intro = stage2_intro(client.get("/event/stage2").data.decode())
+    assert "20 yd" in intro and "60 cm" in intro and "indoor" in intro
+    assert "inner ring" in intro
+
+    complete_stage1(client, n_archers=2, distance="50m", face_cm=80)
+    intro = stage2_intro(client.get("/event/stage2").data.decode())
+    assert "50 m" in intro and "80 cm" in intro and "outdoor" in intro
+    assert "inner ring" not in intro
+
+
+def test_no_leftover_reference_to_the_old_round_mode_form_in_the_app():
+    """The app package has no round-mode names or temporary bridge left."""
+    root = Path(__file__).resolve().parent.parent / "h2h"
+    sources = [p for p in root.rglob("*") if p.suffix in {".py", ".html", ".js"}]
+    assert sources
+    # (`resolve_indoor_round` is the calculator's legitimate function, so only the old
+    # quoted form-field name is forbidden, not the substring.)
+    forbidden = ["round_mode", '"indoor_round"', "RoundMode", "_bridge", "OUTDOOR"]
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        for name in forbidden:
+            assert name not in text, f"{name} in {path.name}"

@@ -39,20 +39,46 @@
   </div>
 
   <div class="row">
-    <label><input type="radio" name="round_mode" value="indoor" id="round_mode_indoor"
-        {% if round_mode != 'outdoor' %}checked{% endif %}> Indoor</label>
-    <label style="margin-left: 1rem;"><input type="radio" name="round_mode" value="outdoor" id="round_mode_outdoor"
-        {% if round_mode == 'outdoor' %}checked{% endif %}> Outdoor</label>
+    <span>Setup mode:</span>
+    <label style="margin-left: 0.5rem;"><input type="radio" name="setup_mode" value="simple" id="setup_mode_simple"
+        {% if setup_mode != 'advanced' %}checked{% endif %}> Simple</label>
+    <label style="margin-left: 1rem;"><input type="radio" name="setup_mode" value="advanced" id="setup_mode_advanced"
+        {% if setup_mode == 'advanced' %}checked{% endif %}> Advanced</label>
   </div>
 
-  <div class="row" id="indoor_round_choice">
-    <label><input type="radio" name="indoor_round" value="portsmouth"
-        {% if round_mode != 'indoor_wa18' %}checked{% endif %}> Portsmouth</label>
-    <label style="margin-left: 1rem;"><input type="radio" name="indoor_round" value="wa18"
-        {% if round_mode == 'indoor_wa18' %}checked{% endif %}> WA 18</label>
+  <div id="simple_setup" {% if setup_mode == 'advanced' %}hidden{% endif %}>
+    <p><small>Simple setup: every archer shoots the same distance at the same target face size
+      (the standard single-face target, not 3-spot). Distances up to 25 m / 25 yd count as indoor
+      (indoor arrow size, and Compound archers score only the inner ring as 10); longer distances
+      count as outdoor.</small></p>
+    <div class="row">
+      <label for="distance">Distance:</label>
+      <select name="distance" id="distance">
+        {% for group, options in distance_groups.items() %}
+        <optgroup label="{{ group }}">
+          {% for value, text in options %}
+          <option value="{{ value }}"{% if value == selected_distance %} selected{% endif %}>{{ text }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="row">
+      <label for="face_cm">Face size:</label>
+      <select name="face_cm" id="face_cm">
+        {% for size in face_sizes %}
+        <option value="{{ size }}"{% if size == selected_face %} selected{% endif %}>{{ size }} cm</option>
+        {% endfor %}
+      </select>
+    </div>
   </div>
 
-  <button type="submit">Continue to Stage 2</button>
+  <div id="advanced_setup" {% if setup_mode != 'advanced' %}hidden{% endif %}>
+    <p><strong>Advanced setup: TBA.</strong> Choosing a different scoring method, target face and
+      distance for each archer will be added later. Use Simple setup for now.</p>
+  </div>
+
+  <button type="submit" id="stage1_submit" {% if setup_mode == 'advanced' %}disabled{% endif %}>Continue to Stage 2</button>
 </form>
 
 <script>
@@ -108,13 +134,17 @@
 
   rebuildSlider();
 
-  function updateIndoorVisibility() {
-    const isIndoor = document.getElementById("round_mode_indoor").checked;
-    document.getElementById("indoor_round_choice").hidden = !isIndoor;
+  // Simple mode shows the distance / face dropdowns; Advanced is not built yet, so it shows
+  // a TBA message and the form cannot be submitted.
+  function updateSetupMode() {
+    const advanced = document.getElementById("setup_mode_advanced").checked;
+    document.getElementById("simple_setup").hidden = advanced;
+    document.getElementById("advanced_setup").hidden = !advanced;
+    document.getElementById("stage1_submit").disabled = advanced;
   }
-  document.getElementById("round_mode_indoor").addEventListener("change", updateIndoorVisibility);
-  document.getElementById("round_mode_outdoor").addEventListener("change", updateIndoorVisibility);
-  updateIndoorVisibility();
+  document.getElementById("setup_mode_simple").addEventListener("change", updateSetupMode);
+  document.getElementById("setup_mode_advanced").addEventListener("change", updateSetupMode);
+  updateSetupMode();
 
   // The Shoot byes? control only applies to an odd number of archers.
   const nArchersInput = document.getElementById("n_archers");

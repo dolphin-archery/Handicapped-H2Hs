@@ -26,13 +26,15 @@ def make_client():
     return create_app(state=SessionState()).test_client()
 
 
-def stage1_form(n_archers, total_arrows=60, n_pass=12, round_mode="indoor", indoor_round="portsmouth"):
+def stage1_form(n_archers, total_arrows=60, n_pass=12, distance="20yd", face_cm=60):
+    """Build a /event/stage1 form payload (simple setup)."""
     return {
         "n_archers": str(n_archers),
         "total_arrows": str(total_arrows),
         "n_pass": str(n_pass),
-        "round_mode": round_mode,
-        "indoor_round": indoor_round,
+        "setup_mode": "simple",
+        "distance": distance,
+        "face_cm": str(face_cm),
     }
 
 
@@ -45,7 +47,7 @@ def stage2_form(archers):
     return form
 
 
-def run_full_event(client, archers, n_pass=12, total_arrows=None, round_mode="indoor", indoor_round="portsmouth", score_fn=None):
+def run_full_event(client, archers, n_pass=12, total_arrows=None, distance="20yd", face_cm=60, score_fn=None):
     """Complete Stage 1 + Stage 2, then score every pass to completion.
 
     Parameters
@@ -59,7 +61,7 @@ def run_full_event(client, archers, n_pass=12, total_arrows=None, round_mode="in
         total_arrows = n_rotations * n_pass
     client.post(
         "/event/stage1",
-        data=stage1_form(n_archers, total_arrows, n_pass, round_mode, indoor_round),
+        data=stage1_form(n_archers, total_arrows, n_pass, distance, face_cm),
     )
     client.post("/event/stage2", data=stage2_form(archers))
 
@@ -266,7 +268,7 @@ def test_outdoor_event_gives_every_archer_the_same_target():
         ("Bare", "Barebow", 30),
         ("Long", "Longbow", 40),
     ]
-    start_event(client, archers, total_arrows=36, round_mode="outdoor")
+    start_event(client, archers, total_arrows=36, distance="70m", face_cm=122)
     play_whole_event(client)
 
     event = state.event
