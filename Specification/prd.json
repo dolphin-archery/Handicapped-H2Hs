@@ -355,7 +355,7 @@
       "The Stage 1 page renders the Shoot byes? control and its explanatory text, and re-renders the previously chosen value.",
       "Verified in a real browser: the control is hidden for an even n_archers, shown for an odd one, and updates live as the n_archers input changes, with no JS console errors."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 30,

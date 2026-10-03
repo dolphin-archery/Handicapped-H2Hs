@@ -713,3 +713,35 @@ sitting-out archer rejected, invalid scores record nothing, in-place
 replacement, completeness, advance gating/final-rotation/earlier-pass-frozen,
 and Event construction from a sit-out schedule (including the bounds check).
 Full suite passes. No issues.
+
+### Task 29: 'Shoot byes?' option at event setup (complete)
+Stage 1 now has a "Shoot byes?" Yes/No radio (default Yes) between the archer
+count and total arrows, with a short explanation that No adds passes.
+`SessionState` gained `shoot_byes` (default True, restored by `reset()`) and
+`start_stage1(..., shoot_byes=True)` builds the schedule with
+`build_sit_out_schedule` only when `n_archers` is odd *and* `shoot_byes` is
+False; every other case calls `build_schedule` exactly as before, so an even
+archer count simply ignores the flag (the value is still stored and
+re-rendered). The route reads `shoot_byes` as "No" only if the field is exactly
+`no`, so an omitted field means Yes.
+
+Visibility: the server renders the control hidden for an even `n_archers` and
+visible for an odd one (so it is right on first load and when returning to
+Stage 1), and a small inline script re-evaluates it on every `input` event of
+the archer-count field (shown only for an odd value >= 3).
+
+Verification: unit/route tests for the state logic and the posted form, plus a
+real-browser check in headless Edge (delegated to a subagent). Results: the
+control is hidden at the default 4, and live typing gives 5 shown, 6 hidden, 7
+shown, 8 hidden, cleared hidden, 1 hidden, 3 shown, and digit-by-digit "1"
+hidden then "11" shown; the Yes/No radios toggle exclusively; submitting with No
+lands on Stage 2 and returning to Stage 1 shows No still selected; the only
+console error was the usual unrelated favicon 404. One cosmetic oddity: typing
+3.5 shows the control (`parseInt("3.5")` is 3), but the number field's
+`step="1"` blocks submitting a non-integer anyway, so it was left as is.
+
+Tooling note for future work: the subagent's `isolation: "worktree"` checkout
+was based on a stale commit (the end of prd task 25), not the current HEAD, so
+the agent exported the right commit with `git archive` instead. Don't rely on
+the isolated worktree being current; give a browser-verification subagent the
+commit hash to export.
