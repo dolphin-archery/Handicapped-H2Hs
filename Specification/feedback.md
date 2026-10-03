@@ -43,20 +43,26 @@ Output for this stage - pairings initalised for full rotation over total arrows
 - switch back to preious page strucutre with one page per match that you click into for entering results, shows graphs/results so far per match there, then go back to summary of all current matches. I do not like the current view of inputting data for all matches at once. Add a button to move forward to the next pass once all data from a given pass has been entered. This should update the pairings in the overview page and allow data for the next pass to be entered on the per match pages.
 - I do not think the bye features was implemented as I intended. If an odd number of archers $n$ are entered there should be an option to 'Shoot Byes?'. If set to yes then all archers shoot in every pass, with each archer having one match with no opponent. If set to no then archers with byes sit that pass out and only shoot matches with opponents. This will change the total number of passes it takes to shoot the full round.
 
-
-
-
-
-# Future Plans - DO NOT IMPLEMENT YET
-
-## Additional Features
-- Option to redraw the random assignment of pairings
+# Feedback 4
+- Display handicap of each archer in per match pages
+- add a stage 3 of event setup where pairing assignment is done
+    - Option to redraw the random assignment of pairings by pressing a button
 - Confirmation button before resetting scores
-- Rename current advance mode to graph view. A differnt advanced mode will be added soon.
+- Rename current advance mode to graph view. A different advanced mode will be added soon. Only display button on score input pages, not summary pages.
+- Fix bug that hovering over graph to see per archer probailities for a given score breaks for vertical lines of scores shot in previous pass.
 - Add a toggle for simple or advanced mode on first setup page. 
     - Simple mode sets all archers to the same distance and target faces size. There should be drop downs for both distance and face size if simple mode is selected, with options for the standard metric/imperial distances and face sizes. Face type should be the standard archery face (not 3 spots), though compound archers take care to ensure compound archers still have the reduced size 10. Indoor/outdoor arrow diameter size should be inferred from the distance and the corresponding arrow diamter used in handicap calculations. (I think all distances >30m class as outdoor though check this as I am not certain)
     - Advanced mode will be implemeted later. Leave a TBA message for now.
 - Validate that starting handicaps are in the allowed range of handicap values (0-150)
+- Simplify how the winner is decided text that shows on the bottom of score input pages
+- Update summary table per pass (/event/rotation) to have columns of Match | Score | Percentiles | Winner | Actions
+    - Match is as it currently is, showing opponents
+    - Score should be  A - B where A and B are numbers, shown the same way around as opponents in match column
+    - Percentiles should be as above but the percentiles in each archer's distribution
+    - Winner should be the name of the person who won that pass
+    - Actions links to the score input pages, as currently but the table needs the heading.
+
+# Future Plans - DO NOT IMPLEMENT YET
 
 ## Advanced mode
 - Different scoring method/face/distance per archer. All to have drop downs
@@ -66,6 +72,14 @@ Output for this stage - pairings initalised for full rotation over total arrows
 ## Outputs
 - Overall leaderboard across all archers, 1 point for winning a match, 0 for loosing, draws never happen
 - Results print out to .pdf and .csv
+- page of per archer results
+    - for each archer have a heading of name, total score and handicap, table with columns as below and a row at the bottom of averages for numeric columns.
+        - Pass, an integer
+        - Opponent, the name of the opponent for that pass
+        - Score, score shot in that pass
+        - Percentile, percentile in the archer's distribution of that score
+        - Handicap, handicap of that score
+
 
 
 ## UI and Deployment
