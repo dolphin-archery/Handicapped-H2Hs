@@ -1621,3 +1621,20 @@ are now one per whole score over the whole x-range, zero where the distribution 
 curve value exists under every marker. (The other 30 of 36 hover probes had already passed, and
 no probe ever returned a marker dataset.) A second browser run on the fixed commit is recorded
 below.
+
+Task 51 browser check #2 (subagent, headless Edge 154 via Selenium, commit 0654de8, port 5074):
+PASS on all five points, with the previous run's scenario repeated both as it came out and in a
+"swapped" orientation that reproduces the earlier failure (the first-listed archer on the
+extreme low score, the second on the extreme high). Labels: with the x scale 4 to 120 and
+markers at x = 5 and 118, all six label boxes are inside the chart area (the P3 label at x=5 now
+sits on the right of its line, 10.7 px clear of the left edge; the one at 118 on its left, 18.3 px
+clear of the right edge), none overlap, and no label box contains another marker's line. A
+wide-axis case with two lines a score apart (100 and 101 at about 7.5 px per unit) puts the two
+labels on opposite outer sides with no line through either, readable in the screenshot. Hover:
+36 of 36 synthetic probes and 36 of 36 real-pointer probes return exactly the two curve points at
+the score nearest the pointer, never a marker (0 failures, against 6 before); at the x=5 marker
+the tooltip lists both archers with probability 0. Regression: marker counts 0/2 (pass 2, before
+scoring), 2/4 and 2/6; legend exactly the two "Name (handicap H)" entries; h1 without a
+handicap; every marker inside the axis; each curve has one point per whole score across the
+x-range (117 points for 4-120, 121 for 0-120); console free of JS errors. The flat zero part of
+a curve is a thin line along the axis with no fill, which reads fine. Task 51 is complete.

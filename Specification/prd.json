@@ -697,7 +697,7 @@
       "No JS console errors beyond the favicon 404 and CDN tracking-prevention warnings.",
       "The Python suite still passes (markup and payload tests for the partial)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 52,
