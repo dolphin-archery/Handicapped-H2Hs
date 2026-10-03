@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import get_args
 
 from archeryutils import load_rounds
 from archeryutils import rounds
@@ -16,16 +17,28 @@ from archeryutils import targets
 from . import stats
 from .rotation import Rotation
 
-# Hard-coded per Specification/feedback.md ("hard code max score per arrow to 10
-# for now"); revisit if a target face other than a 10-ring face is supported.
-MAX_SCORE_PER_ARROW = 10
-
 # Allowed range of a starting AGB handicap (Specification/feedback.md "Feedback 4").
 MIN_HANDICAP = 0
 MAX_HANDICAP = 150
 
 
-def _validate_score(score: float, n_pass: int) -> int:
+def max_arrow_score(target: targets.Target) -> int:
+    """The most one arrow can score on a target (10 on a standard face, 9 on a 5-zone one).
+
+    Parameters
+    ----------
+    target : archeryutils.targets.Target
+        The target face.
+
+    Returns
+    -------
+    int
+        The highest ring value of the target's scoring system.
+    """
+    return int(max(target.face_spec.values()))
+
+
+def _validate_score(score: float, n_pass: int, max_arrow: int) -> int:
     """Validate a raw pass score and coerce it to an in-range integer.
 
     Parameters
@@ -34,6 +47,8 @@ def _validate_score(score: float, n_pass: int) -> int:
         Score to validate; must represent a whole number.
     n_pass : int
         Number of arrows in the pass this score is for.
+    max_arrow : int
+        The most one arrow can score on the archer's target (`max_arrow_score`).
 
     Returns
     -------
@@ -44,13 +59,13 @@ def _validate_score(score: float, n_pass: int) -> int:
     ------
     ValueError
         If `score` is not a whole number, or is outside
-        `[0, n_pass * MAX_SCORE_PER_ARROW]`.
+        `[0, n_pass * max_arrow]`.
     """
     if not float(score).is_integer():
         msg = f"Score must be a whole number, got {score}."
         raise ValueError(msg)
     score = int(score)
-    max_score = n_pass * MAX_SCORE_PER_ARROW
+    max_score = n_pass * max_arrow
     if not (0 <= score <= max_score):
         msg = (
             f"Score must be between 0 and {max_score} for a {n_pass}-arrow "
@@ -124,6 +139,45 @@ STANDARD_DISTANCES = tuple((d, METRE) for d in STANDARD_DISTANCES_M) + tuple(
     (d, YARD) for d in STANDARD_DISTANCES_YD
 )
 
+# Advanced setup (Assumption 34): the face diameters, in cm, that archeryutils's
+# standard rounds use. Superset of the simple-setup sizes.
+ADVANCED_FACE_SIZES_CM = (20, 35, 40, 50, 60, 65, 80, 122)
+
+# Readable names for archeryutils's scoring systems (the "face types" of advanced
+# setup), in the order they are offered. A test checks this covers every system
+# archeryutils has, so one added by a library update is noticed.
+_FACE_TYPE_NAMES = {
+    "10_zone": "10 zone (standard 10-ring face)",
+    "10_zone_compound": "10 zone, compound (inner 10 only)",
+    "10_zone_6_ring": "10 zone, 6 ring (small face, rings 10 to 5)",
+    "10_zone_5_ring": "10 zone, 5 ring (triple spot, rings 10 to 6)",
+    "10_zone_5_ring_compound": "10 zone, 5 ring, compound (triple spot, inner 10 only)",
+    "11_zone": "11 zone (inner ring scores 11)",
+    "11_zone_6_ring": "11 zone, 6 ring (rings 11 to 5)",
+    "11_zone_5_ring": "11 zone, 5 ring (triple spot, rings 11 to 6)",
+    "5_zone": "5 zone (gold 9 to white 1, imperial rounds)",
+    "WA_field": "WA field (6 to 1)",
+    "IFAA_field": "IFAA field (5, 4, 3)",
+    "IFAA_field_expert": "IFAA field, expert (5 to 1)",
+    "AA_national_field": "AA national field (5 to 1)",
+    "Worcester": "Worcester (5 to 1)",
+    "Worcester_2_ring": "Worcester, 2 ring (5-spot, 5 and 4)",
+    "Beiter_hit_miss": "Beiter hit or miss (1 or 0)",
+}
+_UNOFFERED_SCORING_SYSTEMS = ("Custom",)  # needs ring data a dropdown cannot supply
+
+# face type value -> readable name, for every scoring system archeryutils offers apart
+# from "Custom". A system missing from `_FACE_TYPE_NAMES` is still offered, by its own name.
+FACE_TYPES: dict[str, str] = {
+    **{key: name for key, name in _FACE_TYPE_NAMES.items() if key in get_args(targets.ScoringSystem)},
+    **{
+        key: key
+        for key in get_args(targets.ScoringSystem)
+        if key not in _FACE_TYPE_NAMES and key not in _UNOFFERED_SCORING_SYSTEMS
+    },
+}
+DEFAULT_FACE_TYPE = "10_zone"
+
 # A distance of at most this many metres is treated as indoor (Assumption 22):
 # 18 m, 25 m, 20 yd and 25 yd are indoor; 30 m / 30 yd and beyond are outdoor.
 INDOOR_MAX_DISTANCE_M = 25.0
@@ -147,13 +201,18 @@ class TargetSetup:
     unit : str
         `METRE` or `YARD`.
     face_cm : int
-        Target face diameter in centimetres (the standard single-face 10-zone
-        target, not a 3-spot face).
+        Target face diameter in centimetres.
+    face_type : str | None
+        An archeryutils scoring system chosen explicitly (advanced setup), used
+        exactly as given. None (simple setup) means the face is the standard
+        10-zone one, with the scoring system chosen from the bowstyle by
+        `resolve_target`.
     """
 
     distance: int
     unit: str
     face_cm: int
+    face_type: str | None = None
 
     @property
     def distance_m(self) -> float:
@@ -200,19 +259,69 @@ class TargetSetup:
         ValueError
             If either value is not one of the standard options.
         """
-        by_key = {_distance_key(d, u): (d, u) for d, u in STANDARD_DISTANCES}
-        if distance_key not in by_key:
-            msg = f"'{distance_key}' is not one of the standard distances."
-            raise ValueError(msg)
-        try:
-            face = int(face_cm)
-        except (TypeError, ValueError):
-            face = None
-        if face not in STANDARD_FACE_SIZES_CM:
-            msg = f"'{face_cm}' is not one of the standard face sizes."
-            raise ValueError(msg)
-        distance, unit = by_key[distance_key]
+        distance, unit = _parse_distance(distance_key)
+        face = _parse_face_size(face_cm, STANDARD_FACE_SIZES_CM)
         return cls(distance=distance, unit=unit, face_cm=face)
+
+    @classmethod
+    def parse_advanced(
+        cls, distance_key: str, face_cm: str | int, face_type: str
+    ) -> TargetSetup:
+        """Build one archer's setup from the advanced Stage 2 form values.
+
+        Parameters
+        ----------
+        distance_key : str
+            A distance as in `distance_key`, e.g. "18m" or "20yd".
+        face_cm : str | int
+            A face diameter in centimetres, one of `ADVANCED_FACE_SIZES_CM`.
+        face_type : str
+            One of the keys of `FACE_TYPES`.
+
+        Returns
+        -------
+        TargetSetup
+            The corresponding setup, with its face type set.
+
+        Raises
+        ------
+        ValueError
+            If any value is not one of the offered options; the message names
+            which one.
+        """
+        distance, unit = _parse_distance(distance_key)
+        face = _parse_face_size(face_cm, ADVANCED_FACE_SIZES_CM)
+        if face_type not in FACE_TYPES:
+            msg = f"'{face_type}' is not one of the target face types."
+            raise ValueError(msg)
+        return cls(distance=distance, unit=unit, face_cm=face, face_type=face_type)
+
+
+def _parse_distance(distance_key: str) -> tuple[int, str]:
+    """Look a distance key such as "18m" up in the standard distances.
+
+    Returns the `(distance, unit)` pair; raises ValueError if it is not standard.
+    """
+    by_key = {_distance_key(d, u): (d, u) for d, u in STANDARD_DISTANCES}
+    if distance_key not in by_key:
+        msg = f"'{distance_key}' is not one of the standard distances."
+        raise ValueError(msg)
+    return by_key[distance_key]
+
+
+def _parse_face_size(face_cm: str | int, allowed: tuple[int, ...]) -> int:
+    """Convert a submitted face size to an int and check it is one of `allowed`.
+
+    Raises ValueError if it is not a number or not in `allowed`.
+    """
+    try:
+        face = int(face_cm)
+    except (TypeError, ValueError):
+        face = None
+    if face not in allowed:
+        msg = f"'{face_cm}' is not one of the standard face sizes."
+        raise ValueError(msg)
+    return face
 
 
 # Stage 1's default: 20 yd on a 60 cm face, which is the Portsmouth round.
@@ -241,16 +350,18 @@ def resolve_target(setup: TargetSetup, bowstyle: Bowstyle) -> targets.Target:
 
     Per AISpec.md section 5.2a: the target has the setup's face size and
     distance and its inferred indoor/outdoor flag (which picks the arrow
-    diameter in `h2h.stats.per_arrow_pmf`). Compound archers score the reduced
-    10 (`10_zone_compound`, only the X-ring scores 10) when the distance is
-    indoor; everyone else, and Compound outdoors, scores the plain `10_zone`
+    diameter in `h2h.stats.per_arrow_pmf`). If the setup names a face type
+    (advanced setup) that scoring system is used exactly as given and the
+    bowstyle is ignored. Otherwise (simple setup) Compound archers score the
+    reduced 10 (`10_zone_compound`, only the X-ring scores 10) when the distance
+    is indoor; everyone else, and Compound outdoors, scores the plain `10_zone`
     face (Assumption 23).
 
     Parameters
     ----------
     setup : TargetSetup
-        The shared distance and face size.
-    bowstyle : Bowstyle
+        The distance and face size (and, in advanced setup, the face type).
+    bowstyle : Bowstyle | None
         The archer's bowstyle.
 
     Returns
@@ -258,9 +369,13 @@ def resolve_target(setup: TargetSetup, bowstyle: Bowstyle) -> targets.Target:
     archeryutils.targets.Target
         The target to compute this archer's score distribution against.
     """
-    reduced_ten = bowstyle == Bowstyle.COMPOUND and setup.indoor
+    if setup.face_type is not None:
+        scoring_system = setup.face_type
+    else:
+        reduced_ten = bowstyle == Bowstyle.COMPOUND and setup.indoor
+        scoring_system = "10_zone_compound" if reduced_ten else "10_zone"
     return targets.Target(
-        "10_zone_compound" if reduced_ten else "10_zone",
+        scoring_system,
         (setup.face_cm, "cm"),
         (setup.distance, setup.unit),
         indoor=setup.indoor,
@@ -283,11 +398,15 @@ class Archer:
         when indoor (AISpec.md section 5.2a); optional at the dataclass level
         (Stage 2's form is what enforces a valid selection) since `sigma_r`
         itself remains bowstyle-blind either way (Specification/humanSpec.md).
+    target_setup : TargetSetup | None
+        The archer's own distance, face size and face type (advanced setup).
+        None means the event's shared setup applies.
     """
 
     name: str
     handicap: float
     bowstyle: Bowstyle | None = None
+    target_setup: TargetSetup | None = None
 
 
 @dataclass(frozen=True)
@@ -370,9 +489,11 @@ class Event:
         `schedule`'s archer-index i).
     n_pass : int
         Number of arrows per rotation's pass.
-    target_setup : TargetSetup
+    target_setup : TargetSetup | None
         The shared distance and face size; combined with each archer's
-        bowstyle to resolve their target (AISpec.md section 5.2a).
+        bowstyle to resolve their target (AISpec.md section 5.2a). An archer's
+        own `target_setup` takes precedence; it may be None only if every
+        archer has one (advanced setup).
     schedule : list[h2h.rotation.Rotation]
         The rotation schedule (built by `h2h.rotation.build_schedule` or, when
         bye archers sit out, `build_sit_out_schedule`, before archers were
@@ -414,7 +535,13 @@ class Event:
         self.current_rotation_index = 0
         self.results: list[PassResult] = []
 
-        self._targets = [resolve_target(target_setup, a.bowstyle) for a in archers]
+        for a in archers:
+            if a.target_setup is None and target_setup is None:
+                msg = f"Archer {a.name!r} has no target setup and no shared one was given."
+                raise ValueError(msg)
+        self._targets = [
+            resolve_target(a.target_setup or target_setup, a.bowstyle) for a in archers
+        ]
         self._distributions = [
             stats.n_pass_score_distribution(stats.per_arrow_pmf(a.handicap, t), n_pass)
             for a, t in zip(archers, self._targets, strict=True)
@@ -427,6 +554,14 @@ class Event:
     def distribution_for(self, archer_index: int) -> dict[float, float]:
         """dict[float, float]: an archer's own n_pass score distribution."""
         return self._distributions[archer_index]
+
+    def max_score_for(self, archer_index: int) -> int:
+        """int: the highest pass score possible on an archer's own target.
+
+        That is `n_pass` times the most one arrow can score on it (10 on a
+        standard face, but 9 on a 5-zone face, 11 on an 11-zone one, ...).
+        """
+        return self.n_pass * max_arrow_score(self._targets[archer_index])
 
     @property
     def is_complete(self) -> bool:
@@ -603,7 +738,10 @@ class Event:
             )
             raise ValueError(msg)
 
-        validated = {idx: _validate_score(score, self.n_pass) for idx, score in scores.items()}
+        validated = {
+            idx: _validate_score(score, self.n_pass, max_arrow_score(self._targets[idx]))
+            for idx, score in scores.items()
+        }
         a, b = match
         if b is None:
             new_results = [self._solo_result(rotation_index, a, validated[a])]

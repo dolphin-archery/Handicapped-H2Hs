@@ -453,3 +453,88 @@ def test_a_bye_match_has_no_tie_break_and_ignores_closest():
     (result,) = event.record_match({solo[0]: 50}, closest=solo[0])
     assert result.won is None
     assert result.decided_by is None
+
+
+# --- Feedback 5: per-archer targets (advanced setup) and per-target maximum score ----
+
+
+def advanced_event(setups, handicaps=None, n_pass=12):
+    """A 2-archer Event whose archers each carry their own TargetSetup (no shared one)."""
+    handicaps = handicaps or [30, 30]
+    archers = [
+        Archer(f"S{i}", handicaps[i], Bowstyle.RECURVE, target_setup=setup)
+        for i, setup in enumerate(setups)
+    ]
+    return Event(archers, n_pass, None, build_schedule(2, 1))
+
+
+def test_each_archer_gets_a_distribution_from_their_own_target():
+    """Same handicap and bowstyle, different faces/distances -> different distributions and targets."""
+    setups = [
+        TargetSetup(18, METRE, 40, "10_zone"),
+        TargetSetup(50, METRE, 122, "10_zone"),
+    ]
+    event = advanced_event(setups)
+    assert event.target_for(0).distance == 18 and event.target_for(1).distance == 50
+    assert event.target_for(0).diameter == pytest.approx(0.4)
+    assert event.target_for(1).diameter == pytest.approx(1.22)
+    assert event.target_for(0).indoor is True and event.target_for(1).indoor is False
+    assert event.distribution_for(0) != event.distribution_for(1)
+
+
+def test_same_distance_and_size_but_different_face_type_gives_a_different_distribution():
+    """The face type alone changes the maths (5-zone vs 10-zone at the same distance and size)."""
+    event = advanced_event([TargetSetup(20, YARD, 60, "10_zone"), TargetSetup(20, YARD, 60, "5_zone")])
+    assert event.target_for(1).scoring_system == "5_zone"
+    assert event.distribution_for(0) != event.distribution_for(1)
+
+
+def test_an_archers_own_setup_overrides_the_shared_one():
+    """With both given, the archer's own setup wins; the other archer uses the shared one."""
+    own = TargetSetup(50, METRE, 80, "10_zone")
+    archers = [
+        Archer("Own", 30, Bowstyle.RECURVE, target_setup=own),
+        Archer("Shared", 30, Bowstyle.RECURVE),
+    ]
+    event = Event(archers, 12, PORTSMOUTH, build_schedule(2, 1))
+    assert event.target_for(0).distance == 50
+    assert event.target_for(1).distance == pytest.approx(PORTSMOUTH.distance_m)
+
+
+def test_no_shared_setup_and_an_archer_without_their_own_is_rejected():
+    """target_setup=None needs every archer to carry one."""
+    archers = [
+        Archer("Own", 30, Bowstyle.RECURVE, target_setup=PORTSMOUTH),
+        Archer("Neither", 30, Bowstyle.RECURVE),
+    ]
+    with pytest.raises(ValueError, match="Neither"):
+        Event(archers, 12, None, build_schedule(2, 1))
+
+
+@pytest.mark.parametrize(
+    ("face_type", "per_arrow"),
+    [("10_zone", 10), ("5_zone", 9), ("11_zone", 11), ("Worcester", 5), ("Beiter_hit_miss", 1)],
+)
+def test_max_score_for_is_n_pass_times_the_faces_top_ring(face_type, per_arrow):
+    """The most a pass can score follows the archer's own face."""
+    setup = TargetSetup(20, YARD, 60, face_type)
+    event = advanced_event([setup, TargetSetup(20, YARD, 60, "10_zone")], n_pass=6)
+    assert event.max_score_for(0) == 6 * per_arrow
+    assert event.max_score_for(1) == 60
+
+
+def test_record_match_checks_each_score_against_its_own_archers_maximum():
+    """A 5-zone archer's limit is 9 per arrow; a 10-zone archer may score above it."""
+    event = advanced_event([TargetSetup(20, YARD, 60, "5_zone"), TargetSetup(20, YARD, 60, "10_zone")])
+    assert event.max_score_for(0) == 108
+    with pytest.raises(ValueError, match="between 0 and 108"):
+        event.record_match({0: 109, 1: 100})
+    assert event.results == []
+    results = event.record_match({0: 108, 1: 115})  # 115 > 108 is fine on the 10-zone face
+    assert {r.archer_index: r.score for r in results} == {0: 108, 1: 115}
+
+
+def test_simple_setup_maximum_is_unchanged_at_ten_per_arrow():
+    """Every archer on the shared 10-zone face still has n_pass * 10."""
+    event = make_event(2, n_pass=12)
+    assert event.max_score_for(0) == event.max_score_for(1) == 120

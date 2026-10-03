@@ -1647,3 +1647,32 @@ def test_the_match_page_script_makes_the_boxes_exclusive():
     page = client.get("/event/match/0").data.decode()
     assert "input[name=\"closest\"]" in page
     assert "other.checked = false" in page
+
+
+# --- Per-target maximum score on the match page (Feedback 5) ------------------------
+
+
+def test_match_page_score_boxes_use_each_archers_own_maximum():
+    """A 5-zone archer's box tops out at 9 per arrow, a 10-zone archer's at 10."""
+    from h2h.models import YARD, Archer, Bowstyle, Event
+    from h2h.rotation import build_schedule
+
+    state = make_state()
+    archers = [
+        Archer("Fiver", 30, Bowstyle.RECURVE, target_setup=TargetSetup(20, YARD, 60, "5_zone")),
+        Archer("Tenner", 30, Bowstyle.RECURVE, target_setup=TargetSetup(20, YARD, 60, "10_zone")),
+    ]
+    state.schedule = build_schedule(2, 1)
+    state.event = Event(archers, 12, None, state.schedule)
+    client = create_app(state=state).test_client()
+
+    page = client.get("/event/match/0").data.decode()
+    assert "Fiver (handicap 30) score (0-108)" in page
+    assert "Tenner (handicap 30) score (0-120)" in page
+    assert 'max="108" name="score_0"' in page and 'max="120" name="score_1"' in page
+
+    too_high = save_match(client, 0, {0: 109, 1: 100})
+    assert too_high.status_code == 200
+    assert b"between 0 and 108" in too_high.data
+    assert state.event.results == []
+    assert save_match(client, 0, {0: 108, 1: 119}).status_code == 302

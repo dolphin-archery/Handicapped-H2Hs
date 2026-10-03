@@ -630,7 +630,7 @@
       "The page's script makes the boxes mutually exclusive: verified in a real browser (headless Edge via an ephemeral Selenium install against an exact commit exported with `git archive`): ticking A then B leaves only B ticked and vice versa, and unticking both is possible; no JS console errors.",
       "The full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 48,
@@ -647,7 +647,7 @@
       "The per-archer form-value parser accepts every offered (face type, size, distance) combination and rejects an unknown face type, a size not in the list and a non-standard distance with a message naming which value was wrong.",
       "The full suite passes unchanged for simple setup (no existing event, state or route test needs editing except for the removed MAX_SCORE_PER_ARROW constant)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 49,

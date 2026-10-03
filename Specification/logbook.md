@@ -1401,3 +1401,39 @@ saved result, a tie with both ticks is rejected for the ticks, the script is
 present). Suite: 583 passed. The in-browser check of the script (ticking A then B
 leaves only B) is run by a subagent against this commit; its result is recorded
 below before the task is marked complete.
+
+Task 47 browser check (subagent, headless Edge 154 via an ephemeral Selenium install,
+against `git archive` of commit 45be90c, port 5071): PASS on all four points. Through
+the UI to /event/match/0 there are exactly two `closest` checkboxes (labelled with the
+two archers); ticking A, then B, then A again leaves only the last-ticked box ticked
+and unticking leaves none; entering 90 and 90 with no tick returns the page with the
+"Percentile and score are tied. Tick which archer's arrow was closest to the middle,
+then save again." warning, both score boxes still 90 and no table; ticking Ben and
+saving shows the This pass table (Ann 90 / No, Ben 90 / Yes), the "decided by closest to
+the middle" note and Ben's box ticked; the console had only the favicon 404. (The agent
+noted that which archer is listed first depends on the random Stage 3 draw, so it found
+the boxes by label, and that the app's single in-memory event means the server must be
+restarted between runs.) Task 47 is therefore complete.
+
+### Task 48: Per-archer target setups and per-target maximum score (complete)
+`TargetSetup` gained an optional `face_type` (an `archeryutils` scoring system; None
+keeps simple setup's bowstyle-based choice) and `TargetSetup.parse_advanced(distance,
+face size, face type)`, which validates all three against the offered options and
+names the one that is wrong (the simple `parse` is unchanged and still accepts only the
+four standard sizes). `resolve_target` uses a given face type exactly (the bowstyle is
+ignored, so a Compound archer can be given the plain face indoors and a Recurve one the
+reduced 10). `Archer` has an optional `target_setup`; `Event` uses it if set, falls back
+to the shared one, and takes `target_setup=None` when every archer has their own
+(otherwise it raises, naming the archer). New options in `models.py`: `FACE_TYPES`
+(all 16 non-Custom `archeryutils` scoring systems with hand-written readable names, a
+system added by a future library version is still offered under its own name and a test
+fails to prompt a proper one), `ADVANCED_FACE_SIZES_CM` (20, 35, 40, 50, 60, 65, 80,
+122) and `DEFAULT_FACE_TYPE`. The hard-coded `MAX_SCORE_PER_ARROW = 10` is gone: new
+`max_arrow_score(target)` (the highest ring, 10 / 9 for 5-zone / 11 / 5 / 1 ...) and
+`Event.max_score_for(i)` feed `record_match`'s validation (each score is checked against
+its own archer's maximum), the match page's score boxes (max attribute and label) and the
+chart payload's x-clamp. Engine check (all 16 face types x faces 20/40/60/122 x
+18 m/20 yd/50 m/100 yd x handicaps 0/50/100/150): the per-arrow PMF sums to 1, is
+non-negative, scores in whole numbers, has mean equal to `archeryutils`' `arrow_score`,
+and the pass distribution sums to 1 within [0, n_pass x maximum]; no engine change was
+needed. Suite: 695 passed.

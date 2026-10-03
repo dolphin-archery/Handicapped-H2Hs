@@ -92,7 +92,7 @@ def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     """
     dist_a = event.distribution_for(a)
     dist_b = event.distribution_for(b)
-    max_possible = event.n_pass * 10
+    max_possible = max(event.max_score_for(a), event.max_score_for(b))
 
     x_min, x_max = _display_range(dist_a, dist_b, max_possible)
 

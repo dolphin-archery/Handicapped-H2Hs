@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-{% set max_score = event.n_pass * 10 %}
+{# The most a pass can score depends on each archer's own target (e.g. 9 per arrow on a 5-zone face). #}
+{% set max_a = event.max_score_for(a) %}
+{% set max_b = event.max_score_for(b) if b is not none else 0 %}
 {# An archer's name with their handicap, shown as entered (22.5 stays 22.5, 15.0 shows 15). #}
 {% macro named(i) %}{{ event.archers[i].name }} (handicap {{ '%g'|format(event.archers[i].handicap) }}){% endmacro %}
 <h1>
@@ -27,15 +29,15 @@
 
 <form method="post" action="{{ url_for('event_match_submit', match_index=match_index) }}">
   <div class="row">
-    <label>{{ named(a) }} score (0-{{ max_score }}):
-      <input type="number" step="1" min="0" max="{{ max_score }}" name="score_{{ a }}"
+    <label>{{ named(a) }} score (0-{{ max_a }}):
+      <input type="number" step="1" min="0" max="{{ max_a }}" name="score_{{ a }}"
              value="{{ form_scores.get(a, '') }}" required>
     </label>
   </div>
   {% if b is not none %}
   <div class="row">
-    <label>{{ named(b) }} score (0-{{ max_score }}):
-      <input type="number" step="1" min="0" max="{{ max_score }}" name="score_{{ b }}"
+    <label>{{ named(b) }} score (0-{{ max_b }}):
+      <input type="number" step="1" min="0" max="{{ max_b }}" name="score_{{ b }}"
              value="{{ form_scores.get(b, '') }}" required>
     </label>
   </div>

@@ -201,3 +201,131 @@ def test_resolve_indoor_round_returns_the_real_archeryutils_rounds():
     assert resolve_indoor_round(IndoorRound.WA18, compound=True) is (
         load_rounds.WA_indoor.wa18_compound
     )
+
+
+# --- Feedback 5: advanced setup - explicit face types, per-target maximum ------------
+
+from typing import get_args  # noqa: E402
+
+from archeryutils import targets as au_targets  # noqa: E402
+
+from h2h.models import (  # noqa: E402
+    ADVANCED_FACE_SIZES_CM,
+    FACE_TYPES,
+    max_arrow_score,
+)
+
+ALL_SYSTEMS = [s for s in get_args(au_targets.ScoringSystem) if s != "Custom"]
+
+
+def test_face_types_are_every_archeryutils_scoring_system_except_custom():
+    """The dropdown offers exactly what archeryutils has (a library addition fails this test)."""
+    assert set(FACE_TYPES) == set(ALL_SYSTEMS)
+    assert len(FACE_TYPES) == 16
+    assert all(isinstance(name, str) and name.strip() for name in FACE_TYPES.values())
+
+
+def test_every_face_type_has_a_curated_readable_name_not_just_its_key():
+    """Each system has a hand-written name (so the dropdown never shows a raw key)."""
+    from h2h.models import _FACE_TYPE_NAMES
+
+    assert set(_FACE_TYPE_NAMES) == set(ALL_SYSTEMS)
+    assert all(FACE_TYPES[key] == name for key, name in _FACE_TYPE_NAMES.items())
+
+
+def test_advanced_face_sizes_are_the_diameters_archeryutils_rounds_use():
+    """20, 35, 40, 50, 60, 65, 80, 122 cm, and they include every simple-mode size."""
+    assert ADVANCED_FACE_SIZES_CM == (20, 35, 40, 50, 60, 65, 80, 122)
+    assert set(STANDARD_FACE_SIZES_CM) <= set(ADVANCED_FACE_SIZES_CM)
+
+
+@pytest.mark.parametrize("bowstyle", list(Bowstyle))
+@pytest.mark.parametrize("face_type", ALL_SYSTEMS)
+def test_a_chosen_face_type_is_used_exactly_whatever_the_bowstyle(face_type, bowstyle):
+    """Advanced setup: the scoring system, diameter, distance and indoor flag come from the setup."""
+    setup = TargetSetup(distance=18, unit=METRE, face_cm=40, face_type=face_type)
+    target = resolve_target(setup, bowstyle)
+    assert target.scoring_system == face_type
+    assert target.diameter == pytest.approx(0.4)
+    assert target.distance == pytest.approx(18.0)
+    assert target.indoor is True
+
+
+def test_a_chosen_face_type_overrides_the_compound_rule_both_ways():
+    """A Compound archer given 10_zone indoors scores the plain face; others can be given the reduced 10."""
+    indoor = TargetSetup(20, YARD, 60, face_type="10_zone")
+    assert resolve_target(indoor, Bowstyle.COMPOUND).scoring_system == "10_zone"
+    reduced = TargetSetup(20, YARD, 60, face_type="10_zone_compound")
+    assert resolve_target(reduced, Bowstyle.RECURVE).scoring_system == "10_zone_compound"
+    outdoor_reduced = TargetSetup(70, METRE, 122, face_type="10_zone_compound")
+    assert resolve_target(outdoor_reduced, Bowstyle.BAREBOW).scoring_system == "10_zone_compound"
+
+
+def test_without_a_face_type_resolution_is_the_simple_setup_behaviour():
+    """face_type None (the default) gives exactly the bowstyle-based choice as before."""
+    assert TargetSetup(20, YARD, 60).face_type is None
+    assert resolve_target(PORTSMOUTH, Bowstyle.COMPOUND).scoring_system == "10_zone_compound"
+    assert resolve_target(OUTDOOR_70M, Bowstyle.COMPOUND).scoring_system == "10_zone"
+
+
+@pytest.mark.parametrize(
+    ("face_type", "maximum"),
+    [("10_zone", 10), ("10_zone_compound", 10), ("5_zone", 9), ("11_zone", 11),
+     ("Worcester", 5), ("WA_field", 6), ("IFAA_field", 5), ("Beiter_hit_miss", 1)],
+)
+def test_max_arrow_score_is_the_highest_ring_of_the_face(face_type, maximum):
+    """10 on a standard face, 9 on 5-zone, 11 on 11-zone, 1 on hit/miss, ..."""
+    target = resolve_target(TargetSetup(20, YARD, 60, face_type=face_type), Bowstyle.RECURVE)
+    assert max_arrow_score(target) == maximum
+
+
+@pytest.mark.parametrize("face_type", ALL_SYSTEMS)
+def test_the_statistics_engine_handles_every_face_type(face_type):
+    """Whatever the face: the per-arrow PMF sums to 1, matches archeryutils's mean, in whole scores."""
+    for face_cm, (distance, unit), handicap in itertools.product(
+        (20, 40, 60, 122), ((18, METRE), (20, YARD), (50, METRE), (100, YARD)), (0, 50, 100, 150)
+    ):
+        setup = TargetSetup(distance, unit, face_cm, face_type=face_type)
+        target = resolve_target(setup, Bowstyle.RECURVE)
+        pmf = stats.per_arrow_pmf(handicap, target)
+        assert math.isclose(sum(pmf.values()), 1.0, abs_tol=1e-9)
+        assert all(p >= 0 for p in pmf.values())
+        assert all(float(score).is_integer() for score in pmf)
+        mean = sum(score * p for score, p in pmf.items())
+        assert mean == pytest.approx(float(stats._AGB_SCHEME.arrow_score(handicap, target)), abs=1e-6)
+        dist = stats.n_pass_score_distribution(pmf, 12)
+        assert math.isclose(sum(dist.values()), 1.0, abs_tol=1e-9)
+        assert max(dist) <= 12 * max_arrow_score(target)
+
+
+def test_parse_advanced_accepts_every_offered_combination():
+    """Every (face type, face size, distance) the dropdowns offer parses to the matching setup."""
+    for (distance, unit), face_cm, face_type in itertools.product(
+        STANDARD_DISTANCES, ADVANCED_FACE_SIZES_CM, FACE_TYPES
+    ):
+        key = TargetSetup(distance, unit, 60).distance_key
+        setup = TargetSetup.parse_advanced(key, str(face_cm), face_type)
+        assert setup == TargetSetup(distance, unit, face_cm, face_type)
+
+
+@pytest.mark.parametrize(
+    ("args", "named"),
+    [
+        (("18m", "40", "bogus_zone"), "target face types"),
+        (("18m", "45", "10_zone"), "standard face sizes"),
+        (("18m", "abc", "10_zone"), "standard face sizes"),
+        (("19m", "40", "10_zone"), "standard distances"),
+        (("18m", "40", "Custom"), "target face types"),
+    ],
+)
+def test_parse_advanced_rejects_bad_values_naming_the_one_that_is_wrong(args, named):
+    """An unknown face type, an off-list face size or a non-standard distance is refused."""
+    with pytest.raises(ValueError, match=named):
+        TargetSetup.parse_advanced(*args)
+
+
+def test_simple_parse_still_only_accepts_the_four_standard_face_sizes():
+    """35 cm is an advanced-mode size only; simple setup is unchanged."""
+    with pytest.raises(ValueError):
+        TargetSetup.parse("18m", "35")
+    assert TargetSetup.parse("18m", "40").face_type is None
