@@ -457,13 +457,13 @@
     "name": "Simplify the 'How the winner is decided' text",
     "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.6: replace the long explanation in the shared _pair_chart.html partial with a short plain-language one that avoids the statistical terms (aiming-error standard deviation, convolution, sigma_r, variance, the bowstyle note and the humanSpec reference). It must say that a handicap sets how well an archer is expected to shoot, that a percentile says how good a score is for that handicap (the chance of scoring that much or less), that the higher percentile wins the pass, and that the curves are the expected scores while the vertical lines are the scores actually shot.",
     "tests": [
-      "The explanation text is under 650 characters (the old one was over 1,100).",
+      "The explanation text is under 650 characters (the old one was about 950).",
       "It contains none of: 'convol', 'standard deviation', 'sigma', 'variance', 'humanSpec', 'indoor-compound'.",
       "It still mentions the percentile, that the higher percentile wins the pass, and what the vertical lines show.",
       "It appears with the chart on a match page and on the pair-history page when graph view is on, and not when it is off.",
       "The text lives in exactly one template (the shared partial)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 37,

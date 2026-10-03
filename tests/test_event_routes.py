@@ -5,6 +5,7 @@ results and chart pages.
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -839,3 +840,56 @@ def test_bye_match_page_shows_the_bye_archers_handicap():
     page = client.get("/event/match/1").data.decode()
     assert f"{expected.name} (handicap {expected.handicap:g}) - bye" in page
     assert f"{expected.name} (handicap {expected.handicap:g}) score" in page
+
+
+# --- Simplified "How the winner is decided" text (Feedback 4) ----------------
+
+
+def winner_explanation_text(html):
+    """The plain text of the 'How the winner is decided' block in a rendered page."""
+    start = html.index('<div class="maths">')
+    block = html[start : html.index("</div>", start)]
+    return " ".join(re.sub(r"<[^>]+>", " ", block).split())
+
+
+def test_winner_explanation_is_short_and_free_of_statistical_jargon():
+    """The explanation is brief and avoids the old technical terms."""
+    client, _ = started_pair_with_a_shared_pass()
+    turn_on_graph_view(client)
+    text = winner_explanation_text(client.get("/event/match/0").data.decode())
+    assert len(text) < 650  # the old explanation was about 950 characters
+    lowered = text.lower()
+    for jargon in ("convol", "standard deviation", "sigma", "&sigma", "variance",
+                   "humanspec", "indoor-compound", "n_pass", "x-ring"):
+        assert jargon not in lowered, jargon
+
+
+def test_winner_explanation_still_explains_percentile_winner_and_the_vertical_lines():
+    """The short text keeps the three ideas a scorer needs."""
+    client, _ = started_pair_with_a_shared_pass()
+    turn_on_graph_view(client)
+    text = winner_explanation_text(client.get("/event/match/0").data.decode())
+    assert "percentile" in text
+    assert "chance of scoring that much or less" in text
+    assert "higher percentile" in text and "wins the pass" in text
+    assert "vertical lines" in text and "actually shot" in text
+
+
+def test_winner_explanation_appears_with_the_chart_only():
+    """It shows on the match page and pair-history page with graph view on, never off."""
+    client, _ = started_pair_with_a_shared_pass()
+    assert "How the winner is decided" not in client.get("/event/match/0").data.decode()
+    turn_on_graph_view(client)
+    assert "How the winner is decided" in client.get("/event/match/0").data.decode()
+    assert "How the winner is decided" in client.get("/event/pair/0/1").data.decode()
+
+
+def test_winner_explanation_text_lives_in_one_template_only():
+    """The wording is in the shared partial, not copied into other templates."""
+    templates = Path(__file__).resolve().parent.parent / "h2h" / "templates"
+    owners = [
+        t.name
+        for t in templates.glob("*.html")
+        if "chance of scoring that much or less" in t.read_text(encoding="utf-8")
+    ]
+    assert owners == ["_pair_chart.html"]

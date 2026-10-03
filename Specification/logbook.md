@@ -967,3 +967,20 @@ handicap shows without ".0" (15.0 -> 15) while decimals stay in full (22.5,
 sits against its own archer (deliberately very different values, 5 and 120), and
 the bye match. Only the match page changed; the overview and results tables are
 untouched (the overview table is reworked in task 37).
+
+### Task 36: Simplify the 'How the winner is decided' text (complete)
+The explanation in the shared `_pair_chart.html` partial (shown with the chart on
+match pages and the pair-history page) went from about 950 characters of
+statistical prose (aiming-error standard deviation, convolution, a bowstyle
+note, a reference to `humanSpec.md`) to 420 characters in two short paragraphs:
+a handicap sets how well an archer is expected to shoot, the curves are the
+scores each is expected to shoot and the dashed vertical lines the scores
+actually shot; a percentile is the chance of scoring that much or less, and
+whoever has the higher percentile did better for their handicap and wins the
+pass. Tests extract the rendered block and assert it is under 650 characters,
+contains none of the old jargon (convol, standard deviation, sigma, variance,
+humanspec, indoor-compound, x-ring, n_pass), still states the percentile, the
+higher-percentile-wins rule and the vertical lines, appears only with graph view
+on (both pages), and that its wording lives in exactly one template. The
+Compound scoring note was dropped from this text on purpose ("simplify"); that
+rule is still stated on Stage 2.
