@@ -91,6 +91,31 @@ def _scored_passes(event: Event, archer: int) -> list[dict[str, int]]:
     return [{"index": r.rotation_index, "score": r.score} for r in results]
 
 
+def _legend_label(event: Event, archer: int) -> str:
+    """The archer's chart legend text: "Name (handicap H)".
+
+    H is the handicap the plotted curve is built from (AISpec.md section 5.6, Assumption 51):
+    the entered handicap as entered (22.5 stays 22.5, 15.0 shows 15) when handicaps are not
+    updated, and the handicap for the current pass, to one decimal place, when they are.
+
+    Parameters
+    ----------
+    event : h2h.models.Event
+        The event.
+    archer : int
+        The archer's index.
+
+    Returns
+    -------
+    str
+        The legend text.
+    """
+    name = event.archers[archer].name
+    if event.update_handicaps:
+        return f"{name} (handicap {event.handicap_for(archer):.1f})"
+    return f"{name} (handicap {event.archers[archer].handicap:g})"
+
+
 def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     """Build the JSON payload for a pair-of-archers' interactive distribution chart.
 
@@ -112,8 +137,8 @@ def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     Returns
     -------
     dict
-        JSON-serialisable structure: for each archer a `name` and `passes`
-        (`{"index", "score"}` per scored pass);
+        JSON-serialisable structure: for each archer a `name`, a `legend` label
+        ("Name (handicap H)") and `passes` (`{"index", "score"}` per scored pass);
         each archer's (score, probability) curve points over the shared x-range
         (`x_min` to `x_max`, covering the curves' trimmed range and every
         score in either archer's `passes`, with a margin); the y-axis ceiling
@@ -142,8 +167,16 @@ def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     y_max = max(max(dist_a.values()), max(dist_b.values())) * 1.15
 
     return {
-        "archer_a": {"name": event.archers[a].name, "passes": passes_a},
-        "archer_b": {"name": event.archers[b].name, "passes": passes_b},
+        "archer_a": {
+            "name": event.archers[a].name,
+            "legend": _legend_label(event, a),
+            "passes": passes_a,
+        },
+        "archer_b": {
+            "name": event.archers[b].name,
+            "legend": _legend_label(event, b),
+            "passes": passes_b,
+        },
         "distribution_a": points(dist_a),
         "distribution_b": points(dist_b),
         "x_min": x_min,

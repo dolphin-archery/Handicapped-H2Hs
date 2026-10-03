@@ -796,8 +796,8 @@ def test_graph_view_match_page_renders_chart_even_before_any_scoring():
     payload = embedded_chart_payload(page)
     assert payload["archer_a"]["passes"] == [] and payload["archer_b"]["passes"] == []
     assert payload["archer_a"]["name"] == "Alice"
-    assert "legend" not in payload["archer_a"] and "handicap" not in payload["archer_a"]
-    assert payload["archer_b"]["name"] == "Bob" and "handicap" not in payload["archer_b"]
+    assert payload["archer_a"]["legend"] == "Alice (handicap 15)"
+    assert payload["archer_b"]["name"] == "Bob" and payload["archer_b"]["legend"] == "Bob (handicap 45)"
     assert payload["distribution_a"] and payload["distribution_b"]
 
 
@@ -943,26 +943,33 @@ def heading(html):
     return " ".join(re.sub(r"<[^>]+>", " ", re.search(r"<h1>(.*?)</h1>", html, re.S).group(1)).split())
 
 
-def test_match_page_shows_names_only_no_handicap_beside_an_archer_before_or_after_scoring():
-    """Feedback 6: the heading, the score labels and the chart legend carry no handicap."""
+def test_match_page_heading_and_labels_are_names_only_and_only_the_chart_legend_has_handicaps():
+    """Feedback 6 (names only in the heading and labels) and 7 (the legend's handicap is back)."""
     client = make_client()
     start_event_with_handicaps(client, (15, 22.5))
+    off = client.get("/event/match/0").data.decode()
+    assert "handicap" not in off.split("</nav>")[1].lower()  # graph view off: no handicap anywhere
     client.post("/graph-view", data={"next": "/event/match/0"})
     for expected_state in ("before", "after"):
         page = client.get("/event/match/0").data.decode()
         assert heading(page) == "Alice vs Bob", expected_state
         assert "Alice score (0-120):" in page and "Bob score (0-120):" in page
-        assert "(handicap " not in page and "handicap 15" not in page and "handicap 22" not in page
-        assert '"handicap"' not in page  # nor in the chart's payload
+        payload = embedded_chart_payload(page)
+        assert payload["archer_a"]["legend"] == "Alice (handicap 15)"
+        assert payload["archer_b"]["legend"] == "Bob (handicap 22.5)"
+        body = page.split("</nav>")[1]
+        outside_payload = re.sub(r"window\.MATCH_CHART_DATA = .*?;\n", "", body, flags=re.S).lower()
+        assert not re.search(r"\(handicap [\d.]+\)", outside_payload)  # no "Name (handicap H)" in the page itself
+        assert "handicap 15" not in outside_payload and "handicap 22" not in outside_payload
         save_match(client, 0, {0: 100, 1: 60})
 
 
-def test_the_chart_script_names_each_curve_by_the_archer_name_alone():
-    """The legend text comes from the payload's name; no handicap is composed into it."""
+def test_the_chart_script_labels_each_curve_with_the_payloads_legend_text():
+    """The legend text (name and handicap) is composed on the server and used as is."""
     script = (Path(__file__).resolve().parent.parent / "h2h" / "static" / "match_chart.js").read_text(encoding="utf-8")
-    assert "curveDataset(data.distribution_a, COLOR_A, data.archer_a.name)" in script
-    assert "curveDataset(data.distribution_b, COLOR_B, data.archer_b.name)" in script
-    assert ".legend" not in script and "handicap)" not in script
+    assert "curveDataset(data.distribution_a, COLOR_A, data.archer_a.legend)" in script
+    assert "curveDataset(data.distribution_b, COLOR_B, data.archer_b.legend)" in script
+    assert "handicap)" not in script  # the script does not build the text itself
 
 
 def test_bye_match_page_has_the_bye_archers_name_only():

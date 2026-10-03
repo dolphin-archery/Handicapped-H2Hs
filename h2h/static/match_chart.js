@@ -7,8 +7,8 @@
  * labelled on the chart with its pass number ("P3"). By default only the
  * pass currently being scored is marked; a checkbox adds every earlier pass
  * of both archers, whoever they were shooting against (Specification/
- * feedback.md "Feedback 5"). The legend names each archer (no handicap, per
- * "Feedback 6").
+ * feedback.md "Feedback 5"). The legend names each archer with the handicap the
+ * plotted curve is built from ("Feedback 7").
  */
 (function () {
   const data = window.MATCH_CHART_DATA;
@@ -74,8 +74,8 @@
   }
 
   const baseDatasets = [
-    curveDataset(data.distribution_a, COLOR_A, data.archer_a.name),
-    curveDataset(data.distribution_b, COLOR_B, data.archer_b.name),
+    curveDataset(data.distribution_a, COLOR_A, data.archer_a.legend),
+    curveDataset(data.distribution_b, COLOR_B, data.archer_b.legend),
   ];
 
   /*

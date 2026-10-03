@@ -2024,3 +2024,17 @@ after a new Stage 1), plus submitting the untouched defaults for 60 arrows store
 still overrides and an invalid one is still rejected, and three model tests (the final pass of a 60-arrow event
 uses all four earlier passes with weight (5 H0 + 4 H) / 9, a sixth pass with lookback 4 drops the first pass,
 and in a 36-arrow event the 4 is capped at the 2 passes shot). Suite: 892 passed.
+
+### Task 67: Chart legend shows each archer's handicap again (complete apart from the browser check)
+`build_pair_chart_data` restored the `legend` string in each archer's payload entry: "Name (handicap H)", with
+H the handicap the plotted curve is built from. With handicap updating off that is the entered handicap in the
+Feedback 5 format (22.5 stays 22.5, 15.0 shows 15); with updating on it is `Event.handicap_for(archer)` for the
+current pass to one decimal place, so the legend and the plotted curve always agree (Assumption 51). The
+chart script labels each curve with that text (the marker lines are still out of the legend). The match
+page's heading and score-box labels stay names only (Feedback 6). Tests: payload legends for entered handicaps
+22.5, 15.0 and 7.25 and for the other archer, the updating case (the entered handicap to one decimal place
+before any pass, the updated one afterwards and different), the chart script using the payload's legend text, and
+the match page (graph view off: no handicap anywhere after the nav bar; graph view on: names-only heading and
+labels, legends in the payload, and no "Name (handicap H)" in the page outside the payload). The earlier
+names-only legend tests were replaced. Suite: 895 passed. The legend is checked in a real browser with the
+rest of the Feedback 7 browser checks (tasks 71 and 72).
