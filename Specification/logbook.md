@@ -1918,3 +1918,77 @@ ten invalid-value cases with refill, reset and a new Stage 1 clearing and the de
 size, the forced simple-mode request, page visibility, and an advanced event played over HTTP whose pass-2
 percentile equals the one from the updated distribution and differs from the entered-handicap one. Suite:
 883 passed.
+
+### Task 66: Integration checks, browser walkthrough and docs for Feedback 6 (complete)
+Three scenarios were added to `tests/test_integration.py` over the real routes: a 4-archer advanced
+event with handicap updating on (n_lookback 2, start weight 3) in which every recorded percentile equals
+the one from the distribution of the handicap that pass was scored with, at least one handicap has moved by
+pass 3, the to-date handicap of each archer equals `archeryutils`'s whole-round handicap for their 36-arrow
+total, the leaderboard page, archer results, both CSVs and the PDF agree with the model and with each
+other, and every export carries the same fixed stamp in its file name and contents; names-only match pages
+with the tie boxes absent until an exact tie and present after it (and gone again once the scores are
+untied); and the Results page's per-pass tables grouped in the overview's order with distinct percentile
+texts for each scored pair. README.md was updated for the Stage 2 button and the updating choice (with the
+formula), the names-only match pages, the Handicap column and percentile precision, tie boxes only on a
+tie, grouped per-pass results, the starting and to-date handicaps and the stamped exports. Suite: 886
+passed.
+
+Real-browser walkthrough (subagent, headless Edge 154 via Selenium, commit 28f2561 exported with `git
+archive`, port 5077, through the page's own forms and buttons; scenario 1 ran twice): PASS on every step, no
+bugs, console clean (favicon 404 and CDN tracking-prevention warnings only).
+- **Stage 2:** the button reads "Continue to Stage 3"; the "Update handicaps during matches" Yes/No radios sit
+  above the archers table with No selected and both number inputs hidden; Yes shows both with 3 and 3 (36
+  arrows, 12 per pass), No hides them again; Yes with lookback 1 and start weight 2 went through Stage 3.
+- **Match pages:** on 12 page views the h1 is the two names, labels read "<name> score (0-120):", no handicap
+  text and no `closest` checkbox until the tie; the This pass table is exactly Archer | Score | Percentile |
+  Handicap | Winner (e.g. Dan 95, 1.4%, 59.3, No; Cat 105, 2.7%, 48.7, Yes).
+- **Percentile display:** ordinary pairs show one decimal (1.4% / 2.7%); a pair re-saved at 100 and 95 (both
+  near 0) showed "0.000%" and "0.002%" in the table and the overview, i.e. more places until they differ; a
+  pair far below 1e-20 stays "0.0% / 0.0%" as specified.
+- **Tie:** Ann and Ben (identical handicap and target) meeting in pass 1, scoring 100 and 100, got the tie warning
+  and, for the first time on that page, the two boxes; ticking Ben saved Ben Yes / Ann No with the note and
+  Ben's box ticked.
+- **Results page:** the leaderboard has the six columns (e.g. Ben 3 points, starting 30, to-date 41.4); the Pass 1-3
+  tables have the five columns with rows in match pairs; the computed `border-top` of the first row of the
+  second match is 3px double and every other row is 1px solid in all three passes (the earlier bug is fixed);
+  the screenshot reads clearly as pairs.
+- **Archer results and exports:** headings such as "Ben - total score 330 - starting handicap 30 - to-date
+  handicap 41.4"; downloaded files `leaderboard_20261003-214842.csv`, `archer-results_...csv` and
+  `results_...pdf`, whose `Exported` column values (one per file) and PDF line "Exported 2026-10-03 21:48:47
+  (local time)" equal the stamp in the file name; the CSV headers are the agreed ones; the PDF has both handicap
+  headings (the leaderboard's "Starting handicap" heading wraps to two lines in its narrow column, a cosmetic
+  point only).
+- **Graph view:** the legend lists the two names only ("Dan", "Ben"), with no "(handicap" anywhere.
+- **Simple setup:** no updating control at all, the same button text, and a tie in pass 1 brings the boxes up
+  (0 before, 2 after).
+Task 60's corrected double rules and task 65's toggle are verified by this walkthrough, so those tasks are
+complete too.
+
+## Feedback 6 summary (for anyone picking this up)
+All of `Specification/feedback.md` "Feedback 6" is implemented (prd tasks 57-66, all `completed`):
+- **Scoring pages:** no handicap beside an archer's name (labels, heading and chart legend are names only,
+  Assumption 41); the This pass table gains a Handicap column (the handicap the pass score implies);
+  percentiles gain decimal places until the pair's two texts differ (up to 20; a genuine tie such as both
+  100% stays at one place); the tie-break boxes appear only when the percentile and score tie.
+- **Results:** per-pass results use the same table as the match pages, with a thick double line between
+  matches (a "Pass N" heading each); leaderboard and archer results show starting and to-date handicap (the
+  to-date one is the handicap implied by the total over all arrows shot so far, equal to the full-round
+  handicap after the last pass).
+- **Exports:** every CSV and the PDF carry the date and time (file name, a final `Exported` CSV column, a line
+  in the PDF) and both handicaps; the old CSV `Handicap` column is `Starting handicap`.
+- **Stage 2:** the submit button reads "Continue to Stage 3".
+- **Handicap moving average:** in advanced setup an "Update handicaps during matches" choice (default No)
+  with `n_lookback` and Start weight (both default to the passes per archer); before each pass an archer's
+  handicap is `(start_weight x entered + m x recent) / (start_weight + m)`, `m = min(n_lookback, passes
+  shot)`, and it sets the distribution that pass is judged against; it is not displayed.
+Decisions worth a second look, all in `Specification/AISpec.md` section 7 (Assumptions 41-50): **41** the
+chart legend lost its handicaps too (restore the `legend` label in `h2h/chart_data.py` if wanted); **42** "both
+100%" is read as a genuine tie, so a pair like 99.97 and 99.98 shows two places; **43** the tie boxes can only
+appear after a tie is found on saving, so the scorer cannot pre-tick them; **44** "per pass handicap" is the
+pass score's handicap, not the handicap in use for the pass; **46-47** the export stamp is local time and the
+CSV carries it as a final column, and the to-date handicap is also on the pages and repeated per row in the
+archer-results CSV; **49** the weighting formula and the `n_lookback` default (the feedback gives none), which
+make the updating self-referential: an archer who improves faces a higher bar. A defect found by the browser
+check and fixed: the double-rule CSS selector put the line on every row of a later match, not only its
+first. Not touched: everything under "Future Plans - DO NOT IMPLEMENT YET" (nicer UI, maths explainer, user
+guide, publication). Final suite: 886 tests passing.

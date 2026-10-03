@@ -842,7 +842,7 @@
       "Verified in a real browser: the double rules are drawn between matches of a pass (screenshot read and described).",
       "The full suite passes with the migrated results-page tests."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 61,
@@ -915,7 +915,7 @@
       "Verified in a real browser: the Yes/No toggle shows and hides the two inputs, the defaults are right, and submitting Yes with custom values reaches Stage 3 with no JS console errors.",
       "The full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 66,
@@ -928,6 +928,6 @@
       "A real-browser walkthrough (Stage 2 toggle and button, a tied match, the match page's Handicap column and names-only labels and legend, the double rules on the Results page, downloading each export and checking the name, first lines and stamp) completes with no JS console errors.",
       "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 6 section."
     ],
-    "completed": false
+    "completed": true
   }
 ]
