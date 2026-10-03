@@ -65,7 +65,7 @@
 
 <h2>Per-pass results</h2>
 {% for rv in rotations_view %}
-<h3>Rotation {{ rv.index + 1 }}</h3>
-{% with results=rv.results %}{% include "_results_table.html" %}{% endwith %}
+<h3>Pass {{ rv.index + 1 }}</h3>
+{% with groups=rv.groups %}{% include "_pass_table.html" %}{% endwith %}
 {% endfor %}
 {% endblock %}

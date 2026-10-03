@@ -495,15 +495,27 @@ def create_app(state: SessionState | None = None) -> Flask:
 
     @app.get("/event/results")
     def event_results():
+        """The leaderboard, pairwise results and per-pass results (matches grouped).
+
+        Returns
+        -------
+        flask.Response | str
+            The rendered page, or a redirect to Stage 1 if no event exists.
+        """
         if session.event is None:
             return redirect(url_for("stage1"))
         event = session.event
 
+        # Each pass with results: one group of table rows per scored match, in match order.
         rotations_view = []
         for idx in range(len(event.schedule)):
-            rotation_results = [r for r in event.results if r.rotation_index == idx]
-            if rotation_results:
-                rotations_view.append({"index": idx, "results": rotation_results})
+            groups = [
+                outputs.pass_table_rows(event, results)
+                for results in (event.match_results(idx, match) for match in event.matches(idx))
+                if results
+            ]
+            if groups:
+                rotations_view.append({"index": idx, "groups": groups})
 
         return render_template(
             "results.html",

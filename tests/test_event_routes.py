@@ -554,7 +554,7 @@ def test_advancing_shows_the_next_passes_pairings_and_accepts_its_scores():
 
     score_current_pass(client)
     results = client.get("/event/results").data
-    assert b"Rotation 2" in results
+    assert b"<h3>Pass 2</h3>" in results and b"Rotation" not in results
 
 
 def test_final_pass_has_no_advance_button_and_links_to_results_when_scored():
@@ -832,7 +832,7 @@ def test_pair_history_and_results_pages_still_render_their_content():
     pair_page = client.get("/event/pair/0/1").data.decode()
     assert 'id="match-chart"' in pair_page and "How the winner is decided" in pair_page
     results_page = client.get("/event/results").data.decode()
-    for header in ("Percentile", "Equiv. handicap", "Opponent", "Won?"):
+    for header in ("Percentile", "Handicap", "Winner"):
         assert header in results_page
 
 
@@ -843,7 +843,6 @@ def test_chart_maths_and_results_table_markup_is_not_duplicated_across_templates
     for needle, owner in (
         ("How the winner is decided", "_pair_chart.html"),
         ("window.MATCH_CHART_DATA", "_pair_chart.html"),
-        ("<th>Equiv. handicap</th>", "_results_table.html"),
         ("<th>Handicap</th><th>Winner</th>", "_pass_table.html"),
     ):
         assert [name for name, src in sources.items() if needle in src] == [owner]
@@ -2098,3 +2097,87 @@ def test_bye_match_table_has_one_row_with_a_handicap_and_no_winner():
     assert headings == ["Archer", "Score", "Percentile", "Handicap", "Winner"]
     assert len(rows) == 1 and rows[0][4] == "-" and rows[0][3] != "-"
     assert re.fullmatch(r"\d+\.\d%", rows[0][2])
+
+
+# --- Per-pass results on the Results page: grouped match tables (Feedback 6) --------------
+
+PASS_HEADINGS = ["Archer", "Score", "Percentile", "Handicap", "Winner"]
+
+
+def pass_tables(page):
+    """The page's per-pass tables (those with the pass table headings), as body rows each."""
+    return [rows for headings, rows in all_tables(page) if headings == PASS_HEADINGS]
+
+
+def test_results_page_has_a_pass_table_per_scored_pass_in_the_match_page_format():
+    """'Pass 1' heading, Archer | Score | Percentile | Handicap | Winner, rows in overview order."""
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    score_current_pass(client, lambda archer: 80 + archer)
+    page = client.get("/event/results").data.decode()
+    assert "<h3>Pass 1</h3>" in page and "<h3>Pass 2</h3>" not in page
+    (rows,) = pass_tables(page)
+    assert len(rows) == 4
+    expected_order = [state.event.archers[p].name for match in state.event.matches(0) for p in match]
+    assert [row[0] for row in rows] == expected_order
+
+
+def test_each_matchs_rows_are_a_group_with_a_double_rule_between_groups():
+    """One <tbody class="match"> per match; the stylesheet draws a 3px double line between them."""
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    score_current_pass(client, lambda archer: 80 + archer)
+    page = client.get("/event/results").data.decode()
+    pass_block = page[page.index("<h3>Pass 1</h3>") :]
+    groups = re.findall(r'<tbody class="match">(.*?)</tbody>', pass_block, re.S)
+    assert len(groups) == 2 and all(group.count("<tr>") == 2 for group in groups)
+    assert "tbody.match + tbody.match td" in page and "3px double" in page
+
+
+def test_the_pass_table_values_are_the_events_own_under_the_display_rules():
+    """Names, scores, percentile texts (display rule), handicaps and Yes/No equal the results."""
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    score_current_pass(client, lambda archer: 80 + 3 * archer)
+    event = state.event
+    (rows,) = pass_tables(client.get("/event/results").data.decode())
+    expected = []
+    for match in event.matches(0):
+        results = event.match_results(0, match)
+        texts = percentile_pair_text(results[0].percentile, results[1].percentile)
+        for r, text in zip(results, texts, strict=True):
+            expected.append([
+                event.archers[r.archer_index].name, str(r.score), text,
+                f"{r.handicap:.1f}", "Yes" if r.won else "No",
+            ])
+    assert rows == expected
+
+
+def test_a_bye_match_is_a_group_of_one_row_and_unscored_matches_are_left_out():
+    """Byes shot: the solo match is its own group with winner '-'; unsaved matches are not listed."""
+    client, state = make_client_and_state()
+    start_three_archer_event(client, shoot_byes=True)
+    bye_archer = state.event.schedule[0].bye
+    pair, _ = state.event.matches(0)
+    save_match(client, 0, {p: 80 + p for p in pair})  # the bye match is not scored yet
+    page = client.get("/event/results").data.decode()
+    (rows,) = pass_tables(page)
+    assert len(rows) == 2 and page.count('<tbody class="match">') == 1
+
+    save_match(client, 1, {bye_archer: 90})
+    page = client.get("/event/results").data.decode()
+    (rows,) = pass_tables(page)
+    assert len(rows) == 3 and rows[2][4] == "-" and page.count('<tbody class="match">') == 2
+
+
+def test_results_page_headings_say_pass_and_there_is_no_opponent_or_won_column():
+    """'Pass N' for every pass, and the old Opponent / Won? columns are gone from the page."""
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    for _ in range(2):
+        score_current_pass(client, lambda archer: 80 + archer)
+        client.post("/event/advance")
+    page = client.get("/event/results").data.decode()
+    assert "<h3>Pass 1</h3>" in page and "<h3>Pass 2</h3>" in page and "<h3>Pass 3</h3>" not in page
+    assert "Rotation" not in page and "Opponent" not in page and "Won?" not in page
+    assert len(pass_tables(page)) == 2

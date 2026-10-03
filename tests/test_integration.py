@@ -106,9 +106,13 @@ def test_odd_n_archers_each_rotation_has_exactly_one_bye():
         if pass_number < 5:
             client.post("/event/advance")
 
-    results = client.get("/event/results")
-    # Every archer must appear at least once as a bye-labelled opponent.
-    assert results.data.count(b"bye") >= 5
+    page = client.get("/event/results").data.decode()
+    # Each pass's bye match is a group of one row (winner '-'); across 5 passes every archer has one.
+    groups = re.findall(r'<tbody class="match">(.*?)</tbody>', page, re.S)
+    solo = [g for g in groups if g.count("<tr>") == 1]
+    assert len(solo) == 5
+    assert {re.findall(r"<td>(.*?)</td>", g)[0] for g in solo} == {f"A{i}" for i in range(5)}
+    assert all(re.findall(r"<td>(.*?)</td>", g)[4] == "-" for g in solo)
 
 
 def test_indoor_mode_compound_archer_uses_compound_target():

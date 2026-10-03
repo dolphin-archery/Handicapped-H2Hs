@@ -1796,3 +1796,19 @@ match keeping the earlier result, both ticked), and the existing note/edit tests
 boxes after the tie is gone. Suite: 820 passed. The real-browser check (no boxes on a normal page,
 the boxes and message on an exact tie, exclusivity, correct saved result) is combined with the
 task 60 check below.
+
+### Task 60: Results page - per-pass results as grouped match tables (complete apart from the browser check)
+The per-pass results on `/event/results` now use the match pages' table (the shared `_pass_table.html`):
+for every pass with results, a "Pass N" heading (it said "Rotation N") and one table Archer | Score |
+Percentile | Handicap | Winner whose rows are grouped by match in the overview's order, each match a
+`<tbody class="match">` and a CSS rule (`tbody.match + tbody.match td { border-top: 3px double }`)
+drawing a thick double line between one match and the next; a bye match is a group of one row with
+Winner "-", unscored matches are left out, and percentiles follow the display rule. The route builds
+the groups with `pass_table_rows(event, event.match_results(idx, match))`. The old
+`_results_table.html` (Opponent and "Won?" columns) had no other user and was deleted. The pairwise
+results and leaderboard sections are unchanged. Tests: five new route tests (a Pass 1 table in
+overview order, one group per match with the stylesheet rule, values equal to the Event's results
+under the display rule, a bye group and unscored matches left out, "Pass N" headings with no
+Opponent/Won? columns) and two migrated ones (the page now has "Pass 2" not "Rotation 2"; the
+five-bye integration test now counts the single-row groups, five of them, one per archer). Suite:
+825 passed. Browser check below with task 59.
