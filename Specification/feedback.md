@@ -113,6 +113,12 @@ During setup stage 2 if in advanced mode have a yes/no toggle for 'Update Handic
 - If no use a constant handicap for per archer probability distribution for all passes.
 - If yes for each pass take a weighted average of starting handicap and handicap of arrows shot so far. Parameterise this via $n_{lookback}$, an integer which decides how many $n_{pass}$ arrows back in time to use for calculating handicap at the start of each pass. $n_{lookback} = 1$ uses only the previous $n_{pass}$ to decide the probability distribution for the pass to come. A second integer paramter, _Start Weight_, controls how many $n_{pass}$ arrows the inital handicap counts for, defaulting to $n_{arrows}/n_{pass}$ =5 for 60 arrow round and 12 arrow passes.
 
+# Feedback 7
+
+1. I want the in legend handicap from feedback 5 back.
+2. Confirm that if in advanced mode and using moving average handicaps that the distributions per archer that are plotted change between passes
+2. When using moving average handicaps all tables that display the per pass handicap (handicap of arrows shot that pass)should display also the per pass starting handicap (used to generate the distribution the score is evaluated against)
+3. default n_lookback should be 4, such that for the final pass of a 60 arrow round the score distribution is based only on the arrows shot so far in this round
 
 # Future Plans - DO NOT IMPLEMENT YET
 
