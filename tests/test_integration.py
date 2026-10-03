@@ -424,7 +424,7 @@ def test_overview_table_agrees_with_the_event_for_every_match_of_a_full_event():
             winner = ra if ra.won else rb
             assert row[0] == f"{event.archers[a].name} vs {event.archers[b].name}"
             assert row[1] == f"{ra.score} - {rb.score}"
-            assert row[2] == f"{ra.percentile * 100:.1f}% - {rb.percentile * 100:.1f}%"
+            assert row[2] == " - ".join(outputs.percentile_pair_text(ra.percentile, rb.percentile))
             assert row[3] == event.archers[winner.archer_index].name
         if pass_number < 3:
             client.post("/event/advance")

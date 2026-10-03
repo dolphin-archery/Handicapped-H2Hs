@@ -327,6 +327,7 @@ def create_app(state: SessionState | None = None) -> Flask:
                     "b": match[1],
                     "scored": bool(results),
                     "results": {r.archer_index: r for r in results},
+                    "percentiles": [row.percentile for row in outputs.pass_table_rows(event, results)],
                 }
             )
         return render_template(
@@ -401,8 +402,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         if not 0 <= match_index < len(matches):
             return redirect(url_for("event_rotation"))
         a, b = matches[match_index]
-        by_archer = {r.archer_index: r for r in event.match_results(idx, (a, b))}
-        results = [by_archer[i] for i in (a, b) if i in by_archer]  # in match order
+        results = event.match_results(idx, (a, b))  # in match order
         if form_scores is None:
             form_scores = {r.archer_index: r.score for r in results}
         if form_closest is None:

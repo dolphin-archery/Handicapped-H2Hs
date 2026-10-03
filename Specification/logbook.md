@@ -1714,3 +1714,47 @@ that showed a far-away point; by the unit tests: absolute percentile tolerance w
 lower-tail scores, and a `nan` score accepted by the calculator (pre-existing). Not touched:
 everything under "Future Plans - DO NOT IMPLEMENT YET" (the handicap moving average, nicer UI,
 maths explainer, user guide, publication). Final suite: 798 tests passing.
+
+
+## Feedback 6 - Handicap display, tie-break boxes, grouped results, export stamps, handicap updating
+
+Scope: every item under `Specification/feedback.md`'s "Feedback 6" heading (prd tasks 57-66),
+including the "Handicap Moving Average" that Feedback 6 promoted out of "Future Plans"; what
+is still under "Future Plans - DO NOT IMPLEMENT YET" (nicer UI, maths explainer, user guide,
+publication) is not touched. `Specification/AISpec.md` was updated first (sections 1-6, new
+5.2c, and Assumptions 41-50; Assumption 32 is superseded), then `prd.json`.
+
+Assumptions made (full text in `Specification/AISpec.md` section 7):
+- **41** - "Do not display handicap next to archer names during score input. Ignore previous
+  instructions saying to" is read as withdrawing all three earlier requests (Feedback 4's
+  heading and score-box labels, Feedback 5's chart legend, Assumption 32's compromise): the
+  match page shows names only, including the chart legend.
+- **42** - percentiles of a pair gain decimal places (up to 20) until the two texts differ;
+  a genuine tie (equal within the tie-break tolerance, e.g. both 100%) stays at one place.
+- **43** - the tie-break boxes appear only after a tie is refused or when a saved result was
+  decided by the tick (a tie is only known once the scores are saved).
+- **44-48** - the This pass table's Handicap is the pass score's equivalent handicap; the
+  grouped Results tables; the export stamp is local time (in the file name, a final CSV
+  `Exported` column and the PDF); to-date handicap is the equivalent handicap of the total over
+  the arrows shot in completed passes (one value per archer, also shown on the pages); the
+  Stage 2 button reads "Continue to Stage 3".
+- **49-50** - handicap updating: `H = (start_weight * H0 + m * H_recent) / (start_weight +
+  m)`, `m = min(n_lookback, passes shot)`; both parameters default to the passes per archer
+  (the feedback gives the start weight's default, not `n_lookback`'s), whole numbers >= 1; an
+  advanced-setup Stage 2 setting only.
+
+### Task 57: Percentile display rule and shared pass-table rows (complete)
+`h2h/outputs.py` gained `percentile_pair_text(a, b)`: both percentiles to one decimal place
+unless the texts are identical, then a place is added to both until they differ (at most 20); a
+pair that is tied within `stats.PERCENTILE_REL_TOLERANCE` (both exactly 100%, both 0, equal
+values), or still identical at 20 places, stays at one place. By string comparison, so 0.99996 and
+0.99991 become "100.00%" and "99.99%". It also gained `PassTableRow` and `pass_table_rows(event,
+results)`, which turn one match's results into the rows of the shared pass table (name, score,
+percentile text under the rule, handicap to one decimal place or "-", Yes/No or "-"). The
+overview's Percentiles column now uses it, and `Event.match_results` now returns results in match
+order (it used to be recorded order), which let the match route drop its own reordering. Three
+older tests had used unrealistically low scores whose percentiles are around 1e-18; the rule shows
+many decimals for those (as the user's rule says), so they now compute the expected text through
+`percentile_pair_text`. Tests: 16 unit tests (differing pairs unchanged, places added, rounding,
+ties staying at one place, tiny pairs, the 20-place limit and a sweep that never raises, row
+building incl. zero score and bye, match order) and two overview route tests. Suite: 816 passed.

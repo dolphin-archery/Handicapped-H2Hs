@@ -13,6 +13,7 @@ import pytest
 
 from h2h.app import create_app
 from h2h.models import DEFAULT_TARGET_SETUP, METRE, TargetSetup
+from h2h.outputs import percentile_pair_text
 from h2h.state import SessionState
 
 from .helpers import make_state, overview_table, save_match, score_current_pass
@@ -1074,7 +1075,7 @@ def test_scored_pair_row_matches_the_events_recorded_results():
         assert row == [
             f"{event.archers[a].name} vs {event.archers[b].name}",
             f"{result_a.score} - {result_b.score}",
-            f"{percent(result_a.percentile)} - {percent(result_b.percentile)}",
+            " - ".join(percentile_pair_text(result_a.percentile, result_b.percentile)),
             event.archers[winner.archer_index].name,
             "View / edit",
         ]
@@ -1099,7 +1100,7 @@ def test_score_and_percentile_orientation_follows_the_match_column_for_every_pai
         result_a, result_b = event.match_results(1, (a, b))
         assert rows[i][0] == f"{event.archers[a].name} vs {event.archers[b].name}"
         assert rows[i][1] == f"{50 + 7 * a} - {50 + 7 * b}"
-        assert rows[i][2] == f"{percent(result_a.percentile)} - {percent(result_b.percentile)}"
+        assert rows[i][2] == " - ".join(percentile_pair_text(result_a.percentile, result_b.percentile))
 
 
 def test_bye_match_row_shows_one_score_one_percentile_and_no_winner():
@@ -1994,3 +1995,28 @@ def test_every_page_links_to_the_archer_results():
     start_named_four_archer_event(client)
     for path in ("/event/rotation", "/event/results", "/event/match/0", "/event/archers"):
         assert 'href="/event/archers"' in client.get(path).data.decode()
+
+
+# --- Percentile display rule on the overview (Feedback 6) --------------------------------
+
+
+def test_overview_percentiles_gain_places_when_both_would_show_the_same():
+    """Very low scores give two percentiles that both round to 0.0%: more places tell them apart."""
+    client, state = make_client_and_state()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 100, 1: 90})  # far below what handicaps 15 and 45 expect
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    first, second = (cell.strip() for cell in rows[0][2].split(" - "))
+    assert first != second
+    assert all(len(text.split(".")[1]) > 2 for text in (first, second))  # more than "x%"
+    results = state.event.match_results(0, state.event.matches(0)[0])
+    assert (first, second) == percentile_pair_text(results[0].percentile, results[1].percentile)
+
+
+def test_overview_percentiles_keep_one_place_when_they_already_differ():
+    """Realistic scores: 'A% - B%' to one decimal place as before."""
+    client, state = make_client_and_state()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 119, 1: 100})
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert re.fullmatch(r"\d+\.\d% - \d+\.\d%", rows[0][2])

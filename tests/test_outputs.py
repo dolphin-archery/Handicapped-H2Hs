@@ -263,3 +263,110 @@ def test_the_module_is_flask_free_and_every_function_has_a_docstring():
     for name, obj in inspect.getmembers(outputs, inspect.isfunction):
         if obj.__module__ == outputs.__name__:
             assert obj.__doc__ and obj.__doc__.strip(), name
+
+
+# --- Feedback 6: percentile display rule and pass table rows ----------------------------
+
+
+from h2h.outputs import (  # noqa: E402
+    MAX_PERCENTILE_DECIMALS,
+    PassTableRow,
+    pass_table_rows,
+    percentile_pair_text,
+)
+
+
+def test_percentiles_that_already_differ_at_one_place_are_unchanged():
+    """The common case: one decimal place each."""
+    assert percentile_pair_text(0.598, 0.123) == ("59.8%", "12.3%")
+    assert percentile_pair_text(0.5, 0.01) == ("50.0%", "1.0%")
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "expected"),
+    [
+        (0.50003, 0.50004, ("50.003%", "50.004%")),
+        (0.5004, 0.5001, ("50.04%", "50.01%")),
+        (0.0002, 0.0003, ("0.02%", "0.03%")),
+    ],
+)
+def test_places_are_added_until_the_two_look_different(a, b, expected):
+    """The fewest extra decimal places that separate the pair, applied to both."""
+    assert percentile_pair_text(a, b) == expected
+
+
+def test_rounding_not_truncation_decides_when_two_near_100_look_the_same():
+    """0.99996 and 0.99991 both round to 100.0% at one place; two places already separate them."""
+    assert percentile_pair_text(0.99996, 0.99991) == ("100.00%", "99.99%")
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [(1.0, 1.0), (1.0, 1.0 - 1e-12), (0.0, 0.0), (0.5, 0.5), (0.5, 0.5 + 1e-12)],
+)
+def test_a_genuine_tie_stays_at_one_decimal_place(a, b):
+    """Both exactly 100% (or any other tie within the tolerance): nothing can tell them apart."""
+    text_a, text_b = percentile_pair_text(a, b)
+    assert text_a == f"{a * 100:.1f}%" and text_b == f"{b * 100:.1f}%"
+    assert text_a.count(".") == 1 and len(text_a.split(".")[1]) == 2  # one place plus the sign
+
+
+def test_tiny_but_different_percentiles_get_enough_places_when_the_limit_allows():
+    """1e-18 and 1e-20 as fractions are 1e-16 % and 1e-18 %: 18 places separate them."""
+    text_a, text_b = percentile_pair_text(1e-18, 1e-20)
+    assert text_a != text_b
+    assert len(text_a.split(".")[1]) - 1 <= MAX_PERCENTILE_DECIMALS
+
+
+def test_pairs_that_look_the_same_even_at_the_limit_stay_at_one_place():
+    """Two different values far below the limit's resolution fall back to one place."""
+    assert percentile_pair_text(1e-30, 1e-25) == ("0.0%", "0.0%")
+
+
+def test_the_rule_never_raises_and_never_exceeds_the_limit_for_any_pair():
+    """A sweep of awkward pairs across [0, 1]."""
+    values = [0.0, 1e-300, 1e-30, 1e-18, 1e-9, 0.001, 0.0999999, 0.1, 0.5, 0.9999999, 1 - 1e-12, 1.0]
+    for a in values:
+        for b in values:
+            for text in percentile_pair_text(a, b):
+                assert text.endswith("%")
+                assert len(text[:-1].split(".")[1]) <= MAX_PERCENTILE_DECIMALS
+
+
+def test_pass_table_rows_for_a_scored_pair_are_in_match_order_with_the_display_texts():
+    """Name, score, the pair's percentile texts, handicap to one decimal, Yes/No."""
+    event = make_event(4)
+    first, _ = event.matches(0)
+    event.record_match({p: 80 + p for p in first})
+    results = event.match_results(0, first)
+    rows = pass_table_rows(event, results)
+    texts = percentile_pair_text(results[0].percentile, results[1].percentile)
+    assert [r.archer for r in rows] == [event.archers[p].name for p in first]
+    assert [r.score for r in rows] == [str(80 + p) for p in first]
+    assert [r.percentile for r in rows] == list(texts)
+    assert [r.handicap for r in rows] == [f"{x.handicap:.1f}" for x in results]
+    assert sorted(r.winner for r in rows) == ["No", "Yes"]
+    assert isinstance(rows[0], PassTableRow)
+
+
+def test_pass_table_rows_use_a_dash_for_a_zero_score_and_for_a_bye_winner():
+    """A score of 0 has no handicap; a bye match has no winner and one decimal place."""
+    event = make_event(3, rotations=3)
+    pair, solo = event.matches(0)
+    event.record_match({pair[0]: 0, pair[1]: 60})
+    event.record_match({solo[0]: 70})
+    zero_row = pass_table_rows(event, event.match_results(0, pair))[0]
+    assert zero_row.score == "0" and zero_row.handicap == "-"
+    (bye_row,) = pass_table_rows(event, event.match_results(0, solo))
+    assert bye_row.winner == "-"
+    assert bye_row.percentile == f"{event.match_results(0, solo)[0].percentile * 100:.1f}%"
+    assert pass_table_rows(event, []) == []
+
+
+def test_match_results_come_back_in_match_order_whatever_order_they_were_saved_in():
+    """The second archer's result is never listed before the first's."""
+    event = make_event(2, rotations=1)
+    a, b = event.matches(0)[0]
+    event.record_match({b: 90, a: 80})
+    assert [r.archer_index for r in event.match_results(0, (a, b))] == [a, b]
+    assert [r.archer_index for r in event.match_results(0, (b, a))] == [b, a]

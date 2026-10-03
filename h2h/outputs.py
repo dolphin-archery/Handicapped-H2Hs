@@ -10,11 +10,17 @@ of a pass's matches.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from .models import Event, PassResult
+from .stats import PERCENTILE_REL_TOLERANCE
 
 BYE = "bye"
+
+# The most decimal places a pair of percentiles is shown to when the display rule has to add
+# places to tell them apart (AISpec.md section 5.3, Assumption 42).
+MAX_PERCENTILE_DECIMALS = 20
 
 
 @dataclass(frozen=True)
@@ -215,3 +221,95 @@ def archer_results(event: Event) -> list[ArcherResults]:
             )
         )
     return sections
+
+
+# --- Display helpers shared by the pass tables (AISpec.md section 5.3) -------------------
+
+
+def percentile_pair_text(percentile_a: float, percentile_b: float) -> tuple[str, str]:
+    """Show two archers' percentiles as percentages that can be told apart.
+
+    Both are shown to one decimal place unless that makes them look the same, in which case
+    a decimal place is added to both, repeatedly, until they differ, up to
+    `MAX_PERCENTILE_DECIMALS`. Two percentiles that are tied (equal within the tie-break
+    tolerance, for instance both exactly 100%) cannot be told apart by any number of places,
+    and neither can two that are still identical at the limit; both of those stay at one
+    decimal place.
+
+    Parameters
+    ----------
+    percentile_a, percentile_b : float
+        The two percentiles as fractions in [0, 1].
+
+    Returns
+    -------
+    tuple[str, str]
+        The two percentages with a "%" sign, e.g. ("59.8%", "12.3%"), in argument order.
+    """
+    one_place = (f"{percentile_a * 100:.1f}%", f"{percentile_b * 100:.1f}%")
+    if math.isclose(percentile_a, percentile_b, rel_tol=PERCENTILE_REL_TOLERANCE, abs_tol=0.0):
+        return one_place
+    for decimals in range(1, MAX_PERCENTILE_DECIMALS + 1):
+        text_a = f"{percentile_a * 100:.{decimals}f}"
+        text_b = f"{percentile_b * 100:.{decimals}f}"
+        if text_a != text_b:
+            return f"{text_a}%", f"{text_b}%"
+    return one_place
+
+
+@dataclass(frozen=True)
+class PassTableRow:
+    """One row of a pass results table, as the text to show.
+
+    Attributes
+    ----------
+    archer : str
+        The archer's name.
+    score : str
+        The score shot.
+    percentile : str
+        The percentile as a percentage (see `percentile_pair_text`).
+    handicap : str
+        The handicap implied by the score to one decimal place, or "-" for a score of 0.
+    winner : str
+        "Yes" or "No" for a paired match, "-" for a bye match.
+    """
+
+    archer: str
+    score: str
+    percentile: str
+    handicap: str
+    winner: str
+
+
+def pass_table_rows(event: Event, results: list[PassResult]) -> list[PassTableRow]:
+    """Turn one match's results into the rows of the pass results table.
+
+    Parameters
+    ----------
+    event : h2h.models.Event
+        The event (for the archers' names).
+    results : list[PassResult]
+        One match's results in the order to show them: one result for a bye match,
+        two for a pair (see `Event.match_results`).
+
+    Returns
+    -------
+    list[PassTableRow]
+        One row per result. A pair's percentiles follow `percentile_pair_text`; a bye match's
+        use one decimal place.
+    """
+    if len(results) == 2:
+        percentiles = percentile_pair_text(results[0].percentile, results[1].percentile)
+    else:
+        percentiles = tuple(f"{r.percentile * 100:.1f}%" for r in results)
+    return [
+        PassTableRow(
+            archer=event.archers[r.archer_index].name,
+            score=str(r.score),
+            percentile=text,
+            handicap="-" if r.handicap is None else f"{r.handicap:.1f}",
+            winner="-" if r.won is None else ("Yes" if r.won else "No"),
+        )
+        for r, text in zip(results, percentiles, strict=True)
+    ]

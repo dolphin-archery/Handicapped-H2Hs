@@ -30,8 +30,7 @@
       </td>
       <td>
         {% if not m.scored %}-
-        {% elif m.b is none %}{{ '%.1f%%'|format(m.results[m.a].percentile * 100) }}
-        {% else %}{{ '%.1f%%'|format(m.results[m.a].percentile * 100) }} - {{ '%.1f%%'|format(m.results[m.b].percentile * 100) }}
+        {% else %}{{ m.percentiles|join(' - ') }}
         {% endif %}
       </td>
       <td>

@@ -728,13 +728,18 @@ class Event:
     def match_results(
         self, rotation_index: int, match: tuple[int, int | None]
     ) -> list[PassResult]:
-        """list[PassResult]: results recorded so far for one match of a rotation."""
-        archers = {p for p in match if p is not None}
-        return [
+        """list[PassResult]: results recorded so far for one match of a rotation.
+
+        In match order (the first archer's result, then the second's), whatever
+        order they were recorded in.
+        """
+        order = [p for p in match if p is not None]
+        found = [
             r
             for r in self.results
-            if r.rotation_index == rotation_index and r.archer_index in archers
+            if r.rotation_index == rotation_index and r.archer_index in order
         ]
+        return sorted(found, key=lambda r: order.index(r.archer_index))
 
     def is_match_scored(self, rotation_index: int, match_index: int) -> bool:
         """bool: whether the match at `match_index` in a rotation has scores recorded."""
