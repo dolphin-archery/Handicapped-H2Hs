@@ -514,7 +514,8 @@ built by Feedback 5) exists.
     page heading, §5.3.) The marker lines below are not listed in the legend.
   - **Score markers:** the scores the archers have shot are marked as vertical dashed
     lines in the archer's colour, **each labelled on the chart with its pass number**
-    (e.g. "P3" beside the line). A marker is drawn for **every pass the archer has scored so
+    (e.g. "P3" beside the line, kept inside the plot and, where two lines are close, on
+    the side of its own line that does not cross the other's). A marker is drawn for **every pass the archer has scored so
     far, whoever their opponent was** (including a bye pass shot alone) — not only for
     passes shared with the opponent on this page (a bug fixed by Feedback 5). By
     default only the scores of the pass currently being scored are shown (none until
@@ -525,6 +526,8 @@ built by Feedback 5) exists.
     with a small margin, widening beyond the trimmed range of the curves when a score
     falls outside it (so no line is drawn outside the plot). The range is computed once
     from all of both archers' scores, so it does not move when the checkbox is ticked.
+    Each archer's curve has a point at every whole score across that range (zero where
+    the distribution has no probability), so hovering anywhere gives both archers' values.
   - **Hovering** the chart shows both archers' probability values at the score under
     the pointer, wherever the pointer is — including over or next to a vertical
     score marker, shown for the latest pass or any previous pass. (A bug where
@@ -794,8 +797,12 @@ built by Feedback 5) exists.
     a match page shows just this pass's two scores (none before they are saved), and
     the pair-history page, which has no match being scored, shows the current pass's
     scores of the two archers too. Pass labels are drawn on the chart as "P" and the
-    pass number, rotated beside the line near its top, in the archer's colour. The
-    pair-history page and the match page share the one chart and payload.
+    pass number, rotated beside the line near its top, in the archer's colour: the first
+    archer's on the left of the line and the second's on the right by default, switched to
+    the other side if that would stick out of the plot or cross another marker line, and
+    stacked if they would still overlap (found necessary in browser testing: a one-unit
+    margin is under 8 px on a wide axis). The pair-history page and the match page share the
+    one chart and payload.
 32. **Handicap moved out of the match heading only.** Feedback 5 says to remove the base
     handicap "from title of score input pages and instead add it to legend", which
     could mean removing it from the page entirely. It is removed from the heading, and
