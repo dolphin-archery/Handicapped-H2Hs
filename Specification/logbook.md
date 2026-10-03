@@ -1224,10 +1224,81 @@ Default scenario: 155 positions unticked, 185 ticked, 155 unticked again, and 12
 on a fresh pair with no passes - 620 positions, 0 failures (a 7.3 px grid plus
 +/-3 px, +/-0.4, +/-0.6 and +/-1 score around each marker line and the top and
 bottom of each line). A wider variant (Alice hc 40 / Bob hc 60, range 72-120,
-other scores) gave 612 more positions, 0 failures. Dataset counts and labels
+other scores) gave 616 more positions (154+184+154+124), 0 failures. Dataset counts and labels
 unchanged (4 unticked, 6 ticked for two passes, 2 with no passes, back to 4 when
 unticked); hovering 1 px inside the left and right plot edges gives a fully
 visible tooltip in all three states; the console has only the favicon 404 and
 benign Edge tracking-prevention warnings about the CDN. Screenshots of the broken
 and fixed hover are in the scratchpad (`hover_work/shots/`). No Python changes,
 so the Python suite is unaffected.
+
+### Task 44: End-to-end integration check, browser walkthrough and docs (complete)
+`tests/test_integration.py` gained seven scenarios over the real routes: a 50 m /
+80 cm event (every archer gets that distance and face, outdoors, Compound scores
+plain `10_zone`, so Recurve and Compound share a distribution); an 18 m / 40 cm
+event (Compound `10_zone_compound`, the others `10_zone`, distributions differ);
+the imperial conversion and classification (30 yd outdoor, 25 yd indoor); the
+whole setup flow (Stage 2 refuses 150.1 and stores nothing, then accepts; a
+seeded Stage 3 redraw changes the pairings; confirming starts the event with
+exactly the pairings shown and the assigned order); the overview table's Score,
+Percentiles and Winner for every match of a full event checked against the
+Event's own results; the graph view toggle living only on match pages and
+switching the chart and explanation without losing scores; and reset (GET asks,
+loses nothing; POST clears; Stage 3 then redirects to Stage 1). README.md was
+rewritten for the three-stage setup, the setup modes, graph view and the reset
+confirmation. Suite: 550 passed.
+
+Real-browser walkthrough (headless Edge via Selenium, a subagent, against the
+exact final commit exported with `git archive`) - all eight steps passed:
+- **Stage 1:** Advanced shows the TBA text, hides the dropdowns and disables
+  submit; Simple restores them; 50 m / 80 cm / 36 arrows with the slider on 12.
+- **Stage 2:** the intro says "50 m with a face size of 80 cm, which counts as
+  outdoor" with no inner-ring note; a handicap of 160 stays on Stage 2 with "Row
+  4: handicap must be between 0 and 150, got 160." and every typed row refilled
+  (inputs also carry min=0 max=150); correcting it moves on.
+- **Stage 3:** a Pass | Matches | Sitting out table with 3 rows of two pairings;
+  three redraws each differed from the draw before; the overview's pairings equal
+  the last Stage 3 table's first row.
+- **Overview and match pages:** the five exact headings, "-" cells and a disabled
+  Advance before scoring, no graph toggle or "Mode" button anywhere on it; match
+  heading and labels show handicaps ("Ben (handicap 30) vs Dan (handicap 50)");
+  the toggle button reads "Graph view: off/on", the chart has 2 datasets then 4
+  after saving, and the explanation is 420 characters with none of the old
+  jargon; the row then reads "95 - 88", "18.6% - 98.1%", winner "Dan", "View /
+  edit"; Advance enabled only after both matches were scored.
+- **Reset:** the nav link opens "Reset everything?" and loses nothing (results
+  and "Pass 2 of 3" intact); confirming lands on Stage 1 with no event.
+- **Hover:** a 2-archer, 2-pass event with previous passes ticked (6 datasets):
+  24 pointer positions on and 2 px either side of all four marker lines, at two
+  heights, each gave exactly the two curve data points at the right score and
+  probability, titled with the marker score and never the minimum. A negative
+  control (forcing Chart.js's built-in `index` mode back on in the live page)
+  returned 6 data points including marker datasets and the leftmost score, so the
+  probe does detect the old bug.
+- Console: only the favicon 404 (plus benign tracking-prevention warnings about
+  the CDN); no server errors. (Chromium refuses port 5060 as unsafe; that was the
+  test harness's port choice, not an app issue - the app's default port is fine.)
+  The agent also noted that consecutive redraws can keep an individual pass the
+  same: with 4 archers there are only 3 possible matchings per pass and 6 distinct
+  schedules in all, so partial overlap is inherent; a redraw guarantees the whole
+  set of pairings changes, not every pass.
+
+## Feedback 4 summary (for anyone picking this up)
+All of `Specification/feedback.md` "Feedback 4" is implemented (prd tasks 34-44,
+all `completed`): archers' handicaps show on match pages; setup has a third stage
+that draws the pairings at random with a Redraw button; Reset asks for
+confirmation; the old advanced mode is "graph view", toggled only from match
+pages; the chart hover bug is fixed; Stage 1 has a Simple/Advanced setup toggle
+(Simple: distance and face-size dropdowns with indoor/outdoor inferred from the
+distance; Advanced: TBA); starting handicaps must be 0-150; the "how the winner
+is decided" text is short and plain; and the overview table is Match | Score |
+Percentiles | Winner | Actions. Decisions worth a second look, all recorded in
+`Specification/AISpec.md` section 7: **22** indoor iff distance <= 25 m (the
+`archeryutils` survey found nothing beyond 30 m indoor; 30 m itself is ambiguous
+because of the Stafford); **23** Compound's reduced 10 only when indoor (change
+`resolve_target` if it should apply at every distance); **26** the results page's
+"View chart" links still follow graph view. Small additions beyond the letter of
+the feedback: the Stage 2 form refills after an error, and a redraw prefers
+pairings that actually differ. Not touched: everything under "Future Plans - DO NOT
+IMPLEMENT YET" apart from what Feedback 4 promoted out of it. Final suite: 550
+tests passing.

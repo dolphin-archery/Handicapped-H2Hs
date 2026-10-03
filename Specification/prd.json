@@ -582,6 +582,6 @@
       "A real-browser walkthrough (Stage 1 setup toggle and dropdowns, Stage 2 handicap validation, Stage 3 redraw and confirm, overview table, match page with handicaps, graph view toggle, chart hover near a previous pass's marker, reset confirmation) completes with no JS console errors.",
       "The full suite passes, README.md describes the new flow, and Specification/logbook.md has a Feedback 4 section."
     ],
-    "completed": false
+    "completed": true
   }
 ]
