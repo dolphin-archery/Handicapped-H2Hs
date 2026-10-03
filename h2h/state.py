@@ -19,6 +19,10 @@ from .rotation import Rotation, build_schedule, build_sit_out_schedule
 # is nothing different to find).
 _MAX_REDRAW_ATTEMPTS = 50
 
+# The two setup modes (AISpec.md section 5.1).
+SIMPLE = "simple"
+ADVANCED = "advanced"
+
 
 @dataclass
 class SessionState:
@@ -31,9 +35,13 @@ class SessionState:
         feedback.md "Feedback 4" renamed the old advanced mode to graph view).
     n_pass : int
         Arrows per rotation's pass.
+    setup_mode : str
+        "simple" (one shared distance and face for everyone) or "advanced"
+        (each archer's own face type, face size and distance, entered at Stage 2).
     n_archers, total_arrows, target_setup : int | int | TargetSetup
         Stage 1 event configuration (`target_setup` is the shared distance
-        and face size).
+        and face size, used in simple mode; in advanced mode it only remembers
+        the last simple choice).
     shoot_byes : bool
         For an odd `n_archers`: whether the archer with the bye shoots alone
         (True) or sits the pass out, adding passes to the event (False).
@@ -54,6 +62,7 @@ class SessionState:
 
     graph_view: bool = False
     n_pass: int = 12
+    setup_mode: str = SIMPLE
 
     n_archers: int | None = None
     total_arrows: int = 60
@@ -72,6 +81,7 @@ class SessionState:
         n_pass: int,
         target_setup: TargetSetup,
         shoot_byes: bool = True,
+        setup_mode: str = SIMPLE,
     ) -> None:
         """Validate event configuration and build the rotation schedule.
 
@@ -85,19 +95,25 @@ class SessionState:
         n_pass : int
             Arrows per rotation's pass.
         target_setup : TargetSetup
-            The shared shooting distance and target face size.
+            The shared shooting distance and target face size (used in simple
+            mode; in advanced mode each archer brings their own at Stage 2).
         shoot_byes : bool, default=True
             Whether the bye archer shoots alone (True) or sits out (False)
             when `n_archers` is odd; ignored for an even `n_archers`. Sitting
             out lengthens the schedule beyond `total_arrows // n_pass`
             rotations (see `build_sit_out_schedule`).
+        setup_mode : str, default="simple"
+            "simple" or "advanced" (see the class docstring).
 
         Raises
         ------
         ValueError
-            If `n_archers` < 2, or `n_pass` does not evenly divide
-            `total_arrows`.
+            If `n_archers` < 2, `n_pass` does not evenly divide `total_arrows`,
+            or `setup_mode` is not "simple" or "advanced".
         """
+        if setup_mode not in (SIMPLE, ADVANCED):
+            msg = f"Setup mode must be Simple or Advanced, got {setup_mode!r}."
+            raise ValueError(msg)
         if n_archers < 2:
             msg = f"Need at least 2 archers, got {n_archers}."
             raise ValueError(msg)
@@ -119,6 +135,7 @@ class SessionState:
         self.total_arrows = total_arrows
         self.n_pass = n_pass
         self.target_setup = target_setup
+        self.setup_mode = setup_mode
         self.shoot_byes = shoot_byes
         self.schedule = new_schedule
         self.pending_archers = None  # discard any previous archers, draw and event
@@ -134,14 +151,16 @@ class SessionState:
         Parameters
         ----------
         archers : list[Archer]
-            Exactly `self.n_archers` archers, in entry order.
+            Exactly `self.n_archers` archers, in entry order (each with their
+            own `target_setup` in advanced mode).
 
         Raises
         ------
         RuntimeError
             If Stage 1 has not been completed yet.
         ValueError
-            If the number of archers doesn't match `self.n_archers`.
+            If the number of archers doesn't match `self.n_archers`, or an
+            archer has no `target_setup` in advanced mode.
         """
         if self.schedule is None or self.n_archers is None:
             msg = "Stage 1 must be completed before Stage 2."
@@ -149,6 +168,11 @@ class SessionState:
         if len(archers) != self.n_archers:
             msg = f"Expected {self.n_archers} archers, got {len(archers)}."
             raise ValueError(msg)
+        if self.setup_mode == ADVANCED:
+            missing = [a.name for a in archers if a.target_setup is None]
+            if missing:
+                msg = f"Advanced setup needs a target setup for every archer; missing for {missing}."
+                raise ValueError(msg)
 
         self.pending_archers = list(archers)
         self.assignment = None
@@ -230,7 +254,8 @@ class SessionState:
         if self.schedule is None:
             msg = "Stage 1 must be completed before the event can start."
             raise RuntimeError(msg)
-        self.event = Event(self.assigned_archers(), self.n_pass, self.target_setup, self.schedule)
+        shared_setup = None if self.setup_mode == ADVANCED else self.target_setup
+        self.event = Event(self.assigned_archers(), self.n_pass, shared_setup, self.schedule)
 
     def toggle_graph_view(self) -> None:
         """Switch graph view (charts and explanation) on or off."""
@@ -240,6 +265,7 @@ class SessionState:
         """Clear all event state back to a fresh session."""
         self.graph_view = False
         self.n_pass = 12
+        self.setup_mode = SIMPLE
         self.n_archers = None
         self.total_arrows = 60
         self.target_setup = DEFAULT_TARGET_SETUP

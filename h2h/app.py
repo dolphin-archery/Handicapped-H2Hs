@@ -14,6 +14,10 @@ from flask import Flask, redirect, render_template, request, url_for
 from . import stats
 from .chart_data import build_pair_chart_data
 from .models import (
+    ADVANCED_FACE_SIZES_CM,
+    DEFAULT_FACE_TYPE,
+    DEFAULT_TARGET_SETUP,
+    FACE_TYPES,
     MAX_HANDICAP,
     MIN_HANDICAP,
     STANDARD_FACE_SIZES_CM,
@@ -24,7 +28,7 @@ from .models import (
     distance_option_groups,
     resolve_indoor_round,
 )
-from .state import SessionState
+from .state import ADVANCED, SIMPLE, SessionState
 
 
 def create_app(state: SessionState | None = None) -> Flask:
@@ -54,16 +58,16 @@ def create_app(state: SessionState | None = None) -> Flask:
         return redirect(url_for("stage1"))
 
     @app.get("/event/stage1")
-    def stage1(error: str | None = None, setup_mode: str = "simple"):
+    def stage1(error: str | None = None, setup_mode: str | None = None):
         """Event setup form (Stage 1).
 
         Parameters
         ----------
         error : str | None, default=None
             Message to show above the form (a rejected submission).
-        setup_mode : str, default="simple"
-            Which setup mode to show selected: "simple" or "advanced" (the
-            latter only after a rejected attempt to submit it).
+        setup_mode : str | None, default=None
+            Which setup mode to show selected, "simple" or "advanced"; defaults
+            to the session's current mode.
 
         Returns
         -------
@@ -75,7 +79,7 @@ def create_app(state: SessionState | None = None) -> Flask:
             n_archers=session.n_archers or 4,
             total_arrows=session.total_arrows,
             n_pass=session.n_pass,
-            setup_mode=setup_mode,
+            setup_mode=setup_mode or session.setup_mode,
             distance_groups=distance_option_groups(),
             face_sizes=STANDARD_FACE_SIZES_CM,
             selected_distance=session.target_setup.distance_key,
@@ -86,20 +90,27 @@ def create_app(state: SessionState | None = None) -> Flask:
 
     @app.post("/event/stage1")
     def stage1_submit():
-        if request.form.get("setup_mode", "simple") == "advanced":
-            msg = "Advanced setup is not available yet (TBA). Use Simple setup for now."
-            return stage1(error=msg, setup_mode="advanced")
+        setup_mode = request.form.get("setup_mode", SIMPLE)
         try:
             n_archers = int(request.form["n_archers"])
             total_arrows = int(request.form["total_arrows"])
             n_pass = int(request.form["n_pass"])
-            target_setup = TargetSetup.parse(
-                request.form.get("distance", ""), request.form.get("face_cm", "")
-            )
+            if setup_mode == ADVANCED:
+                # Each archer's target is chosen at Stage 2; keep the last simple choice.
+                target_setup = session.target_setup
+            else:
+                target_setup = TargetSetup.parse(
+                    request.form.get("distance", ""), request.form.get("face_cm", "")
+                )
             shoot_byes = request.form.get("shoot_byes", "yes") != "no"
-            session.start_stage1(n_archers, total_arrows, n_pass, target_setup, shoot_byes)
+            session.start_stage1(
+                n_archers, total_arrows, n_pass, target_setup, shoot_byes, setup_mode
+            )
         except (ValueError, KeyError) as exc:
-            return stage1(error=str(exc) or "Invalid input.")
+            return stage1(
+                error=str(exc) or "Invalid input.",
+                setup_mode=setup_mode if setup_mode in (SIMPLE, ADVANCED) else None,
+            )
         return redirect(url_for("stage2"))
 
     @app.get("/event/stage2")
@@ -112,7 +123,8 @@ def create_app(state: SessionState | None = None) -> Flask:
             Message to show above the form (a rejected submission).
         values : dict[str, str] | None, default=None
             The previously submitted form fields (`name_i`, `bowstyle_i`,
-            `handicap_i`), used to refill the form after a rejected
+            `handicap_i`, and in advanced setup `face_type_i`, `face_cm_i`,
+            `distance_i`), used to refill the form after a rejected
             submission so nothing has to be retyped.
 
         Returns
@@ -127,6 +139,13 @@ def create_app(state: SessionState | None = None) -> Flask:
             "stage2.html",
             n_archers=session.n_archers,
             setup=session.target_setup,
+            advanced=session.setup_mode == ADVANCED,
+            face_types=FACE_TYPES,
+            face_sizes=ADVANCED_FACE_SIZES_CM,
+            distance_groups=distance_option_groups(),
+            default_face_type=DEFAULT_FACE_TYPE,
+            default_face_cm=DEFAULT_TARGET_SETUP.face_cm,
+            default_distance=DEFAULT_TARGET_SETUP.distance_key,
             bowstyles=list(Bowstyle),
             min_handicap=MIN_HANDICAP,
             max_handicap=MAX_HANDICAP,
@@ -163,7 +182,20 @@ def create_app(state: SessionState | None = None) -> Flask:
                         f"{MAX_HANDICAP}, got {handicap_raw}."
                     )
                     raise ValueError(msg)
-                archers.append(Archer(name=name, handicap=handicap, bowstyle=bowstyle))
+                target_setup = None
+                if session.setup_mode == ADVANCED:
+                    try:
+                        target_setup = TargetSetup.parse_advanced(
+                            request.form.get(f"distance_{i}", ""),
+                            request.form.get(f"face_cm_{i}", ""),
+                            request.form.get(f"face_type_{i}", ""),
+                        )
+                    except ValueError as exc:
+                        msg = f"Row {i + 1}: {exc}"
+                        raise ValueError(msg) from None
+                archers.append(
+                    Archer(name=name, handicap=handicap, bowstyle=bowstyle, target_setup=target_setup)
+                )
             session.start_stage2(archers)
         except ValueError as exc:
             return stage2(error=str(exc), values=request.form)

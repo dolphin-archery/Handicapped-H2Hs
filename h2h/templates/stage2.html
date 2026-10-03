@@ -1,9 +1,16 @@
 {% extends "base.html" %}
+{% from "_form_macros.html" import distance_select %}
 {% block content %}
 <h1>Event setup - Stage 2</h1>
+{% if advanced %}
+<p>Enter each of the {{ n_archers }} archers, and the target face type, face size and distance each of them
+  shoots. A distance of up to 25 m / 25 yd counts as indoor and anything further as outdoor. The face type is used
+  exactly as chosen, so a Compound archer who should score only the inner ring as 10 needs a compound face type.</p>
+{% else %}
 <p>Enter each of the {{ n_archers }} archers. Everyone shoots {{ setup.distance_label }} with a face size of
   {{ setup.face_cm }} cm, which counts as {{ 'indoor' if setup.indoor else 'outdoor' }}{% if setup.indoor %},
   so Compound archers score only the inner ring as 10{% endif %}.</p>
+{% endif %}
 <p><a href="{{ url_for('handicap_calculator') }}">Need to work out a starting handicap? Use the score-to-handicap calculator.</a></p>
 {% if error %}
 <p class="warning">{{ error }}</p>
@@ -12,7 +19,10 @@
 <form method="post" action="{{ url_for('stage2_submit') }}">
   <table>
     <thead>
-      <tr><th>Name</th><th>Bowstyle</th><th>Handicap</th></tr>
+      <tr>
+        <th>Name</th><th>Bowstyle</th><th>Handicap</th>
+        {% if advanced %}<th>Target face type</th><th>Face size</th><th>Distance</th>{% endif %}
+      </tr>
     </thead>
     <tbody>
       {% for i in range(n_archers) %}
@@ -28,6 +38,24 @@
         </td>
         <td><input type="number" step="0.1" min="{{ min_handicap }}" max="{{ max_handicap }}" name="handicap_{{ i }}"
                    value="{{ values.get('handicap_' ~ i, '') }}" required></td>
+        {% if advanced %}
+        <td>
+          <select name="face_type_{{ i }}" required>
+            {% for key, label in face_types.items() %}
+            <option value="{{ key }}"{% if values.get('face_type_' ~ i, default_face_type) == key %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          {% set chosen_size = values.get('face_cm_' ~ i, default_face_cm)|string %}
+          <select name="face_cm_{{ i }}" required>
+            {% for size in face_sizes %}
+            <option value="{{ size }}"{% if size|string == chosen_size %} selected{% endif %}>{{ size }} cm</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>{{ distance_select('distance_' ~ i, distance_groups, values.get('distance_' ~ i, default_distance)) }}</td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>

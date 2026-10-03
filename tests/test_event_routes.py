@@ -1296,48 +1296,6 @@ def test_a_distance_or_face_outside_the_options_is_rejected_and_stores_nothing(
     assert state.target_setup == DEFAULT_TARGET_SETUP
 
 
-def test_posting_advanced_mode_is_rejected_with_a_tba_message_and_stores_nothing():
-    """Advanced setup is not built: a forced POST is refused and changes nothing."""
-    client, state = make_client_and_state()
-    client.post("/event/stage1", data=stage1_form(n_archers=4, distance="50m", face_cm=80))
-    schedule_before = state.schedule
-
-    resp = client.post(
-        "/event/stage1",
-        data=stage1_form(n_archers=7, distance="90m", face_cm=122, setup_mode="advanced"),
-    )
-    page = resp.data.decode()
-    assert resp.status_code == 200
-    assert "TBA" in page
-    assert state.schedule is schedule_before
-    assert state.n_archers == 4
-    assert state.target_setup == TargetSetup(distance=50, unit=METRE, face_cm=80)
-    # The re-rendered page has Advanced selected, its message visible, and submit disabled.
-    advanced = page[page.index('name="setup_mode" value="advanced"') :].split(">")[0]
-    assert "checked" in advanced
-    assert '<div id="advanced_setup" >' in page or '<div id="advanced_setup">' in page
-    assert 'id="stage1_submit" disabled' in page
-
-
-def test_advanced_is_refused_even_when_the_other_fields_are_invalid():
-    """The TBA refusal comes first, so a forced advanced POST never reports other errors."""
-    client = make_client()
-    resp = client.post(
-        "/event/stage1",
-        data={"setup_mode": "advanced", "n_archers": "x", "total_arrows": "", "n_pass": "0"},
-    )
-    assert b"TBA" in resp.data
-
-
-def test_the_tba_message_is_in_the_page_but_hidden_while_simple_is_selected():
-    """The advanced section carries the TBA text and starts hidden; submit starts enabled."""
-    page = make_client().get("/event/stage1").data.decode()
-    section = page[page.index('<div id="advanced_setup"') :].split(">")[0]
-    assert "hidden" in section
-    assert "Advanced setup: TBA." in page
-    assert 'id="stage1_submit" disabled' not in page
-
-
 def test_stage2_intro_names_the_distance_face_and_whether_it_counts_as_indoor():
     """Stage 2 says what everyone shoots, and the reduced-10 note appears only indoors."""
     client = make_client()
@@ -1676,3 +1634,218 @@ def test_match_page_score_boxes_use_each_archers_own_maximum():
     assert b"between 0 and 108" in too_high.data
     assert state.event.results == []
     assert save_match(client, 0, {0: 108, 1: 119}).status_code == 302
+
+
+# --- Advanced setup: per-archer face type, face size and distance (Feedback 5) -------
+
+from h2h.stats import percentile as stats_percentile  # noqa: E402
+
+ADVANCED_ARCHERS = [
+    # name, bowstyle, handicap, face type, face size, distance
+    ("Ann", "Recurve", 20, "10_zone", 40, "18m"),
+    ("Ben", "Compound", 25, "10_zone_compound", 40, "18m"),
+    ("Cat", "Barebow", 35, "5_zone", 122, "50yd"),
+    ("Dan", "Longbow", 45, "Worcester", 40, "20yd"),
+]
+
+
+def advanced_form(rows=ADVANCED_ARCHERS):
+    """A /event/stage2 payload for advanced setup from the tuples in ADVANCED_ARCHERS."""
+    form = {}
+    for i, (name, bowstyle, handicap, face_type, face_cm, distance) in enumerate(rows):
+        form.update(
+            {
+                f"name_{i}": name,
+                f"bowstyle_{i}": bowstyle,
+                f"handicap_{i}": str(handicap),
+                f"face_type_{i}": face_type,
+                f"face_cm_{i}": str(face_cm),
+                f"distance_{i}": distance,
+            }
+        )
+    return form
+
+
+def start_advanced_stage2(client, n_archers=4, total_arrows=36):
+    """Run Stage 1 in advanced mode so the advanced Stage 2 page is reachable."""
+    return client.post(
+        "/event/stage1",
+        data=stage1_form(n_archers=n_archers, total_arrows=total_arrows, setup_mode="advanced"),
+    )
+
+
+def test_advanced_is_no_longer_a_placeholder_and_the_submit_button_is_never_disabled():
+    """Stage 1 renders both modes with Continue enabled; nothing in the templates says TBA."""
+    page = make_client().get("/event/stage1").data.decode()
+    button = re.search(r'<button[^>]*id="stage1_submit"[^>]*>', page).group(0)
+    assert "disabled" not in button
+    assert "TBA" not in page
+    templates = Path(__file__).resolve().parent.parent / "h2h" / "templates"
+    assert all("TBA" not in p.read_text(encoding="utf-8") for p in templates.glob("*.html"))
+
+
+def test_posting_advanced_mode_goes_to_stage_2_and_keeps_the_last_simple_choice():
+    """Advanced is stored, the schedule is built, and the simple distance/face are left alone."""
+    client, state = make_client_and_state()
+    client.post("/event/stage1", data=stage1_form(n_archers=4, distance="50m", face_cm=80))
+    resp = start_advanced_stage2(client, n_archers=6, total_arrows=36)
+    assert resp.status_code == 302 and resp.headers["Location"].endswith("/event/stage2")
+    assert state.setup_mode == "advanced"
+    assert state.n_archers == 6 and state.schedule is not None
+    assert state.target_setup == TargetSetup(distance=50, unit=METRE, face_cm=80)
+
+
+def test_advanced_mode_ignores_the_hidden_simple_dropdowns():
+    """Whatever the hidden distance/face fields hold, an advanced POST does not validate them."""
+    client, state = make_client_and_state()
+    data = stage1_form(n_archers=4, distance="not-a-distance", face_cm="abc", setup_mode="advanced")
+    assert client.post("/event/stage1", data=data).status_code == 302
+    assert state.setup_mode == "advanced"
+
+
+def test_an_unknown_setup_mode_is_rejected_and_stores_nothing():
+    """Only simple and advanced exist."""
+    client, state = make_client_and_state()
+    resp = client.post("/event/stage1", data=stage1_form(setup_mode="expert"))
+    assert resp.status_code == 200
+    assert b"Setup mode must be Simple or Advanced" in resp.data
+    assert state.schedule is None
+
+
+def test_returning_to_stage_1_shows_the_chosen_mode_and_reset_restores_simple():
+    """Advanced stays selected on return, with the simple section hidden; Reset goes back to simple."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client)
+    page = client.get("/event/stage1").data.decode()
+    advanced = page[page.index('name="setup_mode" value="advanced"') :].split(">")[0]
+    assert "checked" in advanced
+    assert "hidden" in page[page.index('<div id="simple_setup"') :].split(">")[0]
+    assert "hidden" not in page[page.index('<div id="advanced_setup"') :].split(">")[0]
+
+    client.post("/reset")
+    assert state.setup_mode == "simple"
+    page = client.get("/event/stage1").data.decode()
+    simple = page[page.index('name="setup_mode" value="simple"') :].split(">")[0]
+    assert "checked" in simple
+
+
+def test_a_rejected_stage_1_keeps_the_mode_that_was_posted():
+    """An invalid number of archers in advanced mode re-renders with Advanced still selected."""
+    client = make_client()
+    resp = client.post("/event/stage1", data=stage1_form(n_archers=1, setup_mode="advanced"))
+    page = resp.data.decode()
+    assert b"at least 2 archers" in resp.data
+    assert "checked" in page[page.index('name="setup_mode" value="advanced"') :].split(">")[0]
+
+
+def test_advanced_stage_2_has_three_dropdowns_per_archer_with_the_right_options_and_defaults():
+    """Face type (16, 10 zone selected), face size (8, 60 selected), distance (16, 20 yd selected)."""
+    client = make_client()
+    start_advanced_stage2(client, n_archers=3, total_arrows=36)
+    page = client.get("/event/stage2").data.decode()
+    for i in range(3):
+        face_type = select_block(page, f"face_type_{i}")
+        assert len(option_values(face_type)) == 16
+        assert '<option value="10_zone" selected>' in face_type
+        assert "10 zone (standard 10-ring face)" in face_type
+        face_size = select_block(page, f"face_cm_{i}")
+        assert option_values(face_size) == ["20", "35", "40", "50", "60", "65", "80", "122"]
+        assert '<option value="60" selected>' in face_size
+        distance = select_block(page, f"distance_{i}")
+        assert len(option_values(distance)) == 16
+        assert '<optgroup label="Metric">' in distance and '<optgroup label="Imperial">' in distance
+        assert '<option value="20yd" selected>' in distance
+    assert "Target face type" in page and "Face size" in page and "Distance" in page
+
+
+def test_simple_stage_2_has_none_of_the_per_archer_target_dropdowns():
+    """Simple mode's Stage 2 is unchanged."""
+    client = make_client()
+    complete_stage1(client, n_archers=2)
+    page = client.get("/event/stage2").data.decode()
+    assert "face_type_" not in page and "face_cm_" not in page and 'name="distance_' not in page
+    assert "Everyone shoots 20 yd" in stage2_intro(page)
+
+
+def test_valid_advanced_rows_give_each_archer_their_own_target_through_stage_3():
+    """The chosen face type, size and distance end up on each archer's resolved target."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client)
+    resp = client.post("/event/stage2", data=advanced_form())
+    assert resp.status_code == 302 and resp.headers["Location"].endswith("/event/stage3")
+    assert all(a.target_setup is not None for a in state.pending_archers)
+    client.post("/event/stage3")
+
+    targets = [state.event.target_for(i) for i in range(4)]
+    assert [t.scoring_system for t in targets] == ["10_zone", "10_zone_compound", "5_zone", "Worcester"]
+    assert [round(t.diameter * 100) for t in targets] == [40, 40, 122, 40]
+    assert [round(t.distance, 3) for t in targets] == [18.0, 18.0, 45.72, 18.288]
+    assert [t.indoor for t in targets] == [True, True, False, True]
+    assert state.event.target_setup is None
+
+
+@pytest.mark.parametrize(
+    ("column", "bad", "expected"),
+    [
+        (5, "19m", "standard distances"),
+        (4, "45", "standard face sizes"),
+        (3, "bogus", "target face types"),
+        (3, "Custom", "target face types"),
+    ],
+)
+def test_an_invalid_target_value_names_the_row_stores_nothing_and_refills_the_form(
+    column, bad, expected
+):
+    """A bad face type, size or distance in row 3 is refused with 'Row 3: ...' and the form refilled."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client)
+    rows = [list(r) for r in ADVANCED_ARCHERS]
+    rows[2][column] = bad
+    resp = client.post("/event/stage2", data=advanced_form(rows))
+    page = resp.data.decode()
+    assert resp.status_code == 200
+    assert "Row 3:" in page and expected in page
+    assert state.pending_archers is None and state.event is None
+    assert 'value="Cat"' in page and 'value="Dan"' in page
+    assert '<option value="Worcester" selected>' in select_block(page, "face_type_3")
+
+
+def test_a_missing_advanced_field_is_rejected_not_defaulted():
+    """A forced POST without the per-archer target fields is refused rather than guessed."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=24)
+    resp = client.post("/event/stage2", data=stage2_form([("Ann", "Recurve", 20), ("Ben", "Recurve", 30)]))
+    assert resp.status_code == 200 and b"Row 1:" in resp.data
+    assert state.pending_archers is None
+
+
+def test_a_full_advanced_event_with_mixed_targets_plays_through_over_http():
+    """5-zone and 10-zone archers: each score is checked against its own maximum, the pages render."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=24)
+    rows = [
+        ("Fiver", "Recurve", 30, "5_zone", 60, "20yd"),
+        ("Tenner", "Recurve", 30, "10_zone", 60, "20yd"),
+    ]
+    client.post("/event/stage2", data=advanced_form(rows))
+    client.post("/event/stage3")
+    event = state.event
+    assert event.max_score_for(0) == 108 and event.max_score_for(1) == 120
+
+    too_high = save_match(client, 0, {0: 110, 1: 100})
+    assert b"between 0 and 108" in too_high.data and event.results == []
+    for pass_number in (1, 2):
+        assert save_match(client, 0, {0: 100, 1: 110}).status_code == 302
+        if pass_number == 1:
+            assert client.post("/event/advance").status_code == 302
+    assert event.is_complete
+    for path in ("/event/rotation", "/event/results", "/event/match/0"):
+        assert client.get(path).status_code == 200
+    results = {r.archer_index: r for r in event.results if r.rotation_index == 0}
+    assert results[0].percentile == pytest.approx(
+        stats_percentile(event.distribution_for(0), 100)
+    )
+    assert results[1].percentile == pytest.approx(
+        stats_percentile(event.distribution_for(1), 110)
+    )
+    assert results[0].percentile != results[1].percentile

@@ -1,0 +1,13 @@
+{# The distance dropdown, grouped Metric / Imperial. `groups` is models.distance_option_groups(),
+   `selected` the distance key (e.g. "20yd") to select; `id` is optional. #}
+{% macro distance_select(name, groups, selected, id=none) %}
+<select name="{{ name }}"{% if id %} id="{{ id }}"{% endif %}>
+  {% for group, options in groups.items() %}
+  <optgroup label="{{ group }}">
+    {% for value, text in options %}
+    <option value="{{ value }}"{% if value == selected %} selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </optgroup>
+  {% endfor %}
+</select>
+{% endmacro %}

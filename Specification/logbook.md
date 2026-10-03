@@ -1437,3 +1437,25 @@ chart payload's x-clamp. Engine check (all 16 face types x faces 20/40/60/122 x
 non-negative, scores in whole numbers, has mean equal to `archeryutils`' `arrow_score`,
 and the pass distribution sums to 1 within [0, n_pass x maximum]; no engine change was
 needed. Suite: 695 passed.
+
+### Task 49: Advanced setup - per-archer face type, face size and distance (complete apart from the browser check)
+Stage 1's Advanced mode is built. Selecting it still hides the simple distance and
+face-size dropdowns, but now shows a note that each archer's target is chosen in
+Stage 2, and Continue is never disabled; the "TBA" text and the server-side refusal
+are gone, and the three TBA tests were replaced. `SessionState` gained
+`setup_mode` ("simple"/"advanced", validated in `start_stage1`, restored by `reset`,
+remembered when returning to Stage 1); in advanced mode the Stage 1 handler does not
+validate the hidden simple fields and keeps the session's last simple distance and
+face. Stage 2 in advanced mode adds three dropdown columns per archer (target face
+type with the 16 readable names, face size 20 to 122 cm, and the Metric/Imperial
+distance list, defaults 10 zone / 60 cm / 20 yd) and a different intro; each row is
+parsed with `TargetSetup.parse_advanced` and a bad value is reported as "Row 3: ..."
+with the form refilled; `start_stage2` refuses an archer without a setup in advanced
+mode, and `start_event` builds the Event with no shared setup. The distance dropdown
+markup is now a shared macro (`_form_macros.html`) used by Stage 1 and the Stage 2
+rows. Tests: Stage 1 mode handling, rejected mode value, Stage 2 option lists and
+defaults, simple Stage 2 unchanged, valid rows reaching each archer's resolved target
+(a compound face for a Recurve archer's neighbour, a 5-zone archer at 50 yd, a
+Worcester face), bad values per field, missing fields, and a full 2-archer event with a
+5-zone and a 10-zone archer over HTTP (maximum 108 vs 120, percentiles from each own
+distribution); five state tests. Suite: 712 passed.

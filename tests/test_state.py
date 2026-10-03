@@ -316,3 +316,65 @@ def test_resubmitting_stage2_discards_the_old_draw_and_any_event():
     state.start_stage2(entered_archers(4))
     assert state.event is None
     assert state.assignment is not None
+
+
+# --- Setup mode: simple or advanced (Feedback 5) -------------------------------------
+
+
+def advanced_archers(n=2):
+    """Archers that each carry their own target setup."""
+    return [
+        Archer(
+            name=f"A{i}",
+            handicap=15 + 5 * i,
+            bowstyle=Bowstyle.RECURVE,
+            target_setup=TargetSetup(18, METRE, 40, "10_zone" if i % 2 == 0 else "5_zone"),
+        )
+        for i in range(n)
+    ]
+
+
+def test_setup_mode_defaults_to_simple_and_is_stored_by_stage_1_and_cleared_by_reset():
+    """start_stage1 records the mode, and reset restores simple."""
+    state = SessionState()
+    assert state.setup_mode == "simple"
+    state.start_stage1(4, 60, 12, PORTSMOUTH, setup_mode="advanced")
+    assert state.setup_mode == "advanced"
+    state.reset()
+    assert state.setup_mode == "simple"
+
+
+def test_an_unknown_setup_mode_is_rejected_without_touching_state():
+    """Only 'simple' and 'advanced' are valid."""
+    state = SessionState()
+    with pytest.raises(ValueError, match="Simple or Advanced"):
+        state.start_stage1(4, 60, 12, PORTSMOUTH, setup_mode="expert")
+    assert state.schedule is None and state.setup_mode == "simple"
+
+
+def test_advanced_stage_2_needs_a_target_setup_for_every_archer():
+    """An archer without their own setup is refused in advanced mode, and nothing is stored."""
+    state = SessionState(rng=NoShuffle())
+    state.start_stage1(2, 24, 12, PORTSMOUTH, setup_mode="advanced")
+    with pytest.raises(ValueError, match="A1"):
+        state.start_stage2([advanced_archers(2)[0], Archer("A1", 20, Bowstyle.RECURVE)])
+    assert state.pending_archers is None
+
+
+def test_advanced_event_has_no_shared_setup_and_each_archer_keeps_their_own():
+    """start_event passes no shared setup in advanced mode; the targets come from the archers."""
+    state = SessionState(rng=NoShuffle())
+    state.start_stage1(2, 24, 12, PORTSMOUTH, setup_mode="advanced")
+    state.start_stage2(advanced_archers(2))
+    state.start_event()
+    assert state.event.target_setup is None
+    assert [state.event.target_for(i).scoring_system for i in (0, 1)] == ["10_zone", "5_zone"]
+
+
+def test_simple_event_still_uses_the_shared_setup():
+    """In simple mode the Event gets the session's shared TargetSetup."""
+    state = SessionState(rng=NoShuffle())
+    state.start_stage1(2, 24, 12, PORTSMOUTH)
+    state.start_stage2(entered_archers(2))
+    state.start_event()
+    assert state.event.target_setup == PORTSMOUTH

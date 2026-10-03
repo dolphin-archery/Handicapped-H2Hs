@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_form_macros.html" import distance_select %}
 {% block content %}
 <h1>Event setup - Stage 1</h1>
 <p>Set up the event as a whole. Archer names, bowstyles, and handicaps are entered next, in Stage 2.</p>
@@ -53,15 +54,7 @@
       count as outdoor.</small></p>
     <div class="row">
       <label for="distance">Distance:</label>
-      <select name="distance" id="distance">
-        {% for group, options in distance_groups.items() %}
-        <optgroup label="{{ group }}">
-          {% for value, text in options %}
-          <option value="{{ value }}"{% if value == selected_distance %} selected{% endif %}>{{ text }}</option>
-          {% endfor %}
-        </optgroup>
-        {% endfor %}
-      </select>
+      {{ distance_select("distance", distance_groups, selected_distance, id="distance") }}
     </div>
     <div class="row">
       <label for="face_cm">Face size:</label>
@@ -74,11 +67,11 @@
   </div>
 
   <div id="advanced_setup" {% if setup_mode != 'advanced' %}hidden{% endif %}>
-    <p><strong>Advanced setup: TBA.</strong> Choosing a different scoring method, target face and
-      distance for each archer will be added later. Use Simple setup for now.</p>
+    <p>Advanced setup: each archer shoots their own target face type, face size and distance.
+      You choose them for every archer in Stage 2.</p>
   </div>
 
-  <button type="submit" id="stage1_submit" {% if setup_mode == 'advanced' %}disabled{% endif %}>Continue to Stage 2</button>
+  <button type="submit" id="stage1_submit">Continue to Stage 2</button>
 </form>
 
 <script>
@@ -134,13 +127,12 @@
 
   rebuildSlider();
 
-  // Simple mode shows the distance / face dropdowns; Advanced is not built yet, so it shows
-  // a TBA message and the form cannot be submitted.
+  // Simple mode shows the shared distance / face dropdowns; Advanced hides them (each
+  // archer's target is chosen in Stage 2) and shows a note instead.
   function updateSetupMode() {
     const advanced = document.getElementById("setup_mode_advanced").checked;
     document.getElementById("simple_setup").hidden = advanced;
     document.getElementById("advanced_setup").hidden = !advanced;
-    document.getElementById("stage1_submit").disabled = advanced;
   }
   document.getElementById("setup_mode_simple").addEventListener("change", updateSetupMode);
   document.getElementById("setup_mode_advanced").addEventListener("change", updateSetupMode);
