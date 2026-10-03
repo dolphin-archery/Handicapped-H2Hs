@@ -13,7 +13,7 @@ import pytest
 from h2h.app import create_app
 from h2h.state import SessionState
 
-from .helpers import save_match, score_current_pass
+from .helpers import overview_table, save_match, score_current_pass
 
 
 def make_client():
@@ -377,9 +377,9 @@ def test_saving_a_match_records_only_that_match_and_returns_to_its_page():
     assert resp.status_code == 302
     assert resp.headers["Location"].endswith("/event/match/0")
 
-    overview = client.get("/event/rotation").data.decode()
-    assert "A1 100 - 60 A4" in overview
-    assert overview.count("Awaiting scores") == 1  # the other match
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert rows[0][:2] == ["A1 vs A4", "100 - 60"]
+    assert rows[1][:4] == ["A2 vs A3", "-", "-", "-"]  # the other match is unscored
 
 
 @pytest.mark.parametrize(
@@ -400,7 +400,8 @@ def test_invalid_score_on_a_match_page_shows_an_error_and_records_nothing(
     resp = save_match(client, 0, {0: bad_score, 1: 60})
     assert resp.status_code == 200
     assert expected_message in resp.data
-    assert b"Awaiting scores" in client.get("/event/rotation").data
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert rows[0][1] == "-"  # nothing was recorded
 
 
 def test_resaving_a_match_replaces_its_scores():
@@ -410,9 +411,8 @@ def test_resaving_a_match_replaces_its_scores():
     save_match(client, 0, {0: 100, 1: 60})
     save_match(client, 0, {0: 90, 1: 80})
 
-    overview = client.get("/event/rotation").data.decode()
-    assert "Alice 90 - 80 Bob" in overview
-    assert "100" not in overview.split("Alice")[1].split("Bob")[0]
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert len(rows) == 1 and rows[0][1] == "90 - 80"
     page = client.get("/event/match/0").data.decode()
     assert 'value="90"' in page
     assert 'value="80"' in page
@@ -449,7 +449,8 @@ def test_advancing_shows_the_next_passes_pairings_and_accepts_its_scores():
     names = {i: name for i, (name, _, _) in enumerate(FOUR_ARCHERS)}
     for a, b in state.event.matches(1):
         assert f"{names[a]} vs {names[b]}".encode() in resp.data
-    assert resp.data.count(b"Awaiting scores") == 2  # fresh pass, nothing scored yet
+    _, rows = overview_table(resp.data.decode())
+    assert [row[1] for row in rows] == ["-", "-"]  # fresh pass, nothing scored yet
 
     score_current_pass(client)
     results = client.get("/event/results").data
@@ -789,7 +790,8 @@ def test_toggling_graph_view_keeps_scores_and_the_current_pass():
     client.post("/graph-view", data={"next": "/event/match/0"})
     assert state.event.results == before
     assert state.event.current_rotation_index == 0
-    assert b"Alice 100 - 60 Bob" in client.get("/event/rotation").data
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert rows[0][1] == "100 - 60"
 
 
 # --- Handicaps on the match pages (Feedback 4) ------------------------------
@@ -893,3 +895,106 @@ def test_winner_explanation_text_lives_in_one_template_only():
         if "chance of scoring that much or less" in t.read_text(encoding="utf-8")
     ]
     assert owners == ["_pair_chart.html"]
+
+
+# --- Overview table: Match | Score | Percentiles | Winner | Actions (Feedback 4) --
+
+
+def percent(p):
+    """A percentile as the overview formats it, e.g. 0.1234 -> '12.3%'."""
+    return f"{p * 100:.1f}%"
+
+
+def test_overview_table_has_the_five_headed_columns_in_order():
+    """The matches table is headed Match, Score, Percentiles, Winner, Actions."""
+    client = make_client()
+    start_four_archer_event(client)
+    headings, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert headings == ["Match", "Score", "Percentiles", "Winner", "Actions"]
+    assert all(len(row) == 5 for row in rows)
+
+
+def test_unscored_pair_row_shows_dashes_and_an_enter_scores_link():
+    """Before scoring, Score, Percentiles and Winner are '-' and Actions says Enter scores."""
+    client = make_client()
+    start_four_archer_event(client)
+    page = client.get("/event/rotation").data.decode()
+    _, rows = overview_table(page)
+    assert rows[0] == ["A1 vs A4", "-", "-", "-", "Enter scores"]
+    assert 'href="/event/match/0"' in page
+
+
+def test_scored_pair_row_matches_the_events_recorded_results():
+    """After scoring: scores and percentiles in opponent order, the winner's name, View / edit."""
+    client, state = make_client_and_state()
+    start_four_archer_event(client)
+    save_match(client, 0, {0: 60, 3: 100})
+    save_match(client, 1, {1: 90, 2: 90})
+
+    event = state.event
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    for row, (a, b) in zip(rows, event.matches(0), strict=True):
+        result_a, result_b = event.match_results(0, (a, b))
+        winner = result_a if result_a.won else result_b
+        assert row == [
+            f"{event.archers[a].name} vs {event.archers[b].name}",
+            f"{result_a.score} - {result_b.score}",
+            f"{percent(result_a.percentile)} - {percent(result_b.percentile)}",
+            event.archers[winner.archer_index].name,
+            "View / edit",
+        ]
+
+
+def test_score_and_percentile_orientation_follows_the_match_column_for_every_pair():
+    """In a pair listed with the higher archer index first, Score/Percentiles keep that order."""
+    client, state = make_client_and_state()
+    start_four_archer_event(client)
+    score_current_pass(client)
+    client.post("/event/advance")
+    event = state.event
+    # Pass 2 of a 4-archer round-robin has a pair listed higher-index first.
+    flipped = [i for i, (a, b) in enumerate(event.matches(1)) if a > b]
+    assert flipped, "expected a pair listed higher-index first in pass 2"
+
+    for match_index, (a, b) in enumerate(event.matches(1)):
+        save_match(client, match_index, {a: 50 + 7 * a, b: 50 + 7 * b})
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    for i in flipped:
+        a, b = event.matches(1)[i]
+        result_a, result_b = event.match_results(1, (a, b))
+        assert rows[i][0] == f"{event.archers[a].name} vs {event.archers[b].name}"
+        assert rows[i][1] == f"{50 + 7 * a} - {50 + 7 * b}"
+        assert rows[i][2] == f"{percent(result_a.percentile)} - {percent(result_b.percentile)}"
+
+
+def test_bye_match_row_shows_one_score_one_percentile_and_no_winner():
+    """A solo bye match shows its single score and percentile, and '-' as Winner."""
+    client, state = make_client_and_state()
+    start_three_archer_event(client, shoot_byes=True)
+    bye_archer = state.event.schedule[0].bye
+    save_match(client, 1, {bye_archer: 70})
+
+    result = state.event.match_results(0, (bye_archer, None))[0]
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    name = state.event.archers[bye_archer].name
+    assert rows[1] == [
+        f"{name} (bye - no opponent, shoots alone)",
+        "70",
+        percent(result.percentile),
+        "-",
+        "View / edit",
+    ]
+
+
+def test_resaving_a_match_updates_its_row_and_awaiting_scores_text_is_gone():
+    """The row follows a re-save (including the winner), and no 'Awaiting scores' remains."""
+    client, state = make_client_and_state()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 120, 1: 0})
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert rows[0][3] == "Alice"
+    save_match(client, 0, {0: 0, 1: 120})
+    page = client.get("/event/rotation").data.decode()
+    _, rows = overview_table(page)
+    assert rows[0][1] == "0 - 120" and rows[0][3] == "Bob"
+    assert "Awaiting scores" not in page

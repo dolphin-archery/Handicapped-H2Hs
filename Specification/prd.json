@@ -478,7 +478,7 @@
       "Re-saving a match updates its row; the text 'Awaiting scores' no longer appears anywhere on the overview.",
       "The sitting-out line, advance button behaviour and final-pass behaviour are unchanged (existing tests migrated)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 38,

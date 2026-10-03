@@ -113,3 +113,31 @@ def record_whole_rotation(event, score=60):
     """
     for match in event.matches(event.current_rotation_index):
         event.record_match({p: score for p in match if p is not None})
+
+
+def _text(fragment):
+    """Plain text of an HTML fragment, with tags removed and whitespace collapsed."""
+    return " ".join(re.sub(r"<[^>]+>", " ", fragment).split())
+
+
+def overview_table(html):
+    """The overview page's matches table as plain text.
+
+    Parameters
+    ----------
+    html : str
+        Rendered /event/rotation page.
+
+    Returns
+    -------
+    tuple[list[str], list[list[str]]]
+        The column headings, and one list of cell texts per body row.
+    """
+    table = html[html.index("<table>") : html.index("</table>")]
+    headings = [_text(h) for h in re.findall(r"<th>(.*?)</th>", table, re.S)]
+    rows = [
+        [_text(cell) for cell in re.findall(r"<td>(.*?)</td>", row, re.S)]
+        for row in re.findall(r"<tr>(.*?)</tr>", table, re.S)
+        if "<td>" in row
+    ]
+    return headings, rows

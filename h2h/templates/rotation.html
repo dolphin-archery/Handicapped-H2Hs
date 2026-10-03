@@ -9,7 +9,7 @@
 
 <table>
   <thead>
-    <tr><th>Match</th><th>Status</th><th></th></tr>
+    <tr><th>Match</th><th>Score</th><th>Percentiles</th><th>Winner</th><th>Actions</th></tr>
   </thead>
   <tbody>
     {% for m in matches %}
@@ -21,14 +21,22 @@
         {{ event.archers[m.a].name }} vs {{ event.archers[m.b].name }}
         {% endif %}
       </td>
+      {# Score and percentiles follow the order of the opponents in the Match column. #}
       <td>
-        {% if not m.scored %}
-        Awaiting scores
-        {% elif m.b is none %}
-        {{ event.archers[m.a].name }}: {{ m.results[m.a].score }}
-        {% else %}
-        {{ event.archers[m.a].name }} {{ m.results[m.a].score }} - {{ m.results[m.b].score }} {{ event.archers[m.b].name }}
-        ({{ event.archers[m.a if m.results[m.a].won else m.b].name }} wins)
+        {% if not m.scored %}-
+        {% elif m.b is none %}{{ m.results[m.a].score }}
+        {% else %}{{ m.results[m.a].score }} - {{ m.results[m.b].score }}
+        {% endif %}
+      </td>
+      <td>
+        {% if not m.scored %}-
+        {% elif m.b is none %}{{ '%.1f%%'|format(m.results[m.a].percentile * 100) }}
+        {% else %}{{ '%.1f%%'|format(m.results[m.a].percentile * 100) }} - {{ '%.1f%%'|format(m.results[m.b].percentile * 100) }}
+        {% endif %}
+      </td>
+      <td>
+        {% if not m.scored or m.b is none %}-
+        {% else %}{{ event.archers[m.a if m.results[m.a].won else m.b].name }}
         {% endif %}
       </td>
       <td>

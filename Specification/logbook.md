@@ -984,3 +984,24 @@ higher-percentile-wins rule and the vertical lines, appears only with graph view
 on (both pages), and that its wording lives in exactly one template. The
 Compound scoring note was dropped from this text on purpose ("simplify"); that
 rule is still stated on Stage 2.
+
+### Task 37: Overview table: Match | Score | Percentiles | Winner | Actions (complete)
+The per-pass table on `/event/rotation` now has five headed columns. Match is
+unchanged ("A vs B", or "A (bye - no opponent, shoots alone)"). Score is "A - B"
+in the same order as the opponents; Percentiles is "x.x% - y.y%" in that order
+(each archer's percentile in their own distribution); Winner is the winner's
+name; Actions is the link into the match page ("Enter scores" until scored, then
+"View / edit"). Unscored matches show "-" in Score, Percentiles and Winner, and a
+bye match shows its single score and percentile with "-" as Winner (no opponent).
+The old "Awaiting scores" / "A 100 - 60 B (B wins)" status text is gone. Pure
+template change - the route's per-match view data already carried the results.
+
+Tests use a new `overview_table()` helper (in `tests/helpers.py`) that parses the
+rendered table into headings and rows of plain text, so assertions are on whole
+cells rather than substrings. Besides the headings, unscored row, scored row
+(checked against the Event's own recorded scores, percentiles and winner) and bye
+row, one test guards orientation: pass 2 of a 4-archer round-robin contains a pair
+listed higher-index first, and its Score and Percentiles cells are checked to keep
+that order (a swapped orientation would be caught); another re-saves a match with
+the result reversed and checks the Winner cell follows. The existing tests that
+matched the old status text were rewritten against cells. Suite: 432 passed.
