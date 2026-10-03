@@ -1496,3 +1496,23 @@ cm 50 yd) reached Stage 3 and the overview; on every match page of all three pas
 5-zone archer's box was "(0-108)" / max 108, including their bye pass, and the others
 (0-120). Defaults-only submission (2 archers) also reached Stage 3 and the overview. Task 49
 is therefore complete.
+
+### Task 52: Outputs model - completed passes, leaderboard and per-archer results (complete)
+New Flask-free module `h2h/outputs.py`, plus `Event.completed_passes` (the rotations in
+which every match is scored). `leaderboard(event)` returns one `LeaderboardRow` per
+archer (rank, name, points = passes won, passes decided = completed passes with an
+opponent), ordered by points then event order, with competition ranking for ties (1, 2,
+2, 4 / 1, 1, 3, 3); `archer_results(event)` returns, in event order, an `ArcherResults`
+per archer: name, entered handicap, total score, a row per completed pass they shot in
+(1-based pass number, opponent name or "bye", score, percentile as a 0-1 fraction,
+equivalent handicap or None) and an `ArcherAverages` (mean score, percentile and
+handicap ignoring a None handicap; None when there are no rows). Only completed passes
+count (Assumption 36), so a half-scored pass changes nothing until its last match is
+saved, a re-saved match is not counted twice (the model replaces its results), a bye pass
+scores no point and is not "decided", and a sat-out pass has no row. Tests (17): empty
+state, partial pass left out then included, points equal the Event's own winners over a
+whole event and total one per decided match, ranking with chosen win counts (fake results
+inserted directly, since the real winner depends on the maths), the bye and sit-out
+cases, re-save, row contents and order, totals and averages including the None-handicap
+cases, and a module-hygiene test (no Flask import, a docstring on every function).
+Suite: 743 passed.

@@ -685,6 +685,16 @@ class Event:
             for i in range(len(self.matches(rotation_index)))
         )
 
+    @property
+    def completed_passes(self) -> list[int]:
+        """list[int]: the rotations in which every match is scored, in order.
+
+        The leaderboard and per-archer results use only these (AISpec.md
+        section 5.4a): a pass that is only partly scored is left out until its
+        last match is saved.
+        """
+        return [i for i in range(len(self.schedule)) if self.is_rotation_complete(i)]
+
     def record_match(
         self, scores: dict[int, float], closest: int | None = None
     ) -> list[PassResult]:

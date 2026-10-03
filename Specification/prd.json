@@ -714,7 +714,7 @@
       "An event that is mid-way through advancing shows the leaderboard consistent with the per-pass results (no match counted twice after a score is edited and re-saved).",
       "The module imports without Flask and has docstrings on every function."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 53,
