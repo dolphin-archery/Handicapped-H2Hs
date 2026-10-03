@@ -249,7 +249,9 @@ scored exactly like Recurve/Barebow (Assumption 18).
   matches by archer name, the bye archer shooting alone or the archers sitting out,
   as per §5.3), so the scorer can see the whole draw.
 - A **Redraw pairings** button draws a fresh random assignment and re-shows the page,
-  as often as wanted. A **Confirm pairings and start event** button builds the event
+  as often as wanted. A redraw prefers a draw whose pairings actually differ from the
+  current ones, so pressing it visibly changes the page whenever a different pairing
+  exists (Assumption 25). A **Confirm pairings and start event** button builds the event
   from the shown assignment and goes to the overview (§5.3). Neither is available
   once the event has started (the page then redirects to the overview).
 - Reaching Stage 3 without having completed Stage 2 redirects back to Stage 1/2.
@@ -590,9 +592,14 @@ is coming.
     submitted so that reloading Stage 3 does not change it, and redrawn on request.
     The round-robin structure is unchanged, so redrawing changes which archers meet
     in which pass and who gets the byes, not the set of pairings overall (with a
-    full round-robin every pair still meets once). With only two archers there is
-    one possible pairing and redrawing changes nothing. A random source can be
-    injected, for tests.
+    full round-robin every pair still meets once). A redraw prefers pairings that
+    differ from the current ones (a plain reshuffle repeats the displayed pairings
+    1 time in 6 with four archers, which would make the button look broken): it
+    draws again, up to 50 times, until the who-meets-whom summary of every pass
+    (including byes and sit-outs, ignoring the order within a pair) changes, and
+    otherwise keeps the last draw. With only two archers there is one possible
+    pairing and redrawing changes nothing. A random source can be injected, for
+    tests.
 26. **Graph view is one global setting, with its toggle on score-input pages only.**
     Feedback 4 says to "only display [the] button on score input pages, not summary
     pages", so the setting can only be changed from a match page. It still persists
