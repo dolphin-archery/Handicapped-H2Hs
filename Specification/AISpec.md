@@ -33,7 +33,11 @@ are no longer shown beside archers' names while scoring (the pass's own handicap
 the results table instead), displayed percentiles are made distinguishable, the tie-break
 tick boxes only appear when there is a tie, the per-pass results are shown grouped by match,
 exports carry a date and time and both starting and to-date handicaps, and advanced setup can
-update each archer's handicap as the event goes on (a weighted moving average).
+update each archer's handicap as the event goes on (a weighted moving average). As of
+`Specification/feedback.md` "Feedback 7", the chart legend shows each archer's handicap again
+(the one the plotted curve is built from), the tables that show a pass's handicap also show the
+handicap the pass started from when handicaps are being updated, and the default `n_lookback`
+is 4.
 
 ## 2. Statistical model (summary — see `Testing/idea_evaluation.md` for full derivation)
 
@@ -301,7 +305,7 @@ distribution, so archers on different targets are still compared fairly.
 
 #### 5.2c Updating handicaps during the event (advanced setup only)
 
-Per `Specification/feedback.md` "Feedback 6" (Assumptions 49-50). On Stage 2, in advanced
+Per `Specification/feedback.md` "Feedback 6" and "Feedback 7" (Assumptions 49-50, 52-55). On Stage 2, in advanced
 setup mode only (simple setup always keeps each archer's handicap constant), there is an
 event-wide Yes/No choice **"Update handicaps during matches"**, default No.
 
@@ -310,10 +314,12 @@ event-wide Yes/No choice **"Update handicaps during matches"**, default No.
 - **Yes:** two more inputs appear, both whole numbers of at least 1:
   - **`n_lookback`** — how many of an archer's most recent passes (each `n_pass` arrows)
     are used to work out their handicap at the start of a pass. `n_lookback = 1` uses only
-    the previous pass. Default: the number of passes each archer shoots, `P =
-    total_arrows / n_pass`, i.e. use everything shot so far (Assumption 49).
+    the previous pass. Default **4** (Feedback 7; Assumption 52): for the final pass of a
+    60-arrow event of 12-arrow passes that is every earlier pass, so its distribution is
+    built from the arrows shot so far in this event; a longer event looks back over only
+    the last four passes, and a shorter one over all it has.
   - **Start weight** — how many passes' worth of arrows the starting handicap counts for.
-    Default `P` (5 for a 60-arrow event of 12-arrow passes).
+    Default `P = total_arrows / n_pass` (5 for a 60-arrow event of 12-arrow passes).
 - Before an archer's pass, let `j` be the number of passes they have scored in earlier
   rotations (sitting a pass out adds nothing) and `m = min(n_lookback, j)`. If `m = 0` the
   handicap for the pass is `H0`. Otherwise let `H_recent` be the handicap implied by the
@@ -325,9 +331,15 @@ event-wide Yes/No choice **"Update handicaps during matches"**, default No.
   and so their percentile, the winner and the chart's curves. It depends only on passes
   before the current one, so correcting the current pass's scores never changes it, and a
   pass that has been advanced past keeps the handicap it was scored with.
-- The updated handicap is not displayed (Feedback 6 removes handicaps from the scoring
-  pages); it shows only through the percentiles and the curves. It is a different quantity
-  from the to-date handicap of §5.4a, which weights nothing and uses every arrow shot.
+- The handicap an archer starts a pass with is shown in three places only (Feedback 7;
+  Assumptions 51 and 53): in the chart legend, which names the handicap the plotted curve
+  is built from (§5.6); and, whenever handicaps are being updated, as a **Pass starting
+  handicap** column beside the pass's own **Handicap** (the one the score implies) in every
+  table that shows a pass's handicap (§5.3, §5.4a). Handicap updating also changes the
+  curves between passes: the distribution plotted for an archer in one pass is built from
+  their handicap for that pass, so it differs from the one in the next pass once they have
+  shot (Assumption 54). The pass starting handicap is a different quantity from the
+  to-date handicap of §5.4a, which weights nothing and uses every arrow shot.
 
 #### 5.2b Stage 3: pairing assignment
 
@@ -400,16 +412,20 @@ event-wide Yes/No choice **"Update handicaps during matches"**, default No.
 - Each match has its **own page**, reached from the overview, where the scorer
   enters that match's scores: one score-entry box per archer in the match (a
   single box for a bye match). The heading and the score-box labels are just the
-  archers' names ("A vs B"): **no handicap is shown beside an archer's name while
-  scoring** (Feedback 6, which overrides the earlier requests to show it in the heading,
-  beside the score boxes and in the graph legend; Assumption 41). Score validation is whole numbers in `[0, n_pass * m]` where `m` is the highest
+  archers' names ("A vs B"): **no handicap is shown beside an archer's name in the heading
+  or the score-box labels** (Feedback 6, which overrides the earlier requests to show it
+  there; Assumption 41). The graph legend is the exception (§5.6; Assumption 51). Score
+  validation is whole numbers in `[0, n_pass * m]` where `m` is the highest
   score one arrow can earn on that archer's own target (§5.2a), with friendly
   errors and integer display. Below the form, once the match has scores, one
   **table of this pass only** with the columns **Archer | Score | Percentile |
   Handicap | Winner**, one row per archer in the match: Percentile as in the overview
   (display rule below), Handicap the handicap implied by the score shot in this pass
   (the "equivalent handicap" of §5.4a, to one decimal place, "-" for a score of 0),
-  and Winner "Yes" or "No" (a bye match, having no opponent, shows "-"). Earlier passes
+  and Winner "Yes" or "No" (a bye match, having no opponent, shows "-"). When handicaps
+  are being updated (§5.2c) the table has one more column, **Pass starting handicap**,
+  between Percentile and Handicap: the handicap the archer's distribution for this pass was
+  built from (one decimal place), which the Percentile was judged against. Earlier passes
   and earlier opponents are not shown here; they are in the per-archer results (§5.4a).
   Below that, in graph view, the pair's distribution chart (§5.6), plus a link back to
   the overview. Scores for all matches are **not** entered on one page at once.
@@ -509,12 +525,14 @@ show an empty state (every archer on 0 points, no result rows).
   - **Score** — the score they shot in that pass;
   - **Percentile** — that score's percentile in their own distribution, as a
     percentage to one decimal place;
+  - **Pass starting handicap** — shown only when handicaps are being updated (§5.2c): the
+    handicap the archer's distribution for that pass was built from, to one decimal place;
   - **Handicap** — the handicap implied by that score (the "equivalent handicap":
     the handicap whose average score over a pass on their target is the score shot;
     "-" for a score of 0, which has none), to one decimal place;
   with one row per completed pass in which they shot (a pass they sat out has no row)
-  and a final **Average** row giving the mean Score, Percentile and Handicap (the
-  Handicap mean ignores "-"; it is "-" if there are none). The row's label "Average"
+  and a final **Average** row giving the mean Score, Percentile, Pass starting handicap (when
+  shown) and Handicap (the Handicap mean ignores "-"; it is "-" if there are none). The row's label "Average"
   runs across the Pass and Opponent columns, which have no value of their own since
   an average of pass numbers or of names means nothing (Assumption 38).
 - **Exports** (links on the Results page and the Archer results page), each built from
@@ -523,7 +541,8 @@ show an empty state (every archer on 0 points, no result rows).
     To-date handicap,Exported`);
   - the **archer results as CSV**, one tidy table with a row per archer per completed
     pass (`Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),
-    Handicap of score,Exported`; the two handicap columns repeat the archer's values on each
+    [Pass starting handicap,]Handicap of score,Exported`, the bracketed column present only
+    when handicaps are being updated, Assumption 53; the two handicap columns repeat the archer's values on each
     of their rows), without the Average rows, which a spreadsheet can compute;
   - one **PDF report** of everything: a title and the time of export, the leaderboard
     (with both handicaps) and then each archer's heading (with both handicaps) and table
@@ -539,7 +558,8 @@ show an empty state (every archer on 0 points, no result rows).
   15:30:12` on every row) and as a line near the top of the PDF.
 - **Per-pass results on the Results page** (Feedback 6; Assumption 45): for every pass with
   results, a heading "Pass N" and one table in the same format as the This pass table of §5.3
-  (**Archer | Score | Percentile | Handicap | Winner**), with each match's rows together
+  (**Archer | Score | Percentile | Handicap | Winner**, plus Pass starting handicap
+  between Percentile and Handicap when handicaps are being updated), with each match's rows together
   and a thick double horizontal line between one match and the next, so it is clear who
   was paired with whom (a bye match is a group of one row; matches not yet scored are
   left out). Percentiles follow the display rule of §5.3. This section, like the pairwise
@@ -585,9 +605,13 @@ built by Feedback 5) exists.
   distributions as smoothed, shaded curves on one shared graph (not discretised
   bars, and not two separate charts), trimmed to a sensible x-range rather than the
   full achievable score range.
-  - **Legend:** each curve is listed with its archer's name only. (Feedback 5 put
-    the handicap in the legend; Feedback 6 removed handicaps from the scoring pages, so
-    it is gone again, Assumption 41.) The marker lines below are not listed in the legend.
+  - **Legend:** each curve is listed with its archer's name and handicap, e.g. "Alice
+    (handicap 30)" (Feedback 5 added this, Feedback 6 removed it with the other handicaps on
+    the scoring pages, Feedback 7 restored it; Assumption 51). The handicap is the one the
+    plotted curve is built from: the entered handicap, as entered (22.5 stays 22.5, 15.0
+    shows 15), when handicaps are not being updated, and the handicap for the current pass,
+    to one decimal place, when they are (§5.2c). The marker lines below are not listed in the
+    legend.
   - **Score markers:** the scores the archers have shot are marked as vertical dashed
     lines in the archer's colour, **each labelled on the chart with its pass number**
     (e.g. "P3" beside the line, kept inside the plot and, where two lines are close, on
@@ -967,7 +991,7 @@ built by Feedback 5) exists.
     miscellaneous set. The compound variants are not listed separately: the compound
     checkbox, shown only for indoor rounds, switches the chosen round to its compound
     variant where `archeryutils` defines one.
-41. **No handicap beside an archer's name while scoring (Feedback 6).** The feedback says
+41. ~~**No handicap beside an archer's name while scoring (Feedback 6).** The feedback says
     "Do not display handicap next to archer names during score input. Ignore previous
     instructions saying to". Three earlier requests asked for the handicap on the match page:
     Feedback 4 (in the heading and beside the score boxes), Feedback 5 (out of the heading,
@@ -977,7 +1001,8 @@ built by Feedback 5) exists.
     intent as read; if the legend should keep it, restore the `legend` label in
     `h2h/chart_data.py`. The handicap implied by the pass's score (a result, not an input) is
     shown in the This pass table instead (Assumption 44). Handicaps still appear on the
-    results pages (Assumption 47).
+    results pages (Assumption 47).~~ Partly superseded by Feedback 7 (Assumption 51): the
+    chart legend shows the handicap again; the heading and the score-box labels stay names only.
 42. **Percentile display precision.** "Increment decimal places displayed until they are
     different, unless they are both 100%" is implemented on the percentage values (percentile
     times 100) for a pair, adding a decimal place at a time from one up to a limit of 20.
@@ -1025,7 +1050,8 @@ built by Feedback 5) exists.
     averaged by those weights; `m` is capped by the passes actually shot. The feedback gives
     the default of the start weight (`n_arrows / n_pass`) but none for `n_lookback`, so it
     defaults to the same number of passes, which uses every arrow shot so far (what the
-    earlier "Future Plans" wording described); the scorer can lower it. Both must be whole
+    earlier "Future Plans" wording described); the scorer can lower it. (Feedback 7 then set the
+    default to 4, Assumption 52.) Both must be whole
     numbers of at least 1 (a start weight of 0 would drop the starting handicap as soon as
     there is data; not asked for). The recent handicap uses `archeryutils`'s rootfinder, so
     it inherits its limits: a very high score saturates (a perfect pass gives the highest
@@ -1037,3 +1063,49 @@ built by Feedback 5) exists.
 50. **Where the choice lives.** It is an event-wide setting on Stage 2 shown only in advanced
     mode (as the feedback says); simple mode never updates handicaps. It is stored with the
     archers when Stage 2 is submitted, and the Stage 2 form refills it after an error.
+51. **The legend's handicap (Feedback 7).** "I want the in legend handicap from feedback 5 back"
+    restores "Name (handicap H)" in the chart legend and nothing else: Feedback 6's removal
+    still holds for the heading and the score-box labels. Feedback 5 gave "the base handicap";
+    with handicap updating (§5.2c) the plotted curves are built from the handicap for the
+    current pass, so a legend that kept showing the entered handicap next to a curve built from
+    a different one would mislead. The legend therefore shows the handicap the curve is
+    built from: the entered handicap, in the format Feedback 5 used (22.5 stays 22.5, 15.0 shows
+    15), when handicaps are not updated, and the current pass's handicap to one decimal place
+    when they are (the same figure as the Pass starting handicap column, Assumption 53). This is
+    also what makes the change in the curves between passes visible.
+52. **Default `n_lookback` is 4 (Feedback 7).** The feedback's reason is that for the final pass
+    of a 60-arrow round the distribution should be based only on the arrows shot so far in the
+    round. With 12-arrow passes a 60-arrow round has five passes, so the final one has four
+    earlier passes and a lookback of 4 covers all of them (which is also what 5 gave). It is read
+    as a fixed default of 4, as written, rather than "the number of passes minus one": a
+    shorter event then looks back over every pass it has (a lookback larger than the passes shot
+    is capped at those), and a longer one over only its last four. The start weight's default
+    is unchanged (the passes per archer, as Feedback 6 specified). Only the default changes;
+    the scorer can still enter any whole number of at least 1.
+53. **The per-pass starting handicap column.** "All tables that display the per pass handicap
+    (handicap of arrows shot that pass) should display also the per pass starting handicap
+    (used to generate the distribution the score is evaluated against)", "when using moving
+    average handicaps", is read as: the match page's This pass table, the Results page's
+    per-pass tables, the Archer results page's tables, the archer-results CSV and the PDF each
+    get one more column, **Pass starting handicap** (one decimal place), next to the existing
+    **Handicap** (the one the pass score implies), and only when handicaps are being updated;
+    with updating off the pass starting handicap would always equal the entered handicap, so the
+    column is left out of the tables, the CSV and the PDF (the CSV's columns therefore depend
+    on the event's setting). It is named "Pass starting handicap" rather than "Starting
+    handicap" because that name already means the handicap entered at Stage 2 (Assumption 47).
+    The value is not stored: it is worked out from the handicaps of the earlier passes
+    (`Event.handicap_for`), which are fixed once a pass is advanced past, so it is the same
+    figure the pass's percentile was judged against. The Average row of the Archer results
+    tables averages it. The leaderboard and the to-date handicap are unchanged.
+54. **The plotted distributions change between passes (Feedback 7: "confirm").** The chart is
+    built from `Event.distribution_for` for the current pass, which uses the handicap for that
+    pass, so with updating on an archer's curve is built from a different handicap, and so is
+    different, in each pass after they have shot (and identical across passes with updating
+    off). This was already so after Feedback 6; Feedback 7 adds tests over the HTTP routes and a
+    real-browser check that read the plotted curve for the same archer in successive passes, and
+    the legend's handicap (Assumption 51) shows it. One consequence to expect: the vertical
+    markers of earlier passes' scores (the "show previous passes" box) are drawn against the
+    current pass's curve, not the curve each was originally judged against.
+55. **Numbering.** The Feedback 7 list in `feedback.md` numbers its items 1, 2, 2, 3; they are
+    taken as four items (legend, confirm, per-pass starting handicap, default `n_lookback`),
+    which are Assumptions 51, 54, 53 and 52.

@@ -929,5 +929,89 @@
       "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 6 section."
     ],
     "completed": true
+  },
+  {
+    "id": 67,
+    "name": "Chart legend shows each archer's handicap again",
+    "description": "Per Specification/feedback.md 'Feedback 7' item 1 and AISpec.md section 5.6 (Assumption 51): the chart legend lists each curve as 'Name (handicap H)'. H is the handicap the plotted curve is built from, i.e. Event.handicap_for(archer) for the current pass: with handicap updating off it is the entered handicap as entered (22.5 stays 22.5, 15.0 shows 15, via %g); with updating on it is the current pass's handicap to one decimal place. h2h/chart_data.build_pair_chart_data restores a `legend` string in each archer's payload entry; the chart script uses it for the curve labels (marker lines stay out of the legend). The match page's heading and score-box labels remain names only (Feedback 6 item 1 still applies there), and nothing else on the page shows a handicap beside a name.",
+    "tests": [
+      "The payload's `legend` is 'Alice (handicap 22.5)', 'Alice (handicap 15)' and 'Alice (handicap 7.25)' for entered handicaps 22.5, 15.0 and 7.25 with updating off, and the other archer's entry is 'Bob (handicap 40)'.",
+      "With updating on, before any pass the legend shows the entered handicap; after a poor first pass the next pass's payload legend shows that archer's updated handicap to one decimal place (equal to f'{event.handicap_for(i):.1f}'), different from the entered one.",
+      "The chart script names each curve with the payload's legend text and no longer composes names alone (the curve dataset labels are data.archer_a.legend and data.archer_b.legend).",
+      "On a match page with graph view on the heading is the two names only and the score-box labels read '<name> score (0-<max>):'; the only place the word 'handicap' appears next to an archer's name in the page text outside the This pass table's headings is the chart payload's legend.",
+      "A real-browser check reads chart.legend.legendItems and finds exactly the two 'Name (handicap H)' texts and no marker entries.",
+      "The existing names-only legend tests are replaced and the full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 68,
+    "name": "Per-pass starting handicap column in the match page and Results page tables",
+    "description": "Per Specification/feedback.md 'Feedback 7' (per-pass starting handicap) and AISpec.md sections 5.3 and 5.4a (Assumption 53): when the event updates handicaps, the pass table (the match page's This pass table and the Results page's per-pass tables, both from the shared _pass_table.html) has one more column, 'Pass starting handicap', between Percentile and Handicap, showing the handicap the archer's distribution for that pass was built from: Event.handicap_for(archer, rotation) to one decimal place. outputs.PassTableRow gains a start_handicap text and pass_table_rows fills it (it works it out from the event, nothing is stored). With updating off the column is absent (headings Archer | Score | Percentile | Handicap | Winner as before). The partial decides from the event's update_handicaps flag.",
+    "tests": [
+      "With updating on, the match page's This pass table headings are exactly Archer, Score, Percentile, Pass starting handicap, Handicap, Winner, and each row's Pass starting handicap equals f'{event.handicap_for(archer, rotation):.1f}' for that pass; in pass 1 it equals the entered handicap, in pass 2 it differs for an archer whose pass 1 differed from their handicap.",
+      "The Results page's per-pass tables have the same six headings and each pass's rows carry that pass's own starting handicap (pass 1's rows show the entered handicaps, pass 2's the updated ones), grouped by match as before.",
+      "With updating off both tables keep the five headings (Archer, Score, Percentile, Handicap, Winner) and no 'Pass starting handicap' text appears on the page.",
+      "The pass starting handicap shown for pass 1 does not change when pass 2 is scored, and re-saving the current pass's match with different scores does not change the starting handicap shown for that pass.",
+      "pass_table_rows on an Event with updating on fills PassTableRow.start_handicap with the one-decimal text; a bye match's row has it too; with updating off start_handicap is not displayed by the partial.",
+      "The percentile in a row is the one judged against that starting handicap: the stored percentile equals stats.percentile of the distribution built from the shown starting handicap and the shown score.",
+      "The full suite passes with the migrated table tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 69,
+    "name": "Per-pass starting handicap in the Archer results page, archer-results CSV and PDF",
+    "description": "Per Specification/feedback.md 'Feedback 7' and AISpec.md section 5.4a (Assumption 53): when the event updates handicaps, the Archer results page's per-archer tables, the archer-results CSV and the PDF's per-archer tables gain a 'Pass starting handicap' column between Percentile and Handicap (CSV: between 'Percentile (%)' and 'Handicap of score'), showing Event.handicap_for(archer, rotation) for each completed pass to one decimal place, and the Average row of the tables (page and PDF) also averages it. h2h.outputs: ArcherResultRow gains start_handicap (float) and ArcherAverages gains start_handicap (mean). With updating off the column is left out of the page, the CSV and the PDF, so those are exactly as before. The leaderboard, the to-date handicap and the other CSV are unchanged.",
+    "tests": [
+      "outputs.archer_results with updating on gives each row a start_handicap equal to Event.handicap_for(archer, that pass's rotation) and an averages.start_handicap equal to their mean; with updating off the rows carry the entered handicap (not displayed).",
+      "The Archer results page with updating on has per-archer table headings Pass, Opponent, Score, Percentile, Pass starting handicap, Handicap and an Average row whose Pass starting handicap cell is the mean to one decimal place; with updating off the headings are the five as before.",
+      "The archer-results CSV with updating on has the header Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),Pass starting handicap,Handicap of score,Exported and each row's pass starting handicap equals the model's one-decimal text; with updating off the header and rows are exactly the previous nine columns.",
+      "The PDF text with updating on contains 'Pass starting handicap' in the per-archer tables and the averages; with updating off it does not.",
+      "The values are the figures the percentiles were judged against (a pass 2 row's starting handicap differs from the entered one after a poor pass 1, and pass 1's equals the entered handicap).",
+      "The leaderboard table and CSV, the to-date handicap values and the export stamp are unchanged.",
+      "The full suite passes with the migrated results and export tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 70,
+    "name": "Default n_lookback is 4",
+    "description": "Per Specification/feedback.md 'Feedback 7' item 3 and AISpec.md section 5.2c (Assumption 52): the Stage 2 'n_lookback' input's default value is 4 (a fixed number, whatever total_arrows and n_pass are) instead of the passes per archer. The Start weight default is unchanged (total_arrows // n_pass). The Event already caps the lookback at the passes shot, so a default of 4 in a shorter event simply uses every pass it has. Nothing else about validation changes (whole number >= 1).",
+    "tests": [
+      "Advanced Stage 2 shows n_lookback 4 and Start weight total_arrows // n_pass for 36 arrows (4 and 3), 60 arrows (4 and 5) and 120 arrows with 12-arrow passes (4 and 10).",
+      "Submitting the form with the defaults untouched stores n_lookback 4 and start_weight 5 for a 60-arrow event.",
+      "In a 60-arrow, five-pass event with the defaults the handicap for the final pass uses all four earlier passes (m = 4: weight 4) and the weighted average matches (5 x H0 + 4 x H_recent) / 9 where H_recent is the equivalent handicap of the four passes' total over 48 arrows.",
+      "In a 36-arrow event (three passes) the default of 4 is capped at the passes shot, so the final pass uses both earlier passes.",
+      "A custom lookback (e.g. 1 or 2) still overrides the default and invalid values are still rejected.",
+      "The existing default-value tests are migrated and the full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 71,
+    "name": "Confirm the plotted distributions change between passes when handicaps are updated",
+    "description": "Per Specification/feedback.md 'Feedback 7' item 2 and AISpec.md sections 5.2c and 5.6 (Assumption 54): confirm, with evidence, that in advanced setup with 'Update handicaps during matches' on, each archer's plotted distribution changes from pass to pass (and does not when updating is off). Write tests over the HTTP routes that fetch an archer's chart payload on the match page in successive passes (the curve points differ, and equal the distribution built from the shown legend handicap; with updating off they are identical), and run a real-browser check that reads the Chart.js curve datasets of the same archer on their match pages in pass 1, 2 and 3 and reports how the curves and the legend handicap change. Report any problem found (for example, if earlier passes' markers are drawn against the current curve).",
+    "tests": [
+      "Over HTTP with updating on, an archer's payload curve (distribution_a or _b) on the pass-2 match page differs from the same archer's curve on the pass-1 match page after a pass-1 score that moved their handicap, and each equals Event.distribution_for for that pass (checked point by point).",
+      "Over HTTP with updating off the same archer's curve is identical in passes 1, 2 and 3.",
+      "The curve shown in a pass equals the distribution built from the handicap in that pass's legend text (updating on: one decimal place; the legend value and f'{event.handicap_for:.1f}' agree), so the legend and the plot cannot disagree.",
+      "The pair-history page (/event/pair/a/b) also plots the current pass's curve (it changes between passes with updating on).",
+      "A real-browser check on a 4-archer, 3-pass advanced event with updating on (lookback 1, start weight 2) reads, for one archer, the curve dataset's points and the legend text in each of their passes and finds the curve peak/mean shifted and the legend handicap changed between passes, with the same archer's curve unchanged between pages of the same pass; with updating off the curves are the same in every pass.",
+      "The finding that earlier passes' markers are drawn against the current pass's curve is recorded in the logbook (and, if confusing, flagged to the user)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 72,
+    "name": "End-to-end integration, browser walkthrough and docs for Feedback 7",
+    "description": "Extend tests/test_integration.py for the Feedback 7 flow over HTTP and run a real-browser walkthrough (headless Edge via an ephemeral Selenium install against an exact `git archive` of the commit). Update README.md (the legend, the Pass starting handicap column, the default n_lookback) and Specification/logbook.md with a Feedback 7 section (summary, assumptions and open points, verification notes).",
+    "tests": [
+      "A full advanced event over HTTP with updating on and the default lookback of 4: the legend, This pass tables, Results tables, Archer results tables, archer-results CSV and PDF all show the same pass starting handicaps, equal to Event.handicap_for for each pass; the final pass of a 60-arrow event used all four earlier passes.",
+      "The same event with updating off shows no Pass starting handicap column anywhere, and the legend shows the entered handicaps.",
+      "A real-browser walkthrough (Stage 2 default n_lookback 4, the legend with handicaps, the extra column on the match page, the Results page and the Archer results page, the CSV header and a row, the PDF text, and the curve/legend change between passes) completes with no JS console errors.",
+      "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 7 section."
+    ],
+    "completed": false
   }
 ]
