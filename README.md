@@ -3,8 +3,10 @@
 **Status: under active development, not yet feature-complete.**
 
 A localhost web tool for running fair head-to-head (H2H) archery matches
-between archers of different skill levels and bowstyles, using the Archery GB
-handicap system rather than a flat score allowance. See
+between archers of different skill levels and bowstyles (Recurve, Compound,
+Barebow, Longbow), using the Archery GB handicap system rather than a flat
+score allowance. Archers rotate through different opponents every
+`n_pass` arrows (a "pass"). See
 [`Specification/AISpec.md`](Specification/AISpec.md) for the full design and
 [`Specification/logbook.md`](Specification/logbook.md) for a detailed history
 of what has been built and why.
@@ -26,6 +28,28 @@ theoretical improvement but is deliberately **not** implemented in the
 current version (see `Specification/humanSpec.md` and the "Known gap"
 section of `Initial Testing/idea_evaluation.md`).
 
+## Using the app
+
+1. **Stage 1 - event setup:** number of archers, total arrows (default 60),
+   arrows per pass (`n_pass`, default 12), and indoor (Portsmouth or WA 18) or
+   outdoor. With an odd number of archers one archer has no opponent each pass,
+   so a **Shoot byes?** option appears: *Yes* means that archer shoots alone
+   (recorded, but no win/loss); *No* means they sit the pass out, which adds
+   passes so that everyone still shoots all their arrows.
+2. **Stage 2 - archers:** name, bowstyle and handicap for each archer. A
+   score-to-handicap calculator (with a compound-bow option) is linked from
+   here and from the nav bar, for working out starting handicaps.
+3. **Scoring:** the **overview** page shows the current pass's matches. Open
+   each match to enter its scores on its own page (which also shows that pair's
+   results so far and, in advanced mode, their distribution chart). Once every
+   match has scores, press **Advance to next pass**; the overview then shows the
+   new pairings.
+4. **Results:** per-pass results and a head-to-head result for every pair that
+   has met (deliberately no overall leaderboard yet).
+
+Basic/advanced mode (nav bar) hides or shows the statistics: advanced mode adds
+the interactive distribution charts and an explanation of the maths.
+
 ## Repo structure
 
 ```
@@ -34,14 +58,18 @@ h2h/                    Application package
   stats.py                Core statistics engine (handicap -> score
                            distributions -> percentiles). No Flask
                            dependency; independently testable.
-  models.py                Archer/Pass/Match data model, orchestrates
-                            stats.py over a 60-arrow round split into
-                            n_pass-arrow passes.
+  rotation.py              Round-robin rotation scheduler, including the
+                            sit-out schedule used when byes are not shot.
+                            Independent of Flask and the stats engine.
+  models.py                Archer/Event data model: resolves each archer's
+                            target from round mode and bowstyle, records
+                            scores one match at a time, advances pass by pass.
   chart_data.py            Builds the JSON payload for the advanced-mode
                             interactive distribution chart.
   state.py                 In-memory session state (single-user, no database).
   app.py                   Flask routes.
-  templates/                Jinja2 HTML templates.
+  templates/                Jinja2 HTML templates (underscore-prefixed files
+                            are shared partials).
   static/                   Client-side JS (Chart.js rendering).
 tests/                  pytest test suite (mirrors the h2h/ modules above).
 Specification/          Design documents driving development:
