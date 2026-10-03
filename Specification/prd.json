@@ -312,7 +312,7 @@
       "Two archers with the same handicap, one Recurve and one Longbow, get identical score distributions in an indoor event.",
       "The Stage 2 page offers 'Longbow' in every row's bowstyle dropdown, and submitting a Longbow archer starts the event."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 27,

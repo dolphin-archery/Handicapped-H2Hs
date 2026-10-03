@@ -15,10 +15,10 @@ def test_indoor_portsmouth_compound_uses_compound_variant():
     assert target.indoor is True
 
 
-def test_indoor_portsmouth_recurve_and_barebow_use_plain_variant():
-    """Indoor Portsmouth + Recurve/Barebow resolves to portsmouth's own target."""
+def test_indoor_portsmouth_non_compound_bowstyles_use_plain_variant():
+    """Indoor Portsmouth + Recurve/Barebow/Longbow resolves to portsmouth's own target."""
     expected = load_rounds.AGB_indoor.portsmouth.passes[0].target
-    for bowstyle in (Bowstyle.RECURVE, Bowstyle.BAREBOW):
+    for bowstyle in (Bowstyle.RECURVE, Bowstyle.BAREBOW, Bowstyle.LONGBOW):
         target = resolve_target(RoundMode.INDOOR_PORTSMOUTH, bowstyle)
         assert target.scoring_system == "10_zone"
         assert target.diameter == expected.diameter
@@ -34,13 +34,30 @@ def test_indoor_wa18_compound_uses_compound_variant():
     assert target.distance == expected.distance
 
 
-def test_indoor_wa18_recurve_and_barebow_use_plain_variant():
-    """Indoor WA18 + Recurve/Barebow resolves to wa18's own target."""
+def test_indoor_wa18_non_compound_bowstyles_use_plain_variant():
+    """Indoor WA18 + Recurve/Barebow/Longbow resolves to wa18's own target."""
     expected = load_rounds.WA_indoor.wa18.passes[0].target
-    for bowstyle in (Bowstyle.RECURVE, Bowstyle.BAREBOW):
+    for bowstyle in (Bowstyle.RECURVE, Bowstyle.BAREBOW, Bowstyle.LONGBOW):
         target = resolve_target(RoundMode.INDOOR_WA18, bowstyle)
         assert target.scoring_system == "10_zone"
         assert target.diameter == expected.diameter
+
+
+def test_longbow_is_a_distinct_bowstyle_member():
+    """Longbow is offered alongside the original three bowstyles."""
+    assert Bowstyle.LONGBOW.value == "Longbow"
+    assert {b.value for b in Bowstyle} == {"Recurve", "Compound", "Barebow", "Longbow"}
+
+
+def test_longbow_resolves_to_the_same_target_as_recurve_in_every_round_mode():
+    """Longbow has no scoring variant of its own, so it matches Recurve everywhere."""
+    for round_mode in RoundMode:
+        longbow = resolve_target(round_mode, Bowstyle.LONGBOW)
+        recurve = resolve_target(round_mode, Bowstyle.RECURVE)
+        assert longbow.scoring_system == recurve.scoring_system
+        assert longbow.diameter == recurve.diameter
+        assert longbow.distance == recurve.distance
+        assert longbow.indoor == recurve.indoor
 
 
 def test_outdoor_mode_ignores_bowstyle():

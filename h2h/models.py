@@ -56,16 +56,19 @@ def _validate_score(score: float, n_pass: int) -> int:
 
 
 class Bowstyle(str, Enum):
-    """The three bowstyles offered in the archer setup dropdown.
+    """The bowstyles offered in the archer setup dropdown.
 
-    Per Specification/feedback.md "Feedback 2": deliberately a smaller set
-    than archeryutils's own `AGB_bowstyles`, which includes several more
-    categories not asked for here.
+    Per Specification/feedback.md "Feedback 2" (Longbow added in "Feedback
+    3"): deliberately a smaller set than archeryutils's own
+    `AGB_bowstyles`, which includes several more categories not asked for
+    here. Only Compound has a distinct scoring variant (indoors); see
+    `resolve_target`.
     """
 
     RECURVE = "Recurve"
     COMPOUND = "Compound"
     BAREBOW = "Barebow"
+    LONGBOW = "Longbow"
 
 
 class RoundMode(str, Enum):
@@ -92,9 +95,9 @@ def resolve_target(round_mode: RoundMode, bowstyle: Bowstyle) -> targets.Target:
 
     Per AISpec.md section 5.2a: indoor Compound archers use the AGB
     indoor-compound scoring variant (same face/distance, only the X-ring
-    scores 10) of whichever indoor round is in use; indoor Recurve/Barebow use
-    the plain variant; outdoor mode uses one single fixed target regardless of
-    bowstyle (Assumption 12).
+    scores 10) of whichever indoor round is in use; indoor Recurve/Barebow/
+    Longbow use the plain variant; outdoor mode uses one single fixed target
+    regardless of bowstyle (Assumption 12).
 
     Parameters
     ----------

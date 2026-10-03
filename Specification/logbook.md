@@ -603,3 +603,39 @@ alternative "sit out + additional rotation" bye mode and its toggle, and
 everything under `Specification/feedback.md`'s "Future Feedback" heading
 (per-archer scoring method/face/distance, a leaderboard, results print-outs,
 UI redesign, and publication/deployment).
+
+## Feedback 3 - Page flow, byes, longbow, compound calculator
+
+Scope: every item under `Specification/feedback.md`'s "Feedback 3" heading
+(prd tasks 26-33); nothing under "Future Plans - DO NOT IMPLEMENT YET".
+`Specification/AISpec.md` was updated first (sections 1, 3, 4, 5.1-5.6, 6 and
+new Assumptions 15-21; Assumption 14 is now superseded), then `prd.json`.
+
+Assumptions made (full text in `Specification/AISpec.md` section 7):
+- **15** - the rule for how many extra passes "Shoot byes? = No" needs, which
+  the feedback leaves open ("this will change the total number of passes").
+  Chosen: run the round-robin for as long as no archer would exceed their
+  passes, then add one catch-up pass for archers one pass short (one extra
+  already-complete archer joins if their number is odd, because exactly equal
+  pass counts are impossible when the archer count and pass count are both
+  odd). Flagged here because it is a genuine design choice, not derivable from
+  the feedback.
+- **16** - the Shoot byes? control only appears for an odd archer count, default Yes.
+- **17** - scores can be corrected (re-saved) until the pass is advanced.
+- **18** - Longbow scores like Recurve/Barebow.
+- **19** - the calculator's compound option is a Yes/No checkbox.
+- **20/21** - match pages are addressed by position in the current pass; the event
+  completes as soon as the final pass is fully scored.
+
+### Task 26: Add Longbow to the bowstyle dropdown (complete)
+Added `Bowstyle.LONGBOW`. Stage 2's dropdown iterates `list(Bowstyle)`, so it
+appears in every row with no template change. `resolve_target` needed no code
+change either: it only special-cases Compound, so Longbow falls through to the
+plain scoring variant indoors and the single fixed target outdoors (AISpec
+Assumption 18). Updated the `Bowstyle`/`resolve_target` docstrings, widened the
+two existing "plain variant" resolution tests to include Longbow, and added
+tests that Longbow resolves identically to Recurve in every round mode, gives
+an identical indoor score distribution to a same-handicap Recurve archer, and
+appears in all rows of the Stage 2 dropdown (and can start an event). The
+existing outdoor test already iterates the whole enum, so it covers Longbow
+for free. No issues.

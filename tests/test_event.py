@@ -138,6 +138,17 @@ def test_different_bowstyles_give_different_indoor_distributions():
     assert event.distribution_for(0) != event.distribution_for(1)
 
 
+def test_longbow_gives_same_indoor_distribution_as_recurve():
+    """Same handicap, Recurve vs Longbow indoors -> identical distributions (no scoring variant)."""
+    archers = [
+        Archer(name="R", handicap=20, bowstyle=Bowstyle.RECURVE),
+        Archer(name="L", handicap=20, bowstyle=Bowstyle.LONGBOW),
+    ]
+    schedule = build_schedule(2, 1)
+    event = Event(archers, 12, RoundMode.INDOOR_PORTSMOUTH, schedule)
+    assert event.distribution_for(0) == event.distribution_for(1)
+
+
 def test_outdoor_mode_gives_same_distribution_regardless_of_bowstyle():
     """Same handicap, different bowstyle, outdoor mode -> identical distributions."""
     archers = [

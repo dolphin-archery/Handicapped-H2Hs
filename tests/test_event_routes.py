@@ -127,6 +127,29 @@ def test_valid_stage2_submission_creates_event():
     assert resp.status_code == 200
 
 
+def test_stage2_dropdown_offers_longbow_in_every_row():
+    """Every row's bowstyle dropdown must offer Longbow alongside the other three."""
+    client = make_client()
+    complete_stage1(client, n_archers=3)
+    resp = client.get("/event/stage2")
+    assert resp.data.count(b'<option value="Longbow">') == 3
+    for name in (b"Recurve", b"Compound", b"Barebow"):
+        assert resp.data.count(b'<option value="' + name + b'">') == 3
+
+
+def test_stage2_submission_with_longbow_archer_starts_event():
+    """A Longbow archer is accepted by Stage 2 and the event starts."""
+    client = make_client()
+    complete_stage1(client, n_archers=2)
+    resp = client.post(
+        "/event/stage2",
+        data=stage2_form([("Alice", "Longbow", 40), ("Bob", "Recurve", 30)]),
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"Alice" in resp.data
+
+
 def test_stage2_missing_bowstyle_rejected():
     """A missing/invalid bowstyle must be rejected with a clear error."""
     client = make_client()
