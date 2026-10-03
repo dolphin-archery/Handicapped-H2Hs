@@ -986,7 +986,7 @@
       "A custom lookback (e.g. 1 or 2) still overrides the default and invalid values are still rejected.",
       "The existing default-value tests are migrated and the full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 71,

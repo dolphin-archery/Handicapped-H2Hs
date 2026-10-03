@@ -21,6 +21,11 @@ from .rotation import Rotation
 MIN_HANDICAP = 0
 MAX_HANDICAP = 150
 
+# The default `n_lookback` of handicap updating (Specification/feedback.md "Feedback 7"): with
+# 12-arrow passes in a 60-arrow round the final pass then uses all four earlier passes. A
+# lookback larger than the passes an archer has shot is capped at those.
+DEFAULT_N_LOOKBACK = 4
+
 
 def max_arrow_score(target: targets.Target) -> int:
     """The most one arrow can score on a target (10 on a standard face, 9 on a 5-zone one).

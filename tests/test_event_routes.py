@@ -2264,8 +2264,8 @@ def tag_after(page, needle):
 
 
 def test_advanced_stage_2_has_the_update_choice_defaulting_to_no_with_the_two_inputs_hidden():
-    """No selected; n_lookback and start weight default to the passes per archer; hidden while No."""
-    for total_arrows, passes in ((36, 3), (60, 5)):
+    """No selected; n_lookback defaults to 4 and start weight to the passes per archer; hidden while No."""
+    for total_arrows, passes in ((36, 3), (60, 5), (120, 10)):
         client = make_client()
         start_advanced_stage2(client, n_archers=2, total_arrows=total_arrows)
         page = client.get("/event/stage2").data.decode()
@@ -2275,7 +2275,7 @@ def test_advanced_stage_2_has_the_update_choice_defaulting_to_no_with_the_two_in
         assert "hidden" in tag_after(page, 'id="update_handicaps_options"')
         n_lookback = tag_after(page, 'name="n_lookback"')
         start_weight = tag_after(page, 'name="start_weight"')
-        assert f'value="{passes}"' in n_lookback or f'value="{passes}"' in page.split('name="n_lookback"')[1][:120]
+        assert 'value="4"' in page.split('name="n_lookback"')[1][:120]  # a fixed default (Feedback 7)
         assert f'value="{passes}"' in page.split('name="start_weight"')[1][:120]
         assert 'min="1"' in n_lookback and 'min="1"' in start_weight
         assert "Update handicaps during matches" in page and "lookback" in page
@@ -2346,7 +2346,9 @@ def test_reset_and_a_new_stage_1_clear_the_settings_and_the_defaults_follow_the_
     assert state.update_handicaps is True
     start_advanced_stage2(client, n_archers=2, total_arrows=60)  # Stage 1 again
     assert (state.update_handicaps, state.n_lookback, state.start_weight) == (False, None, None)
-    assert 'value="5"' in client.get("/event/stage2").data.decode().split('name="n_lookback"')[1][:120]
+    page = client.get("/event/stage2").data.decode()
+    assert 'value="4"' in page.split('name="n_lookback"')[1][:120]  # fixed default
+    assert 'value="5"' in page.split('name="start_weight"')[1][:120]  # follows the event size (60 / 12)
     client.post("/event/stage2", data=updating_form())
     client.post("/reset")
     assert (state.update_handicaps, state.n_lookback, state.start_weight) == (False, None, None)
@@ -2409,3 +2411,27 @@ def test_an_advanced_event_with_updating_plays_through_with_percentiles_from_the
     assert pass_2[0].percentile != pytest.approx(entered)
     for path in ("/event/rotation", "/event/results", "/event/archers"):
         assert client.get(path).status_code == 200
+
+
+def test_submitting_stage_2_with_the_defaults_untouched_stores_lookback_4_and_start_weight_5():
+    """60 arrows in 12-arrow passes: the defaults are 4 and 5, taken as they are."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=60)
+    page = client.get("/event/stage2").data.decode()
+    form = advanced_form(TWO_ADVANCED)
+    form["update_handicaps"] = "yes"
+    form["n_lookback"] = re.search(r'name="n_lookback"[^>]*value="(\d+)"', page, re.S).group(1)
+    form["start_weight"] = re.search(r'name="start_weight"[^>]*value="(\d+)"', page, re.S).group(1)
+    assert client.post("/event/stage2", data=form).status_code == 302
+    assert (state.update_handicaps, state.n_lookback, state.start_weight) == (True, 4, 5)
+
+
+def test_a_custom_lookback_still_overrides_the_default_and_invalid_ones_are_still_rejected():
+    """Only the default changed."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=60)
+    assert client.post("/event/stage2", data=updating_form(n_lookback="1", start_weight="5")).status_code == 302
+    assert state.n_lookback == 1
+    start_advanced_stage2(client, n_archers=2, total_arrows=60)
+    resp = client.post("/event/stage2", data=updating_form(n_lookback="0", start_weight="5"))
+    assert b"Lookback must be a whole number of at least 1." in resp.data

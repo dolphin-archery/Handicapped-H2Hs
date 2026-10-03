@@ -232,3 +232,41 @@ def test_the_smallest_valid_settings_are_accepted():
     """1 and 1 are fine."""
     event = make_pair_event(n_lookback=1, start_weight=1)
     assert event.n_lookback == 1 and event.start_weight == 1
+
+
+# --- Feedback 7: the default lookback of 4 ----------------------------------------------------
+
+
+def test_the_default_lookback_is_4_and_is_a_fixed_number():
+    """DEFAULT_N_LOOKBACK is what Stage 2 offers, whatever the event size."""
+    from h2h.models import DEFAULT_N_LOOKBACK
+
+    assert DEFAULT_N_LOOKBACK == 4
+
+
+def test_in_a_60_arrow_event_the_final_pass_uses_all_four_earlier_passes_with_the_defaults():
+    """Five passes of 12 arrows, lookback 4, start weight 5: m = 4 before pass 5, weight (5 H0 + 4 H) / 9."""
+    event = make_pair_event(rotations=5, handicaps=(30, 40), n_lookback=4, start_weight=5)
+    score_passes(event, [(90, 100), (95, 100), (100, 100), (105, 100)])
+    event.advance()
+    assert event.current_rotation_index == 4
+    recent = recent_handicap(event, 0, [90, 95, 100, 105])  # all four earlier passes, over 48 arrows
+    assert event.handicap_for(0) == pytest.approx(weighted(30, 5, recent, 4))
+
+
+def test_a_sixth_pass_with_a_lookback_of_4_drops_the_first_pass():
+    """A sixth pass (a longer event) would look back over only the latest four, dropping the first."""
+    event = make_pair_event(rotations=6, handicaps=(30, 40), n_lookback=4, start_weight=5)
+    score_passes(event, [(70, 100), (95, 100), (100, 100), (105, 100), (110, 100)])
+    event.advance()
+    recent = recent_handicap(event, 0, [95, 100, 105, 110])
+    assert event.handicap_for(0) == pytest.approx(weighted(30, 5, recent, 4))
+
+
+def test_in_a_36_arrow_event_the_default_lookback_is_capped_at_the_passes_shot():
+    """Three passes: before the last only two passes exist, so m = 2 even with a lookback of 4."""
+    event = make_pair_event(rotations=3, handicaps=(30, 40), n_lookback=4, start_weight=3)
+    score_passes(event, [(90, 100), (95, 100)])
+    event.advance()
+    recent = recent_handicap(event, 0, [90, 95])
+    assert event.handicap_for(0) == pytest.approx(weighted(30, 3, recent, 2))

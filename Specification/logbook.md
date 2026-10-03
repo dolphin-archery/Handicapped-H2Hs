@@ -1992,3 +1992,35 @@ make the updating self-referential: an archer who improves faces a higher bar. A
 check and fixed: the double-rule CSS selector put the line on every row of a later match, not only its
 first. Not touched: everything under "Future Plans - DO NOT IMPLEMENT YET" (nicer UI, maths explainer, user
 guide, publication). Final suite: 886 tests passing.
+
+
+## Feedback 7 - Legend handicap, per-pass starting handicap, default lookback
+
+Scope: every item under `Specification/feedback.md`'s "Feedback 7" heading (prd tasks 67-72). Its list
+numbers its items 1, 2, 2, 3; they are taken as four items (Assumption 55). `Specification/AISpec.md`
+was updated first (sections 1, 5.2c, 5.3, 5.4a, 5.6 and Assumptions 51-55; Assumption 41 is partly
+superseded), then `prd.json`.
+
+Assumptions made (full text in `Specification/AISpec.md` section 7):
+- **51** - the chart legend shows "Name (handicap H)" again, where H is the handicap the plotted curve is built
+  from (the entered one as entered when handicaps are not updated, the current pass's one to one decimal
+  place when they are); the heading and score-box labels stay names only.
+- **52** - the default `n_lookback` is a fixed 4 (not "passes minus one"); the start weight's default is
+  unchanged.
+- **53** - when handicaps are updated, every table that shows a pass's handicap also shows a "Pass starting
+  handicap" column (match page, Results page, Archer results page, archer-results CSV, PDF); with updating off
+  the column is absent.
+- **54** - confirmation that the plotted distributions change between passes (tests and a browser check), and
+  the consequence that earlier passes' markers are drawn against the current curve.
+
+### Task 70: Default n_lookback is 4 (complete)
+`models.DEFAULT_N_LOOKBACK = 4` is what Stage 2's `n_lookback` input is pre-filled with (the Start weight
+default stays `total_arrows // n_pass`: 3, 5 or 10 for 36, 60 or 120 arrows in 12-arrow passes). Nothing else
+changed: the Event already caps the lookback at the passes an archer has shot (so 4 in a 36-arrow event simply
+uses both earlier passes) and validation is unchanged. For a 60-arrow event of five 12-arrow passes the final
+pass now has `m = 4`, every earlier pass, as the feedback wants (5 gave the same). Tests: the default-value
+tests were migrated (4 for 36, 60 and 120 arrows; start weight 3, 5 and 10; the defaults follow the event size
+after a new Stage 1), plus submitting the untouched defaults for 60 arrows stores 4 and 5, a custom lookback
+still overrides and an invalid one is still rejected, and three model tests (the final pass of a 60-arrow event
+uses all four earlier passes with weight (5 H0 + 4 H) / 9, a sixth pass with lookback 4 drops the first pass,
+and in a 36-arrow event the 4 is capped at the 2 passes shot). Suite: 892 passed.
