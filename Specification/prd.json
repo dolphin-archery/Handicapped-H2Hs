@@ -583,5 +583,204 @@
       "The full suite passes, README.md describes the new flow, and Specification/logbook.md has a Feedback 4 section."
     ],
     "completed": true
+  },
+  {
+    "id": 45,
+    "name": "Tie-break: percentile, then score, then closest to the middle (statistics and event model)",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Tie breaks) and Specification/AISpec.md section 5.3 'Tie-break' (Assumption 33): remove the random coin flip from the pass-winner decision. h2h.stats.decide_pass_winner no longer takes an rng. It compares percentiles (equal when they differ by less than 1e-9), then raw scores, then an optional `closest` argument ('a' or 'b': the archer the scorer says was closest to the middle); it returns the winner ('a'/'b') together with which step decided it ('percentile', 'score' or 'closest'). If percentiles and scores are both tied and `closest` is not given it raises a dedicated ValueError subclass (TieBreakRequired) instead of guessing; an unneeded `closest` is ignored. PassResult gains `decided_by` (None for a bye match). Event.record_match accepts an optional `closest` archer index (which must be one of the two archers of the match) and passes it through; a tie with no closest archer raises TieBreakRequired and records nothing (earlier scores for the match stay untouched). Reopening a decided-by-closest match must be able to report which archer was ticked (the winner when decided_by == 'closest'). Update every existing test that relied on the coin flip or on the rng parameter.",
+    "tests": [
+      "Higher percentile wins whatever the scores; with equal percentiles the higher score wins; the result reports decided_by 'percentile' / 'score' respectively.",
+      "Percentiles that differ by less than 1e-9 (e.g. 1.0 and 1.0 - 1e-12) count as equal, so the score decides; percentiles that differ by 1e-6 do not.",
+      "Equal percentiles and equal scores with closest='a' or 'b' give that archer the win with decided_by 'closest'; with closest=None a TieBreakRequired (a ValueError) is raised.",
+      "A supplied `closest` is ignored when percentile or score already decides the pass (the winner and decided_by are unchanged).",
+      "decide_pass_winner no longer accepts an rng and nothing in h2h/ imports random for deciding a pass; the same inputs always give the same output (called 100 times).",
+      "Event.record_match on two archers with identical handicap, target and score and no closest raises TieBreakRequired and records nothing; the same call with closest=<one of the two archers> records both results with exactly one winner and decided_by 'closest'; a closest index that is not in the match raises ValueError.",
+      "Re-saving a tied match with a different closest archer replaces the earlier results (the other archer now wins); re-saving it with different scores that no longer tie ignores closest and stores decided_by 'percentile' or 'score'.",
+      "A bye match records decided_by None and a closest argument for it is ignored.",
+      "The full suite passes after the existing winner and tie tests are migrated."
+    ],
+    "completed": false
+  },
+  {
+    "id": 46,
+    "name": "Match page: plain heading and a this-pass-only results table",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Graphs, Per Pass Tables) and AISpec.md section 5.3 (Assumption 32): on the score-input (match) page, (1) the heading is just the archers' names ('A vs B', 'A - bye, no opponent'), with no handicap in it; each archer's handicap stays beside their own score box. (2) Replace the 'Results so far' section (every pass the pair has shared, with the equivalent handicap and opponent columns) by a single table of this pass only, shown once the match has scores, with the columns Archer | Score | Percentile | Winner, one row per archer in the match: Percentile as in the overview ('%.1f%%'), Winner 'Yes' or 'No' (a bye match shows '-'). Earlier passes and opponents do not appear on the page. The `history` plumbing in the match route and the pass-column/equivalent-handicap options of the shared results-table partial that only this page used are removed if nothing else uses them (the Results page keeps its own tables unchanged). The score-box labels and validation messages are unchanged.",
+    "tests": [
+      "The match page's <h1> contains the two archers' names and 'vs' and does not contain the word 'handicap' or either handicap value; the score-box labels still show each archer's handicap.",
+      "Before any score is saved the page has no results table; after saving it has exactly one table whose headings are Archer, Score, Percentile, Winner.",
+      "A paired match shows two rows (each archer's name, integer score, percentile to one decimal place with a % sign, and 'Yes' for the winner and 'No' for the other); a bye match shows one row with Winner '-'.",
+      "The table's values equal the Event's recorded results for that match (checked for several score pairs).",
+      "In an event where the same pair has met twice (repeating schedule), the second-pass match page shows only that pass's two rows (not the first pass's), and a different opponent's earlier results never appear.",
+      "The page no longer contains the 'Results so far' heading or 'Equiv. handicap' / 'Opponent' column headings; the Results page's per-pass tables still do.",
+      "The full suite passes with the migrated match-page tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 47,
+    "name": "Tie-break tick boxes on the match page",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Tie breaks) and AISpec.md section 5.3 'Tie-break' (Assumption 33): a paired match's score form gets two tick boxes, one per archer, labelled 'closest to the middle' (checkbox inputs sharing the name `closest` with the archer index as the value), with a short note that they are used only when the percentile and score are exactly tied. A small script on the page makes them mutually exclusive (ticking one clears the other); the server independently rejects a submission with both ticked ('Tick only one archer.' - nothing recorded). A bye match shows no tick boxes. The POST handler passes the ticked archer (if any) to Event.record_match; a TieBreakRequired from it re-renders the match page with a message asking the scorer to tick which archer's arrow was closest to the middle, keeps the typed scores and records nothing. When a saved match was decided by closest-to-the-middle the page shows that archer's box ticked and a note under the this-pass table ('Percentile and score were tied; decided by closest to the middle.'). A tick that is not needed is ignored and not shown ticked afterwards.",
+    "tests": [
+      "A paired match page renders two checkbox inputs named `closest` (values = the two archer indices) and the note about when they are used; a bye match page renders none.",
+      "Two same-handicap archers entering equal scores with no tick: the response is the match page with the tie message, the typed scores are kept in the boxes, and the Event has no results for the match.",
+      "The same submission with one box ticked is accepted (redirect), exactly the ticked archer is marked Yes in the this-pass table, the overview names that archer as winner, and the page note says it was decided by closest to the middle; reopening the page shows that archer's box ticked.",
+      "Submitting both boxes ticked is rejected with the one-archer message and records nothing, even if the scores are not tied.",
+      "Ticking a box on a match whose scores are not tied is accepted, the winner is decided by percentile/score as usual, and the reopened page has no box ticked and no tie note.",
+      "Editing a decided-by-closest match to untied scores replaces the result with a percentile/score winner and clears the note; editing it to tie again without a tick is rejected and the previous saved result is kept.",
+      "The page's script makes the boxes mutually exclusive: verified in a real browser (headless Edge via an ephemeral Selenium install against an exact commit exported with `git archive`): ticking A then B leaves only B ticked and vice versa, and unticking both is possible; no JS console errors.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 48,
+    "name": "Per-archer target setups and per-target maximum score (model)",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Advanced mode) and AISpec.md sections 5.2a and 6 (Assumptions 10, 34, 35): make the target an archer's own. TargetSetup gains an optional `face_type` (an archeryutils scoring system; None = chosen from the bowstyle as today). resolve_target uses face_type exactly as given when it is set (distance, face size and the indoor flag inferred from the archer's own distance as before) and is unchanged when it is None. Archer gains an optional `target_setup`; Event(archers, n_pass, target_setup, schedule) uses an archer's own setup if they have one, else the shared one, and accepts target_setup=None if every archer has their own (it raises ValueError otherwise). models.py defines the advanced-mode options: FACE_TYPES (every archeryutils scoring system except 'Custom', each with a readable name, in a sensible order, obtained from archeryutils itself so a future system is not silently missed), ADVANCED_FACE_SIZES_CM (20, 35, 40, 50, 60, 65, 80, 122) and a parse helper for per-archer form values that validates all three against the options. The highest score one arrow can earn is read from the resolved target (max of face_spec values) and replaces the hard-coded MAX_SCORE_PER_ARROW everywhere: Event exposes max_score_for(archer_index) (= n_pass * that maximum), record_match validates each score against its own archer's maximum, and the match page's score boxes use it for their max attribute and label. The statistics engine itself is unchanged.",
+    "tests": [
+      "Every archeryutils scoring system except 'Custom' is in FACE_TYPES with a non-empty readable name, and nothing else is (compared with typing.get_args(ScoringSystem), so a library addition fails the test).",
+      "For every face type, face sizes {20, 40, 60, 122}, distances {18 m, 20 yd, 50 m, 100 yd} and handicaps {0, 50, 100, 150}, per_arrow_pmf sums to 1, is non-negative and has a mean equal to archeryutils's arrow_score; n_pass_score_distribution sums to 1 and its support is within [0, n_pass * max].",
+      "resolve_target with face_type set returns that scoring system, the setup's diameter and distance, and indoor from the distance, for every bowstyle (a Compound archer with face_type '10_zone' indoors gets plain '10_zone'; a Recurve archer with '10_zone_compound' gets the compound system); with face_type None it behaves exactly as before (existing target-resolution tests pass unchanged).",
+      "An Event whose archers each carry their own TargetSetup (target_setup=None) builds a distribution per archer from their own target: two same-handicap archers on different face types, sizes or distances get different distributions and target_for(i) returns each one's own target.",
+      "An archer's own setup overrides the shared one; an Event with target_setup=None and an archer lacking their own setup raises ValueError.",
+      "max_score_for is n_pass times 10 for 10_zone, 9 for 5_zone, 11 for 11_zone, 5 for Worcester and 1 for Beiter_hit_miss; record_match accepts the maximum and rejects one more for that archer, while accepting for another archer on a 10-zone face a score above the first archer's limit.",
+      "The match page's score box for an archer on a 5-zone face has max = n_pass * 9 and its label says so; boxes for 10-zone archers still say n_pass * 10.",
+      "The per-archer form-value parser accepts every offered (face type, size, distance) combination and rejects an unknown face type, a size not in the list and a non-standard distance with a message naming which value was wrong.",
+      "The full suite passes unchanged for simple setup (no existing event, state or route test needs editing except for the removed MAX_SCORE_PER_ARROW constant)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 49,
+    "name": "Advanced setup: per-archer face type, face size and distance",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Advanced mode) and AISpec.md sections 5.1 and 5.2 (Assumptions 30, 34): build the Stage 1 Advanced mode. Stage 1: selecting Advanced hides the simple distance/face dropdowns, shows a note that these are chosen per archer in Stage 2, keeps Continue enabled and the POST is accepted (the TBA rejection is removed). SessionState stores the setup mode ('simple' | 'advanced', restored by reset and re-rendered on returning to Stage 1). Stage 2 in advanced mode adds three dropdown columns per archer row - Target face type (FACE_TYPES, readable names, default 10 zone), Face size (ADVANCED_FACE_SIZES_CM, default 60 cm) and Distance (the same Metric/Imperial optgroups as simple setup, default 20 yd) - and its intro explains that each archer has their own target; simple mode's Stage 2 is unchanged. Submitting parses and validates each row (a bad value names the row and the field, nothing is stored, the form is refilled) and stores each Archer with their own TargetSetup; the Event is built with target_setup=None. Stage 3, the overview and the match pages work unchanged on top of this. Switching Stage 1 back to Simple discards advanced per-archer data like any Stage 1 resubmission.",
+    "tests": [
+      "Stage 1 renders Simple and Advanced radios, with Advanced no longer disabled and the submit button enabled in both modes; posting setup_mode=advanced stores 'advanced', builds the schedule and goes to Stage 2 (no TBA text anywhere in h2h/templates).",
+      "Returning to Stage 1 after choosing Advanced shows Advanced selected; after Reset it is back to Simple.",
+      "Stage 2 in advanced mode renders, per archer, a face-type select with exactly the FACE_TYPES options (default 10 zone), a face-size select with exactly the eight sizes (60 cm selected) and a distance select with the sixteen standard distances in Metric/Imperial optgroups (20 yd selected); in simple mode none of these appear.",
+      "Posting valid advanced rows stores each archer with their own TargetSetup, goes to Stage 3, and after confirming, event.target_for(i) is each archer's chosen face type/size/distance (e.g. 3 archers on 18 m 40 cm 10_zone, 50 m 122 cm 10_zone and 20 yd 60 cm Worcester).",
+      "An invalid face type, face size or distance in row 3 is rejected with a message naming row 3 and the field, stores nothing and refills every typed and selected value.",
+      "A full advanced-mode event with mixed targets (a 5-zone archer with maximum score 9 per arrow against a 10-zone archer) can be played from Stage 1 to the end over HTTP: scores above the 5-zone archer's maximum are rejected, the percentiles use each archer's own distribution, and the overview/results pages render.",
+      "Simple-mode behaviour is unchanged (existing Stage 1/2/3 tests pass, apart from the removed TBA tests which are replaced by the above).",
+      "Verified in a real browser: toggling Simple/Advanced on Stage 1 hides/shows the dropdowns and the note without disabling Continue; Stage 2 shows the three extra dropdowns per row in advanced mode; no JS console errors.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 50,
+    "name": "Chart data: every score each archer has shot, axis limits that include them, handicaps in the legend",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Graphs) and AISpec.md section 5.6 (Assumptions 31, 35): change h2h/chart_data.build_pair_chart_data. (1) Markers: instead of only the passes the two archers shared (the cause of the 'show previous passes' box adding no lines for later passes), the payload lists, for each archer, every scored pass of theirs against any opponent (including a bye pass shot alone), as `passes: [{index, score}]` ordered by pass, and the event's current pass index as `current_pass` (the pass shown by default). (2) Axis limits: x_min/x_max cover the trimmed curve range AND every score in both lists (not just the visible ones, so the axis does not move when the checkbox is ticked), with a margin of 1 score unit each side, clamped to [0, the larger of the two archers' maximum pass score]; curve points are listed over that final range. (3) Legend: each archer's payload entry carries a `legend` label of the form 'Name (handicap H)' (H shown as entered, 22.5 stays 22.5, 15.0 shows 15). (4) The distribution range and the maximum use each archer's own target maximum (Event.max_score_for) so pairs on different faces work. The pair page and the match page keep sharing this one function.",
+    "tests": [
+      "Alice and Bob who met in pass 1 and then each faced someone else in passes 2 and 3: the payload for the pair (Alice, Bob) lists Alice's scores for passes 1, 2 and 3 and Bob's for 1, 2 and 3, each with its pass index, whichever opponent they were against; a pair that has never met has the same lists for their own passes.",
+      "A bye pass's score appears in that archer's list; an archer's passes they sat out do not.",
+      "`current_pass` is the event's current_rotation_index; an archer with no score yet in the current pass has no entry for it.",
+      "With a score far below the curves' trimmed range (e.g. 20 for a handicap-30 archer) and one far above, x_min <= min(all scores) - 1 and x_max >= max(all scores) + 1, both within [0, max pass score]; the range is identical whether or not the earlier passes are shown (it depends only on the full lists).",
+      "With every score inside the trimmed range the x-range equals the previous trimmed range (existing range tests pass) apart from the 1-unit margin where a score is near the edge.",
+      "Curve points are provided for every integer in the final [x_min, x_max] where the probability is non-zero.",
+      "`legend` is 'Name (handicap H)' with H as entered (22.5 -> 22.5, 15.0 -> 15).",
+      "For two archers on different targets (5-zone vs 10-zone, advanced mode) the payload's x_max never exceeds the larger maximum pass score and the y_max covers both distributions.",
+      "The payload is JSON-serialisable and the match page and pair page still render it; the existing chart-data tests are migrated and pass."
+    ],
+    "completed": false
+  },
+  {
+    "id": 51,
+    "name": "Chart front end: pass-number labels, handicap legend, axis from the payload",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Graphs) and AISpec.md section 5.6: update h2h/static/match_chart.js and the chart partial to use the task-50 payload. Unticked, only the scores whose pass index equals `current_pass` are drawn as vertical dashed lines (in the archer's colour); ticking 'Show previous passes' scores too' draws every score of both archers, so later passes gain lines; unticking returns to the current pass only. Each marker line is labelled on the chart with its pass number ('P3'), drawn as small rotated text near the top of the line in the line's colour, via a small inline Chart.js plugin, without overlapping neighbouring labels where two lines are within a couple of score units. The legend lists only the two curves, with the payload's `legend` label (name and handicap); marker lines are not in the legend. The x-axis min/max come from the payload (task 50) so no line is outside the plot. The hover behaviour (custom nearestCurveX mode, curves only in the tooltip) is unchanged and must still give the right values over and next to every marker line, including ones outside the curves' former range.",
+    "tests": [
+      "Verified in a real browser (headless Edge via an ephemeral Selenium install against an exact commit exported with `git archive`) on a 4-archer, 4-pass event driven over HTTP: on the pass-3 match page with 'Show previous passes' unticked the chart has 2 curve datasets and 2 marker datasets (this pass), ticked it has 2 + 6 (passes 1, 2 and 3 for both archers, including passes against other opponents), unticked again 2 + 2.",
+      "Every marker line's x position is inside the plot area's [x min, x max] for scores deliberately set far outside the curves' usual range (e.g. 5 and 118 over 12 arrows).",
+      "Each marker has a visible label on the chart with the correct pass number ('P1'..'P3'), checked by reading the plugin's recorded label list and by screenshot inspection; labels of two lines 1 score apart do not overlap.",
+      "The legend has exactly two entries, 'Name (handicap H)' for each archer, and no marker entries; the page heading has no handicap.",
+      "Hover probe: pointer at 2 px either side of every marker line (both heights) returns the two curve points at the right score and probability, never a marker or the minimum score (0 failures), as in the Feedback 4 probe.",
+      "A pair that has never met but has each shot earlier passes shows those earlier scores when the box is ticked (the original reported bug).",
+      "No JS console errors beyond the favicon 404 and CDN tracking-prevention warnings.",
+      "The Python suite still passes (markup and payload tests for the partial)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 52,
+    "name": "Outputs model: completed passes, leaderboard and per-archer results",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Outputs) and AISpec.md section 5.4a (Assumptions 36, 37, 38): add a Flask-free module h2h/outputs.py. Event gains completed_passes (the rotation indices in which every match is scored, in order; a partly scored pass is excluded until its last match is saved). outputs.leaderboard(event) returns one row per archer with rank, name, points (passes won among completed passes) and passes decided (completed passes in which the archer had an opponent), ordered by points descending then event order, with equal points sharing a rank (1, 2, 2, 4). outputs.archer_results(event) returns, for every archer in event order, the name, base handicap, total score (their scores over completed passes), a row per completed pass in which they shot (pass number as an integer starting at 1, opponent name or 'bye', score, percentile, equivalent handicap or None) and an averages row (mean score, mean percentile, mean handicap ignoring None, or None if there are none). Rows are plain dataclasses/tuples, easy to render as HTML, CSV or PDF.",
+    "tests": [
+      "With no scored match, every archer has 0 points, 0 decided and rank 1 (all tied), and every per-archer table is empty with no averages.",
+      "With pass 1 fully scored and pass 2 half scored, only pass 1 contributes to points, totals and rows; saving pass 2's last match adds it; completed_passes is [0] then [0, 1].",
+      "Points equal the number of passes the archer won among completed passes (checked against the Event's results over a whole 4-archer event with known scores), and the sum of all points equals the number of decided paired matches.",
+      "Ranks are 1,2,2,4 for points 3,2,2,1; archers with equal points keep event order.",
+      "A bye (solo) pass adds no points, does not count as decided, and still gives that archer a results row with opponent 'bye'; a sit-out pass gives no row.",
+      "A per-archer table's rows are in pass order with 1-based pass numbers, the correct opponent name, score, percentile (0-1 fraction in the model) and handicap.",
+      "Total score is the sum of the rows' scores; the average row is the mean of the Score, Percentile and Handicap columns, ignoring a None handicap (score 0) in the handicap mean, and None for the handicap mean if every handicap is None.",
+      "An event that is mid-way through advancing shows the leaderboard consistent with the per-pass results (no match counted twice after a score is edited and re-saved).",
+      "The module imports without Flask and has docstrings on every function."
+    ],
+    "completed": false
+  },
+  {
+    "id": 53,
+    "name": "Results page leaderboard and per-archer results page",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Outputs) and AISpec.md section 5.4a (Assumptions 36, 37, 38): show the task-52 outputs. The Results page (/event/results) gains a Leaderboard table above the pairwise results with the columns Rank | Archer | Points | Passes decided, a note that it counts completed passes only (and how many), and a link to the new Archer results page; its pairwise and per-pass sections are unchanged and its wording no longer says there is no leaderboard. The new page /event/archers ('Archer results') renders, for each archer, a heading '<name> - total score <N> - handicap <H>' (H as entered), then a table with the columns Pass | Opponent | Score | Percentile | Handicap (percentile as '%.1f%%', handicap to one decimal or '-') and a final Average row (Pass and Opponent blank; Score to one decimal, Percentile, Handicap). With no completed pass it shows an explanatory empty state. Both pages redirect to Stage 1 if there is no event, and both are live (recomputed on every request). The nav bar gains an 'Archer results' link.",
+    "tests": [
+      "The Results page contains a Leaderboard table with exactly the headings Rank, Archer, Points, Passes decided, with a row per archer in rank order, and its values equal outputs.leaderboard for the event; the old 'not a ranked leaderboard' sentence is gone.",
+      "After saving one match of a two-match pass the leaderboard is unchanged (all 0 points); after saving the second the winners have 1 point - the page is live, with no caching.",
+      "/event/archers has one section per archer with the heading 'name - total score N - handicap H' and a table whose headings are exactly Pass, Opponent, Score, Percentile, Handicap, plus an Average row as the last row; values equal outputs.archer_results.",
+      "Pass is an integer (no decimals), Percentile shows '%.1f%%', Handicap one decimal, '-' for a score of 0, and the Average row's Pass and Opponent cells are empty.",
+      "A bye pass row reads 'bye' as the opponent; a sat-out pass has no row.",
+      "Before any pass is completed the Archer results page shows each archer's heading and an empty-state message rather than an error; with no event both pages redirect to Stage 1.",
+      "The nav bar on every page links to /event/archers.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 54,
+    "name": "Exports: leaderboard and archer results as CSV, everything as PDF",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Outputs: exports to PDF or CSV of all, sensible formats) and AISpec.md section 5.4a (Assumption 39): add `fpdf2` as a dependency with `uv add fpdf2` (and `pypdf` as a dev dependency for tests; no pip) and a Flask-free module h2h/exports.py with leaderboard_csv(event), archer_results_csv(event) and results_pdf(event), all built from the task-52 outputs (so equally live and completed-passes-only). Leaderboard CSV: header Rank,Archer,Points,Passes decided. Archer-results CSV: a tidy table, header Archer,Handicap,Pass,Opponent,Score,Percentile (%),Handicap of score, one row per archer per completed pass, no Average rows, numbers written plainly (percentile as 59.8, empty cell for a missing handicap), UTF-8 with no byte-order mark, standard csv quoting so names containing commas or quotes survive. PDF: A4, a title with the event details (number of archers, arrows and passes completed), the leaderboard table, then each archer's heading and results table including the Average row, using the built-in Helvetica font with characters outside Latin-1 replaced by '?'; long results flow onto further pages without cutting off a table row. Routes: GET /event/export/leaderboard.csv, /event/export/archer-results.csv and /event/export/results.pdf return the right content type with an attachment Content-Disposition (leaderboard.csv, archer-results.csv, results.pdf) and redirect to Stage 1 if there is no event. Download links are added to the Results page and the Archer results page.",
+    "tests": [
+      "`uv run` can import fpdf and (dev) pypdf; pyproject.toml and uv.lock list them; the project still runs under Python 3.14.",
+      "The leaderboard CSV parsed with the csv module has the exact header and one row per archer whose cells equal the on-page leaderboard (rank, name, points, decided).",
+      "The archer-results CSV parsed with the csv module has the exact header, and one row per archer per completed pass whose values match the Archer results page row for row; no Average rows; a name such as 'O\"Brien, Sam' round-trips; a partly scored pass is not in it; with no completed pass it is just the header.",
+      "Neither CSV starts with a byte-order mark; both decode as UTF-8; percentiles are numeric text such as 59.8 (no % sign), and a score of 0's handicap cell is empty.",
+      "The PDF response starts with %PDF-, has content type application/pdf and Content-Disposition attachment; filename=results.pdf; pypdf extracts text from it containing the title, every archer's name, the leaderboard headings and the Average row label.",
+      "The PDF for an event with 8 archers and several passes has more than one page and every archer appears exactly once as a heading; a name with a character outside Latin-1 (e.g. a Polish L-stroke) does not raise and appears with '?' in its place.",
+      "Each export route returns the right content type and Content-Disposition filename and redirects to Stage 1 when there is no event.",
+      "The Results page and the Archer results page link to all three exports.",
+      "Exports are live: saving the last match of a pass changes the CSV/PDF content on the next request.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 55,
+    "name": "Handicap calculator: indoor/outdoor choice and every standard round",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Handicap Calculator) and AISpec.md section 5.5 (Assumption 40): rebuild the standalone calculator form. (1) Indoor/Outdoor radio buttons (default Indoor). (2) A round dropdown for the chosen kind: indoor = every round in archeryutils's AGB_indoor and WA_indoor sets, outdoor = every round in AGB_outdoor_imperial, AGB_outdoor_metric and WA_outdoor, each listed once by its archeryutils name (the compound variants '..._compound' / '..._compound_triple' are not listed separately), Portsmouth selected by default indoors and WA 70m (wa720_70) outdoors. Both lists are rendered and a small script shows the one that matches the radio button (and the compound checkbox only for Indoor), so the page also works with the right defaults when script is off. (3) The compound checkbox ('Shot with a compound bow', only shown indoors): for an indoor round it selects the compound variant of the chosen round where archeryutils has one and otherwise uses the same round; it is ignored for an outdoor round. (4) Score and Calculate as before. The route reads the kind, round and compound flag, resolves the round by name from archeryutils itself, validates that the round belongs to the chosen kind's list (an unknown or wrong-kind round gives a friendly error, no result), and the page keeps the submitted choices after calculating. models.py replaces IndoorRound/resolve_indoor_round with a lookup over these sets (keeping the stats wrapper stats.handicap_for_round_score). The calculator remains independent of any event.",
+    "tests": [
+      "The indoor list is exactly the non-compound rounds of AGB_indoor and WA_indoor (Portsmouth, WA 18m, Bray I, Stafford, Worcester, Vegas, Vegas 300, WA 25m ... and their triples) and the outdoor list exactly those of AGB_outdoor_imperial, AGB_outdoor_metric and WA_outdoor; no name ending in '_compound' or '_compound_triple' is listed; rounds appear once.",
+      "The page renders the Indoor/Outdoor radios (Indoor checked), both round dropdowns (Portsmouth selected indoors, WA 70m outdoors), the compound checkbox in a part of the page that is hidden when Outdoor is chosen, and a score box.",
+      "Indoor Portsmouth, not compound, score 560 gives the same handicap as archeryutils's handicap_from_score on portsmouth; with the compound box ticked it equals the value for portsmouth_compound and differs from the non-compound one; the same for WA 18m.",
+      "A round with no compound variant (Worcester, Vegas 300) with the compound box ticked gives the non-compound result and no error; a round whose variant exists (WA 25m, Bray II, Stafford, Vegas, triples) uses it.",
+      "An outdoor round (e.g. York or WA 1440 (90m)) with the compound box submitted (forced POST) ignores it and gives the plain round's result; an outdoor round with a typical score returns a sensible handicap to one decimal place.",
+      "A round name that is not in the chosen kind's list (e.g. an outdoor round with kind=indoor) or unknown gives the error message and no result; a score above the round's maximum or non-numeric gives the existing invalid-score message.",
+      "The submitted choices (kind, round, compound, score) are re-rendered after a result or an error.",
+      "Every indoor and outdoor round in the lists returns a finite handicap for a mid-range score (loop over all, no exceptions).",
+      "Verified in a real browser: switching Indoor/Outdoor swaps the dropdown and shows/hides the compound checkbox, calculating works for one indoor and one outdoor round; no JS console errors.",
+      "The existing calculator tests are migrated and the full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 56,
+    "name": "End-to-end integration check, browser walkthrough and docs for Feedback 5",
+    "description": "Extend tests/test_integration.py for the full Feedback 5 flow over HTTP and run a real-browser walkthrough (headless Edge via an ephemeral Selenium install, exporting the exact commit with git archive). Update README.md (advanced setup, tie-break tick boxes, leaderboard, archer results and exports, the calculator, the chart's labelled markers) and Specification/logbook.md with a Feedback 5 section (summary, assumptions and open points, verification notes).",
+    "tests": [
+      "A full advanced-mode event over HTTP with 4 archers on different face types, sizes and distances: scores respect each archer's maximum, the leaderboard points after every completed pass equal the winners recorded in the Event, and after the last pass the leaderboard, archer results page, both CSVs and the PDF agree with each other and with the Event.",
+      "A tie (two same-handicap archers, same score) is blocked until a box is ticked, then decided by it; the leaderboard then credits that archer; pass counts and points over the event are consistent (total points = number of decided paired matches).",
+      "A mid-pass leaderboard excludes the half-scored pass; the exports match it.",
+      "The chart payload and the marker/axis behaviour check over the same event: a pair that has not met yet shows both archers' earlier scores, and every score lies within the payload's x-range.",
+      "The calculator flow (indoor compound Portsmouth, outdoor WA 1440 (90m)) works over HTTP.",
+      "A real-browser walkthrough (Stage 1 advanced toggle, Stage 2 advanced dropdowns, Stage 3, a tied match blocked then decided by the tick boxes, the match page's heading/this-pass table, the labelled chart markers and legend with the ticked box adding lines on a later pass, the Results leaderboard, the Archer results page, downloading each export and checking its first bytes, the calculator's indoor/outdoor switch) completes with no JS console errors.",
+      "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 5 section."
+    ],
+    "completed": false
   }
 ]
