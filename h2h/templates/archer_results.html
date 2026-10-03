@@ -4,6 +4,7 @@
 <p>Each archer's results, counting only completed passes (a pass is completed once every match in it has been
   scored): {{ completed_passes }} of {{ event.schedule|length }} so far.
   <a href="{{ url_for('event_results') }}">Back to the results</a></p>
+{% include "_export_links.html" %}
 {% if not completed_passes %}
 <p>No pass has been completed yet, so there are no results to show. They appear here once every match in a pass
   has been scored.</p>

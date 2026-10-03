@@ -9,9 +9,9 @@ single-user local tool, not a multi-tenant service.
 
 from __future__ import annotations
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, Response, redirect, render_template, request, url_for
 
-from . import outputs, stats
+from . import exports, outputs, stats
 from .chart_data import build_pair_chart_data
 from .models import (
     ADVANCED_FACE_SIZES_CM,
@@ -513,6 +513,48 @@ def create_app(state: SessionState | None = None) -> Flask:
             sections=outputs.archer_results(event),
             completed_passes=len(event.completed_passes),
         )
+
+    def _download(body: str | bytes, mimetype: str, filename: str) -> Response:
+        """A file download response.
+
+        Parameters
+        ----------
+        body : str | bytes
+            The file contents.
+        mimetype : str
+            The content type, e.g. "text/csv" or "application/pdf".
+        filename : str
+            The name the browser should save it as.
+
+        Returns
+        -------
+        flask.Response
+            The response, with an attachment Content-Disposition.
+        """
+        return Response(
+            body, mimetype=mimetype, headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    @app.get("/event/export/leaderboard.csv")
+    def export_leaderboard_csv():
+        """The leaderboard as a CSV download (live, completed passes only)."""
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        return _download(exports.leaderboard_csv(session.event), "text/csv", "leaderboard.csv")
+
+    @app.get("/event/export/archer-results.csv")
+    def export_archer_results_csv():
+        """Every archer's results as one tidy CSV download (live, completed passes only)."""
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        return _download(exports.archer_results_csv(session.event), "text/csv", "archer-results.csv")
+
+    @app.get("/event/export/results.pdf")
+    def export_results_pdf():
+        """The leaderboard and every archer's results as one PDF download."""
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        return _download(exports.results_pdf(session.event), "application/pdf", "results.pdf")
 
     @app.get("/event/pair/<int:a>/<int:b>")
     def pair_chart(a: int, b: int):

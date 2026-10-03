@@ -748,7 +748,7 @@
       "Exports are live: saving the last match of a pass changes the CSV/PDF content on the next request.",
       "The full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 55,

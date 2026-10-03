@@ -12,6 +12,7 @@
 <p>1 point for each pass won, 0 for a pass lost. Only completed passes count (a pass is completed once every
   match in it has been scored): {{ completed_passes }} of {{ event.schedule|length }} so far. Archers on equal
   points share a rank. <a href="{{ url_for('archer_results') }}">Each archer's results</a></p>
+{% include "_export_links.html" %}
 <table>
   <thead>
     <tr><th>Rank</th><th>Archer</th><th>Points</th><th>Passes decided</th></tr>

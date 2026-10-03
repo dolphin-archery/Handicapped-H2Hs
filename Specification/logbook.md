@@ -1539,3 +1539,29 @@ renamed. Tests: eight new route tests (leaderboard equals the outputs model, liv
 the whole pass, the per-archer sections' headings/columns/values/average row, zero-score dash
 and average, bye and sat-out passes, empty state, redirects, nav link) replacing the old
 "no leaderboard" test. Suite: 750 passed.
+
+### Task 54: Exports - leaderboard and archer results as CSV, everything as PDF (complete)
+Dependencies added with `uv add fpdf2` (2.8.9, pulling in Pillow and fontTools; pure-Python PDF
+writer, chosen over `reportlab` for its smaller footprint and a built-in table API) and
+`uv add --dev pypdf` (so the tests can read the PDF text back); both install and import on
+Python 3.14. New Flask-free `h2h/exports.py` over `h2h.outputs`: `leaderboard_csv`
+(`Rank,Archer,Points,Passes decided`), `archer_results_csv` (a tidy table, `Archer,Handicap,Pass,
+Opponent,Score,Percentile (%),Handicap of score`, one row per archer per completed pass, no
+Average rows, percentile as a plain number such as 59.8, empty handicap cell for a zero score,
+standard csv quoting) and `results_pdf` (A4: title with the number of completed passes, the
+leaderboard, then each archer's heading and a table with the Average row, headings repeating
+across pages, built-in Helvetica with characters outside Latin-1 replaced by "?"). CSV is plain
+UTF-8 with no byte-order mark so `pandas.read_csv` gets clean column names (Excel may need the
+file imported as UTF-8 to show accents; Assumption 39). Routes `/event/export/leaderboard.csv`,
+`/event/export/archer-results.csv` and `/event/export/results.pdf` send attachments with those
+filenames (and redirect to Stage 1 without an event); a shared `_export_links.html` partial puts
+the three links on the Results and Archer results pages. Note, not acted on: cell text is
+user-typed names, and a name starting with = + - or @ would be read as a formula by a
+spreadsheet; the scorer opens only their own export on their own machine, so no escaping was
+added (it would also alter the data). Tests (19): dependency declarations, CSV headers/rows equal
+to the pages' own, tidy output without Average rows, a name with a comma and a quote
+round-tripping, partial pass excluded, no BOM / numeric percentile / empty zero-score handicap,
+PDF validity and content read back with pypdf (title, headings, every archer once, the Average
+label, multi-page flow with 8 archers, "?ukasz" for a name with a letter outside Latin-1, the
+empty-state PDF), route types, filenames, redirects, links on both pages, and liveness.
+Suite: 769 passed.
