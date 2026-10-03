@@ -14,6 +14,7 @@ from h2h.state import SessionState
 from .helpers import (
     OUTDOOR_70M,
     PORTSMOUTH,
+    make_state,
     pass_position,
     play_whole_event,
     save_match,
@@ -23,7 +24,7 @@ from .helpers import (
 
 def make_client():
     """A Flask test client with its own isolated SessionState."""
-    return create_app(state=SessionState()).test_client()
+    return create_app(state=make_state()).test_client()
 
 
 def stage1_form(n_archers, total_arrows=60, n_pass=12, distance="20yd", face_cm=60):
@@ -64,6 +65,7 @@ def run_full_event(client, archers, n_pass=12, total_arrows=None, distance="20yd
         data=stage1_form(n_archers, total_arrows, n_pass, distance, face_cm),
     )
     client.post("/event/stage2", data=stage2_form(archers))
+    client.post("/event/stage3")
 
     if score_fn is None:
         play_whole_event(client)
@@ -89,6 +91,7 @@ def test_odd_n_archers_each_rotation_has_exactly_one_bye():
     archers = [(f"A{i}", "Recurve", 20 + i) for i in range(5)]
     client.post("/event/stage1", data=stage1_form(5, total_arrows=60, n_pass=12))
     client.post("/event/stage2", data=stage2_form(archers))
+    client.post("/event/stage3")
 
     for pass_number in range(1, 6):  # 5 passes for 5 archers, one full round-robin
         assert pass_position(client) == (pass_number, 5)
@@ -115,6 +118,7 @@ def test_indoor_mode_compound_archer_uses_compound_target():
     archers = [("Rec", "Recurve", 20), ("Comp", "Compound", 20)]
     client.post("/event/stage1", data=stage1_form(2, total_arrows=12, n_pass=12))
     client.post("/event/stage2", data=stage2_form(archers))
+    client.post("/event/stage3")
     save_match(client, 0, {0: 100, 1: 100})
     results_resp = client.get("/event/results", follow_redirects=True)
     # Same raw score, different bowstyle/target -> different equivalent handicaps.
@@ -146,7 +150,7 @@ def test_fresh_app_state_sees_no_prior_event():
 
 def make_client_and_state():
     """A Flask test client plus the SessionState it uses, for inspecting the Event."""
-    state = SessionState()
+    state = make_state()
     return create_app(state=state).test_client(), state
 
 
@@ -156,6 +160,7 @@ def start_event(client, archers, total_arrows, n_pass=12, shoot_byes=True, **sta
     form["shoot_byes"] = "yes" if shoot_byes else "no"
     client.post("/event/stage1", data=form)
     client.post("/event/stage2", data=stage2_form(archers))
+    client.post("/event/stage3")
 
 
 def passes_shot(event):

@@ -8,10 +8,16 @@ single-user local tool for one scorer running one event at a time.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import random
+from dataclasses import dataclass, field
 
 from .models import DEFAULT_TARGET_SETUP, Archer, Event, TargetSetup
 from .rotation import Rotation, build_schedule, build_sit_out_schedule
+
+# How many fresh random draws a redraw may try to find pairings that differ from the
+# current ones, before accepting whatever it last drew (e.g. with only 2 archers there
+# is nothing different to find).
+_MAX_REDRAW_ATTEMPTS = 50
 
 
 @dataclass
@@ -35,8 +41,15 @@ class SessionState:
     schedule : list[Rotation] | None
         The rotation schedule built at the end of Stage 1, over archer
         *positions* -- set before archer identities are known.
+    pending_archers : list[Archer] | None
+        The archers entered at Stage 2, in entry order, awaiting Stage 3.
+    assignment : list[int] | None
+        The Stage 3 draw: `assignment[position]` is the index into
+        `pending_archers` of the archer filling that schedule position.
     event : Event | None
-        The full event, built once Stage 2 binds archers to `schedule`.
+        The full event, built when Stage 3 is confirmed.
+    rng : random.Random
+        Source of randomness for the Stage 3 draw (injectable for tests).
     """
 
     graph_view: bool = False
@@ -47,7 +60,10 @@ class SessionState:
     target_setup: TargetSetup = DEFAULT_TARGET_SETUP
     shoot_byes: bool = True
     schedule: list[Rotation] | None = None
+    pending_archers: list[Archer] | None = None
+    assignment: list[int] | None = None
     event: Event | None = None
+    rng: random.Random = field(default_factory=random.Random, repr=False, compare=False)
 
     def start_stage1(
         self,
@@ -105,15 +121,20 @@ class SessionState:
         self.target_setup = target_setup
         self.shoot_byes = shoot_byes
         self.schedule = new_schedule
-        self.event = None  # discard any previous event
+        self.pending_archers = None  # discard any previous archers, draw and event
+        self.assignment = None
+        self.event = None
 
     def start_stage2(self, archers: list[Archer]) -> None:
-        """Bind archer details to the Stage 1 schedule and build the Event.
+        """Store the entered archers and draw their random assignment (Stage 3 follows).
+
+        No event is built yet: that happens when the draw is confirmed
+        (`start_event`). Any previous event is discarded.
 
         Parameters
         ----------
         archers : list[Archer]
-            Exactly `self.n_archers` archers, in schedule-position order.
+            Exactly `self.n_archers` archers, in entry order.
 
         Raises
         ------
@@ -129,7 +150,87 @@ class SessionState:
             msg = f"Expected {self.n_archers} archers, got {len(archers)}."
             raise ValueError(msg)
 
-        self.event = Event(archers, self.n_pass, self.target_setup, self.schedule)
+        self.pending_archers = list(archers)
+        self.assignment = None
+        self.event = None
+        self.redraw_pairings()
+
+    def _pairings_signature(self, assignment: list[int]) -> tuple:
+        """A hashable summary of who meets whom, and who byes or sits out, in every pass.
+
+        Two assignments with the same signature give the scorer the same
+        pairings, even if they differ in (say) which archer is listed first
+        in a pair.
+
+        Parameters
+        ----------
+        assignment : list[int]
+            A position -> `pending_archers` index assignment.
+
+        Returns
+        -------
+        tuple
+            One `(pairs, bye archer, sitting-out archers)` entry per rotation.
+        """
+        return tuple(
+            (
+                frozenset(frozenset((assignment[a], assignment[b])) for a, b in rotation.pairs),
+                None if rotation.bye is None else assignment[rotation.bye],
+                frozenset(assignment[i] for i in rotation.sitting_out),
+            )
+            for rotation in self.schedule
+        )
+
+    def redraw_pairings(self) -> None:
+        """Draw a fresh random assignment of the entered archers to schedule positions.
+
+        A draw whose pairings differ from the current ones is preferred (so
+        pressing "Redraw" visibly changes something), trying up to
+        `_MAX_REDRAW_ATTEMPTS` times; if none is found (e.g. with only two
+        archers) the last draw is kept.
+
+        Raises
+        ------
+        RuntimeError
+            If Stage 2 has not been completed yet.
+        """
+        if self.pending_archers is None or self.schedule is None:
+            msg = "Stage 2 must be completed before pairings can be drawn."
+            raise RuntimeError(msg)
+
+        previous = None if self.assignment is None else self._pairings_signature(self.assignment)
+        for _ in range(_MAX_REDRAW_ATTEMPTS):
+            order = list(range(len(self.pending_archers)))
+            self.rng.shuffle(order)
+            if previous is None or self._pairings_signature(order) != previous:
+                break
+        self.assignment = order
+
+    def assigned_archers(self) -> list[Archer]:
+        """list[Archer]: the entered archers in schedule-position order, per the current draw.
+
+        Raises
+        ------
+        RuntimeError
+            If Stage 2 has not been completed yet.
+        """
+        if self.pending_archers is None or self.assignment is None:
+            msg = "Stage 2 must be completed before pairings can be drawn."
+            raise RuntimeError(msg)
+        return [self.pending_archers[i] for i in self.assignment]
+
+    def start_event(self) -> None:
+        """Confirm the Stage 3 draw and build the Event from it.
+
+        Raises
+        ------
+        RuntimeError
+            If Stage 2 has not been completed yet.
+        """
+        if self.schedule is None:
+            msg = "Stage 1 must be completed before the event can start."
+            raise RuntimeError(msg)
+        self.event = Event(self.assigned_archers(), self.n_pass, self.target_setup, self.schedule)
 
     def toggle_graph_view(self) -> None:
         """Switch graph view (charts and explanation) on or off."""
@@ -144,6 +245,8 @@ class SessionState:
         self.target_setup = DEFAULT_TARGET_SETUP
         self.shoot_byes = True
         self.schedule = None
+        self.pending_archers = None
+        self.assignment = None
         self.event = None
 
 

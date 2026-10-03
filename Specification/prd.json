@@ -567,7 +567,7 @@
       "A Stage 2 submission with invalid input (e.g. a bad handicap) does not draw an assignment or reach Stage 3.",
       "The full suite passes with the migrated, deterministic start-of-event helpers."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 44,

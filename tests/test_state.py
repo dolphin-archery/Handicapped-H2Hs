@@ -1,11 +1,13 @@
-"""Tests for h2h.state.SessionState's two-stage event setup methods."""
+"""Tests for h2h.state.SessionState's three-stage event setup methods."""
+
+import random
 
 import pytest
 
 from h2h.models import DEFAULT_TARGET_SETUP, METRE, Archer, Bowstyle, TargetSetup
 from h2h.state import SessionState
 
-from .helpers import OUTDOOR_70M, PORTSMOUTH, WA18
+from .helpers import OUTDOOR_70M, PORTSMOUTH, WA18, NoShuffle, make_state
 
 
 def test_start_stage1_builds_schedule():
@@ -43,9 +45,11 @@ def test_start_stage1_discards_previous_event():
         Archer(name="A", handicap=20, bowstyle=Bowstyle.RECURVE),
         Archer(name="B", handicap=30, bowstyle=Bowstyle.RECURVE),
     ])
+    state.start_event()
     assert state.event is not None
     state.start_stage1(3, 60, 12, WA18)
     assert state.event is None
+    assert state.pending_archers is None and state.assignment is None
 
 
 def test_start_stage2_requires_stage1_first():
@@ -68,9 +72,9 @@ def test_start_stage2_requires_matching_archer_count():
         )
 
 
-def test_start_stage2_builds_event():
-    """A matching archer count builds a usable Event."""
-    state = SessionState()
+def test_start_stage2_stores_the_archers_and_draws_but_builds_no_event():
+    """Stage 2 keeps the entered archers and a valid draw; the event waits for Stage 3."""
+    state = make_state()
     state.start_stage1(2, 12, 12, OUTDOOR_70M)
     state.start_stage2(
         [
@@ -78,8 +82,21 @@ def test_start_stage2_builds_event():
             Archer(name="B", handicap=30, bowstyle=Bowstyle.COMPOUND),
         ]
     )
+    assert state.event is None
+    assert [a.name for a in state.pending_archers] == ["A", "B"]
+    assert sorted(state.assignment) == [0, 1]
+
+
+def test_start_event_builds_a_usable_event_in_the_assigned_order():
+    """Confirming Stage 3 builds the Event with archers[position] = the assigned archer."""
+    state = SessionState(rng=random.Random(3))
+    state.start_stage1(4, 36, 12, OUTDOOR_70M)
+    entered = [Archer(name=n, handicap=20 + i, bowstyle=Bowstyle.RECURVE) for i, n in enumerate("ABCD")]
+    state.start_stage2(entered)
+    state.start_event()
     assert state.event is not None
-    assert state.event.archers[0].name == "A"
+    assert [a.name for a in state.event.archers] == [entered[i].name for i in state.assignment]
+    assert state.event.schedule is state.schedule
 
 
 def test_reset_clears_new_event_fields_too():
@@ -96,6 +113,7 @@ def test_reset_clears_new_event_fields_too():
     assert state.n_archers is None
     assert state.schedule is None
     assert state.event is None
+    assert state.pending_archers is None and state.assignment is None
 
 
 # --- "Shoot byes?" (Feedback 3) -------------------------------------------
@@ -197,7 +215,7 @@ def test_reset_restores_the_default_target_setup():
 
 def test_the_event_is_built_with_the_chosen_target_setup():
     """The Event resolves every archer's target from the session's setup."""
-    state = SessionState()
+    state = make_state()
     chosen = TargetSetup(distance=50, unit=METRE, face_cm=80)
     state.start_stage1(2, 12, 12, chosen)
     state.start_stage2(
@@ -206,8 +224,95 @@ def test_the_event_is_built_with_the_chosen_target_setup():
             Archer(name="B", handicap=30, bowstyle=Bowstyle.COMPOUND),
         ]
     )
+    state.start_event()
     event = state.event
     assert event.target_setup == chosen
     for i in (0, 1):
         assert event.target_for(i).distance == 50
         assert event.target_for(i).diameter == pytest.approx(0.8)
+
+
+# --- Stage 3: pairing assignment (Feedback 4) -------------------------------------
+
+
+def entered_archers(n):
+    """n archers with distinct names/handicaps, in entry order."""
+    return [
+        Archer(name=f"A{i}", handicap=15 + 5 * i, bowstyle=Bowstyle.RECURVE) for i in range(n)
+    ]
+
+
+def state_at_stage3(n=4, total_arrows=36, rng=None, shoot_byes=True):
+    """A session that has completed Stages 1 and 2 (no event yet)."""
+    state = SessionState(rng=rng or random.Random(0))
+    state.start_stage1(n, total_arrows, 12, PORTSMOUTH, shoot_byes=shoot_byes)
+    state.start_stage2(entered_archers(n))
+    return state
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_the_draw_is_always_a_permutation_of_the_entered_archers(seed):
+    """Whatever the random source, every archer fills exactly one position."""
+    state = state_at_stage3(n=6, total_arrows=60, rng=random.Random(seed))
+    assert sorted(state.assignment) == list(range(6))
+
+
+def test_a_non_shuffling_source_gives_entry_order_and_a_seeded_one_a_fixed_shuffle():
+    """The random source is injectable: identity for tests, deterministic when seeded."""
+    assert state_at_stage3(n=5, total_arrows=60, rng=NoShuffle()).assignment == [0, 1, 2, 3, 4]
+    first = state_at_stage3(n=8, total_arrows=84, rng=random.Random(42)).assignment
+    again = state_at_stage3(n=8, total_arrows=84, rng=random.Random(42)).assignment
+    assert first == again
+    assert first != list(range(8))
+
+
+def test_the_default_random_source_is_a_real_random_generator():
+    """Without injection the session uses random.Random (so draws really are random)."""
+    assert isinstance(SessionState().rng, random.Random)
+    assert not isinstance(SessionState().rng, NoShuffle)
+
+
+def test_redraw_changes_the_pairings_when_a_different_one_exists():
+    """Each redraw gives pairings that differ from the previous draw's (4+ archers)."""
+    state = state_at_stage3(n=4, total_arrows=36, rng=random.Random(1))
+    for _ in range(25):
+        before = state._pairings_signature(state.assignment)
+        state.redraw_pairings()
+        assert sorted(state.assignment) == [0, 1, 2, 3]
+        assert state._pairings_signature(state.assignment) != before
+
+
+def test_redraw_with_two_archers_keeps_a_valid_draw_since_nothing_else_exists():
+    """With only one possible pairing, redraw cannot change it but must not fail."""
+    state = state_at_stage3(n=2, total_arrows=12, rng=random.Random(1))
+    state.redraw_pairings()
+    assert sorted(state.assignment) == [0, 1]
+
+
+def test_redraw_does_not_touch_the_schedule_structure():
+    """The schedule keeps its rotations and sit-out counts; only who fills them changes."""
+    state = state_at_stage3(n=5, total_arrows=60, rng=random.Random(2), shoot_byes=False)
+    schedule = state.schedule
+    shape = [(len(r.pairs), len(r.sitting_out), r.bye) for r in schedule]
+    for _ in range(5):
+        state.redraw_pairings()
+    assert state.schedule is schedule
+    assert [(len(r.pairs), len(r.sitting_out), r.bye) for r in schedule] == shape
+
+
+def test_redraw_and_assigned_archers_require_stage2_first():
+    """Drawing, reading or confirming before Stage 2 is a RuntimeError."""
+    state = SessionState()
+    state.start_stage1(4, 36, 12, PORTSMOUTH)
+    for call in (state.redraw_pairings, state.assigned_archers, state.start_event):
+        with pytest.raises(RuntimeError):
+            call()
+
+
+def test_resubmitting_stage2_discards_the_old_draw_and_any_event():
+    """Entering the archers again starts from a fresh draw and no event."""
+    state = state_at_stage3(n=4, total_arrows=36)
+    state.start_event()
+    state.start_stage2(entered_archers(4))
+    assert state.event is None
+    assert state.assignment is not None

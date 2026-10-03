@@ -1123,3 +1123,54 @@ text present but hidden under Simple, the Stage 2 intro for an indoor and an
 outdoor setup, and a scan that no `round_mode`/`RoundMode`/bridge names remain
 in `h2h/`). The shared test form helpers were switched to the new fields.
 Suite: 520 passed.
+
+### Task 43: Stage 3: random pairing assignment with redraw (complete)
+Setup now has three stages. Submitting Stage 2 no longer starts the event: it
+stores the archers (`SessionState.pending_archers`, entry order) and draws a
+random assignment of archers to the Stage 1 schedule's positions (`assignment[
+position]` = index into `pending_archers`), then redirects to `/event/stage3`.
+Stage 3 lists **every pass** (Pass | Matches | Sitting out): each pairing by name,
+the bye archer as "(bye - shoots alone)" when byes are shot, and the sitting-out
+names when they are not. **Redraw pairings** (`POST /event/stage3/redraw`) draws
+again and returns to Stage 3; **Confirm pairings and start event** (`POST
+/event/stage3`) builds the `Event` from `assigned_archers()` (so `event.archers[
+position]` is the assigned archer and the rest of the app is unchanged) and goes
+to the overview. Reaching Stage 3 early redirects to Stage 1/2; once the event has
+started the page and both buttons redirect to the overview and change nothing.
+The schedule built at Stage 1 is reused untouched - only who fills each position
+changes (Assumption 25).
+
+Design points worth knowing:
+- The random source is the injectable `SessionState.rng` (default
+  `random.Random()`, excluded from equality/repr). Tests use `NoShuffle`
+  (`tests/helpers.py`), whose shuffle does nothing, for a deterministic
+  entry-order draw, and seeded `random.Random`s for the redraw tests.
+- A redraw **prefers pairings that actually differ**. With 4 archers a fresh
+  permutation reproduces the displayed pairings 1 time in 6 (4 permutations
+  per pairing schedule), so a plain reshuffle would sometimes make the button
+  look broken. `redraw_pairings` compares a hashable signature of who meets
+  whom (and who byes/sits out) per pass and retries up to 50 times; with only 2
+  archers there is nothing different to find and it keeps the last draw. (A
+  smoke test of the real unseeded app: 6 redraws with 6 archers gave 6 distinct
+  pairing sets.)
+
+**A flaky-test lesson from this task:** after the migration the suite passed once
+and then failed one test on the next run. Cause: `make_client_and_state` still built
+a plain `SessionState()`, so its Stage 3 draw really was random and tests that use
+archer positions (e.g. "archer 0 scores 120 and wins") passed or failed depending
+on whether the two archers had been swapped. Fixed by building every
+position-dependent test client from `make_state()`; the suite then ran green 8
+times in a row. Any future test that refers to archers by index must use the
+identity-draw state.
+
+Tests: state tests (draw is always a permutation, injectable/seeded/identity
+sources, default source really random, redraw always changes the pairings for 4
+archers over 25 draws and is safe for 2, schedule structure untouched, early
+calls raise, re-entering Stage 2 discards the draw and event, and the existing
+Stage 2/event tests migrated to the two-step flow); route tests (Stage 2 ->
+Stage 3 with no event, a rejected Stage 2 draws nothing, every pass shown with
+pairings by name and a full 6-pair round-robin for 4 archers, bye and sit-out
+displays, stable on reload, redraw changes the pairings, confirm starts the event
+in the shown order with the overview matching Stage 3's first pass, early-access
+redirects, and a started event being immune). Test helpers now run Stage 3's confirm
+after Stage 2. Suite: 543 passed.

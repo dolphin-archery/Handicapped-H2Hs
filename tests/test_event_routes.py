@@ -5,6 +5,7 @@ results and chart pages.
 """
 
 import json
+import random
 import re
 from pathlib import Path
 
@@ -14,12 +15,12 @@ from h2h.app import create_app
 from h2h.models import DEFAULT_TARGET_SETUP, METRE, TargetSetup
 from h2h.state import SessionState
 
-from .helpers import overview_table, save_match, score_current_pass
+from .helpers import make_state, overview_table, save_match, score_current_pass
 
 
 def make_client():
     """A Flask test client with its own isolated SessionState."""
-    return create_app(state=SessionState()).test_client()
+    return create_app(state=make_state()).test_client()
 
 
 def stage1_form(
@@ -97,7 +98,7 @@ def test_an_outdoor_distance_is_accepted_like_any_other():
 
 def make_client_and_state():
     """A Flask test client plus the SessionState it uses, for inspecting stored state."""
-    state = SessionState()
+    state = make_state()
     return create_app(state=state).test_client(), state
 
 
@@ -217,9 +218,9 @@ def test_stage2_without_stage1_redirects_to_stage1():
     assert b"Event setup - Stage 1" in resp.data
 
 
-def test_valid_stage2_submission_creates_event():
-    """Submitting valid archer details for every row starts the event."""
-    client = make_client()
+def test_valid_stage2_submission_goes_to_stage3_without_starting_the_event():
+    """Submitting valid archer details moves on to Stage 3; the event starts only on confirm."""
+    client, state = make_client_and_state()
     complete_stage1(client, n_archers=2)
     resp = client.post(
         "/event/stage2",
@@ -227,6 +228,8 @@ def test_valid_stage2_submission_creates_event():
         follow_redirects=True,
     )
     assert resp.status_code == 200
+    assert b"Event setup - Stage 3" in resp.data
+    assert state.event is None
 
 
 def test_stage2_dropdown_offers_longbow_in_every_row():
@@ -347,7 +350,10 @@ def test_handicap_bounds_are_defined_once_in_the_models_module():
 
 def complete_stage2(client, archers):
     """Run Stage 2 with the given (name, bowstyle, handicap) tuples."""
-    return client.post("/event/stage2", data=stage2_form(archers), follow_redirects=True)
+    resp = client.post("/event/stage2", data=stage2_form(archers))
+    if resp.status_code == 302:  # accepted: confirm the (identity) Stage 3 draw to start the event
+        return client.post("/event/stage3", follow_redirects=True)
+    return resp
 
 
 def start_two_archer_event(client, n_pass=12):
@@ -532,7 +538,7 @@ def test_advance_is_disabled_and_refused_until_every_match_is_scored():
 
 def test_advancing_shows_the_next_passes_pairings_and_accepts_its_scores():
     """After advancing, the overview shows the new pairings and match pages take new scores."""
-    state = SessionState()
+    state = make_state()
     client = create_app(state=state).test_client()
     start_four_archer_event(client)
     score_current_pass(client)
@@ -1310,3 +1316,152 @@ def test_no_leftover_reference_to_the_old_round_mode_form_in_the_app():
         text = path.read_text(encoding="utf-8")
         for name in forbidden:
             assert name not in text, f"{name} in {path.name}"
+
+
+# --- Stage 3: random pairing assignment with redraw (Feedback 4) ---------------------
+
+NAMES = ["Ann", "Ben", "Cat", "Dan", "Eve", "Fay", "Gus", "Hal"]
+
+
+def client_at_stage3(n=4, total_arrows=36, rng=None, shoot_byes=True):
+    """A client + state that has completed Stages 1 and 2 (no event yet), drawn with `rng`."""
+    state = SessionState(rng=rng or random.Random(0))
+    client = create_app(state=state).test_client()
+    form = stage1_form(n_archers=n, total_arrows=total_arrows)
+    form["shoot_byes"] = "yes" if shoot_byes else "no"
+    client.post("/event/stage1", data=form)
+    client.post(
+        "/event/stage2",
+        data=stage2_form([(NAMES[i], "Recurve", 15 + 5 * i) for i in range(n)]),
+    )
+    return client, state
+
+
+def stage3_matches(page):
+    """For each pass on the Stage 3 page, the list of 'X vs Y' pairings it shows."""
+    _, rows = overview_table(page)
+    return [re.findall(r"[A-Z][a-z]+ vs [A-Z][a-z]+", row[1]) for row in rows]
+
+
+def test_stage2_submission_redirects_to_stage3_and_draws_an_assignment():
+    """Stage 2 -> Stage 3, with the archers stored, a draw made, and no event."""
+    client, state = client_at_stage3()
+    assert state.event is None
+    assert [a.name for a in state.pending_archers] == NAMES[:4]
+    assert sorted(state.assignment) == [0, 1, 2, 3]
+
+
+def test_a_rejected_stage2_submission_draws_nothing_and_does_not_reach_stage3():
+    """Invalid input (a bad handicap) stays on Stage 2 with no draw."""
+    state = SessionState(rng=random.Random(0))
+    client = create_app(state=state).test_client()
+    client.post("/event/stage1", data=stage1_form(n_archers=2))
+    resp = client.post(
+        "/event/stage2", data=stage2_form([("Ann", "Recurve", 20), ("Ben", "Compound", 999)])
+    )
+    assert resp.status_code == 200 and b"Stage 2" in resp.data
+    assert state.pending_archers is None and state.assignment is None
+
+
+def test_stage3_shows_every_pass_with_its_pairings_by_name():
+    """One row per pass of the schedule, each pairing listed, every archer appearing."""
+    client, state = client_at_stage3(n=4, total_arrows=36)
+    page = client.get("/event/stage3").data.decode()
+    headings, rows = overview_table(page)
+    assert headings == ["Pass", "Matches", "Sitting out"]
+    assert [row[0] for row in rows] == ["1", "2", "3"]
+    pairings = stage3_matches(page)
+    assert all(len(p) == 2 for p in pairings)  # two matches in each of the three passes
+    for name in NAMES[:4]:
+        assert name in page
+    # Over a full round-robin every pair of the four archers appears exactly once.
+    seen = {frozenset(m.split(" vs ")) for p in pairings for m in p}
+    assert len(seen) == 6
+
+
+def test_stage3_shows_the_bye_archer_shooting_alone_when_byes_are_shot():
+    """With byes shot, each pass lists a '(bye - shoots alone)' entry."""
+    client, _ = client_at_stage3(n=3, total_arrows=36, shoot_byes=True)
+    _, rows = overview_table(client.get("/event/stage3").data.decode())
+    assert len(rows) == 3
+    assert all("(bye - shoots alone)" in row[1] for row in rows)
+    assert all(row[2] == "-" for row in rows)
+
+
+def test_stage3_lists_who_sits_out_when_byes_are_not_shot():
+    """With byes not shot, the sitting-out archers are named and nobody shoots alone."""
+    client, state = client_at_stage3(n=5, total_arrows=60, shoot_byes=False)
+    page = client.get("/event/stage3").data.decode()
+    _, rows = overview_table(page)
+    assert len(rows) == len(state.schedule) == 7
+    assert all("bye" not in row[1] for row in rows)
+    archers = state.assigned_archers()
+    for row, rotation in zip(rows, state.schedule, strict=True):
+        assert row[2] == ", ".join(archers[i].name for i in rotation.sitting_out)
+
+
+def test_reloading_stage3_without_redrawing_shows_the_same_assignment():
+    """GET is stable: only the Redraw button changes the draw."""
+    client, state = client_at_stage3()
+    first = client.get("/event/stage3").data
+    second = client.get("/event/stage3").data
+    assert first == second
+
+
+def test_redraw_shows_different_pairings_and_stays_on_stage3():
+    """POST redraw gives a valid new draw whose pairings differ, and returns to Stage 3."""
+    client, state = client_at_stage3(rng=random.Random(5))
+    before = stage3_matches(client.get("/event/stage3").data.decode())
+    resp = client.post("/event/stage3/redraw")
+    assert resp.status_code == 302 and resp.headers["Location"].endswith("/event/stage3")
+    assert sorted(state.assignment) == [0, 1, 2, 3]
+    after = stage3_matches(client.get("/event/stage3").data.decode())
+    assert after != before
+    assert state.event is None
+
+
+def test_confirming_starts_the_event_with_exactly_the_pairings_shown():
+    """Confirm builds the event from the shown draw; the overview's first pass matches it."""
+    client, state = client_at_stage3(rng=random.Random(7))
+    shown_first_pass = stage3_matches(client.get("/event/stage3").data.decode())[0]
+    resp = client.post("/event/stage3")
+    assert resp.status_code == 302 and resp.headers["Location"].endswith("/event/rotation")
+
+    event = state.event
+    assert event is not None
+    assert [a.name for a in event.archers] == [state.pending_archers[i].name for i in state.assignment]
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert [row[0] for row in rows] == shown_first_pass
+
+
+def test_stage3_without_completing_stage2_redirects_back_to_setup():
+    """No Stage 1 -> Stage 1; Stage 1 done but no archers yet -> Stage 2."""
+    state = SessionState()
+    client = create_app(state=state).test_client()
+    assert client.get("/event/stage3").headers["Location"].endswith("/event/stage1")
+    assert client.post("/event/stage3").headers["Location"].endswith("/event/stage1")
+    assert client.post("/event/stage3/redraw").headers["Location"].endswith("/event/stage1")
+
+    client.post("/event/stage1", data=stage1_form(n_archers=3))
+    assert client.get("/event/stage3").headers["Location"].endswith("/event/stage2")
+    assert client.post("/event/stage3").headers["Location"].endswith("/event/stage2")
+    assert state.event is None
+
+
+def test_once_the_event_has_started_stage3_redirects_and_changes_nothing():
+    """After confirming, neither page nor either button can alter the running event."""
+    client, state = client_at_stage3(rng=random.Random(9))
+    client.post("/event/stage3")
+    event, assignment = state.event, list(state.assignment)
+    save_match(client, 0, {p: 60 for p in event.matches(0)[0]})
+
+    for response in (
+        client.get("/event/stage3"),
+        client.post("/event/stage3"),
+        client.post("/event/stage3/redraw"),
+    ):
+        assert response.status_code == 302
+        assert response.headers["Location"].endswith("/event/rotation")
+    assert state.event is event
+    assert state.assignment == assignment
+    assert event.results  # the scored match is still there

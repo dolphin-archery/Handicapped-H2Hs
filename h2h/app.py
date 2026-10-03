@@ -167,6 +167,64 @@ def create_app(state: SessionState | None = None) -> Flask:
             session.start_stage2(archers)
         except ValueError as exc:
             return stage2(error=str(exc), values=request.form)
+        return redirect(url_for("stage3"))
+
+    def _stage3_redirect():
+        """The redirect a Stage 3 page needs instead of acting, or None if it may proceed.
+
+        Returns
+        -------
+        flask.Response | None
+            To the overview if the event has already started, back to Stage 2
+            (or Stage 1) if the archers have not been entered yet, else None.
+        """
+        if session.event is not None:
+            return redirect(url_for("event_rotation"))
+        if session.pending_archers is None:
+            return redirect(url_for("stage2" if session.schedule is not None else "stage1"))
+        return None
+
+    @app.get("/event/stage3")
+    def stage3():
+        """Pairing assignment: every pass's pairings for the current random draw.
+
+        Returns
+        -------
+        flask.Response | str
+            The rendered page, or the redirect from `_stage3_redirect`.
+        """
+        redirect_to = _stage3_redirect()
+        if redirect_to is not None:
+            return redirect_to
+        archers = session.assigned_archers()
+        passes = [
+            {
+                "matches": [
+                    (archers[a].name, None if b is None else archers[b].name)
+                    for a, b in rotation.matches
+                ],
+                "sitting_out": [archers[i].name for i in rotation.sitting_out],
+            }
+            for rotation in session.schedule
+        ]
+        return render_template("stage3.html", passes=passes)
+
+    @app.post("/event/stage3/redraw")
+    def stage3_redraw():
+        """Draw a fresh random assignment and show Stage 3 again."""
+        redirect_to = _stage3_redirect()
+        if redirect_to is not None:
+            return redirect_to
+        session.redraw_pairings()
+        return redirect(url_for("stage3"))
+
+    @app.post("/event/stage3")
+    def stage3_confirm():
+        """Confirm the drawn pairings and start the event."""
+        redirect_to = _stage3_redirect()
+        if redirect_to is not None:
+            return redirect_to
+        session.start_event()
         return redirect(url_for("event_rotation"))
 
     @app.get("/event/rotation")

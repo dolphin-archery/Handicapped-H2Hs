@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Event setup - Stage 3</h1>
+<p>Here are the pairings for every pass, drawn at random. Redraw as many times as you like, then confirm to start the event.</p>
+
+<table>
+  <thead>
+    <tr><th>Pass</th><th>Matches</th><th>Sitting out</th></tr>
+  </thead>
+  <tbody>
+    {% for p in passes %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>
+        {% for a, b in p.matches %}
+        {% if b is none %}{{ a }} (bye - shoots alone){% else %}{{ a }} vs {{ b }}{% endif %}{% if not loop.last %}<br>{% endif %}
+        {% endfor %}
+      </td>
+      <td>{{ p.sitting_out|join(', ') if p.sitting_out else '-' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" action="{{ url_for('stage3_redraw') }}" style="display: inline;">
+  <button type="submit">Redraw pairings</button>
+</form>
+<form method="post" action="{{ url_for('stage3_confirm') }}" style="display: inline; margin-left: 1rem;">
+  <button type="submit">Confirm pairings and start event</button>
+</form>
+{% endblock %}

@@ -1,13 +1,31 @@
 """Shared helpers for tests driving the overview / per-match / advance page flow."""
 
+import random
 import re
 
 from h2h.models import METRE, YARD, TargetSetup
+from h2h.state import SessionState
 
 # Named target setups reused across tests.
 PORTSMOUTH = TargetSetup(distance=20, unit=YARD, face_cm=60)  # indoor
 WA18 = TargetSetup(distance=18, unit=METRE, face_cm=40)  # indoor
 OUTDOOR_70M = TargetSetup(distance=70, unit=METRE, face_cm=122)  # outdoor
+
+class NoShuffle(random.Random):
+    """A random source that never reorders anything.
+
+    With it, Stage 3's "random" draw is the entry order, so tests that refer to
+    archers by position stay deterministic.
+    """
+
+    def shuffle(self, x):
+        """Leave the sequence as it is."""
+
+
+def make_state():
+    """A fresh SessionState whose Stage 3 draw is the entry order."""
+    return SessionState(rng=NoShuffle())
+
 
 _MATCH_LINK = re.compile(r'href="/event/match/(\d+)"')
 _SCORE_INPUT = re.compile(r'name="score_(\d+)"')
