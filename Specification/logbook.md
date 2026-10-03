@@ -2069,3 +2069,23 @@ with the label-spanning Average row showing the mean, five when off); the CSV he
 (and exactly nine columns off, and the unchanged leaderboard CSV); the PDF text (the heading once per archer
 table on, absent off) and its Average row ending with the mean start handicap then the mean handicap; and an
 end-to-end route test over HTTP for an advanced updating event. Suite: 912 passed.
+
+### Task 71: Confirm the plotted distributions change between passes when handicaps are updated (confirmed by tests; browser confirmation below)
+Answer to Feedback 7 item 2: **yes.** The chart is built from `Event.distribution_for(archer)` for the current
+pass, which uses `Event.handicap_for` for that pass, so with "Update handicaps during matches" on, an
+archer's plotted curve is different in each pass after they have shot, and with it off it is the same in every
+pass. This has been so since Feedback 6; Feedback 7 adds evidence. Five HTTP-level tests on an advanced
+two-archer, three-pass event (fetching the chart payload embedded in the match page before each pass is
+scored): with updating on, each archer's curve differs between pass 1, 2 and 3 on the scores both cover,
+equals `Event.distribution_for(archer, that pass)` point by point, and Ann's pass-2 curve (after a poor pass 1)
+sits to the left of her pass-1 curve; with updating off the curves are identical on shared scores; the legend
+handicap (one decimal place) equals `Event.handicap_for` for the pass and the curve equals the distribution
+built from it, so the legend and the plot cannot disagree; the pair-history page (`/event/pair/0/1`) also plots
+the current pass's curve and its legend moves; and the payload carries markers for passes 1 and 2 against a
+single curve built from pass 2's handicap. One detail the tests exposed: whole curves differ in length between
+passes even with updating off, because the x-range grows to include every score shot so far (Feedback 5), so
+"the curve changed" has to be judged on the scores both curves cover. **Worth knowing:** the vertical markers of
+earlier passes (the "show previous passes" box) are drawn against the CURRENT pass's curve, not the curve each
+was judged against (Assumption 54); I have not changed that, since it was not asked, but it can mislead when the
+handicap has moved a lot. Suite: 917 passed. The real-browser reading of the curve datasets and legends in
+successive passes is part of the Feedback 7 walkthrough (task 72).

@@ -872,3 +872,130 @@ def test_results_page_groups_each_matchs_rows_in_overview_order_with_distinct_pe
             cells = [re.findall(r"<td>(.*?)</td>", row, re.S) for row in re.findall(r"<tr>(.*?)</tr>", group, re.S)]
             assert [c[0] for c in cells] == names
             assert cells[0][2] != cells[1][2]  # the pair's percentile texts tell them apart
+
+
+# --- Feedback 7: the plotted distributions change between passes when handicaps are updated -------
+
+
+def start_curve_pair(update):
+    """An advanced two-archer, three-pass event (Ann 30, Ben 40), updating on or off, graph view on.
+
+    Returns (client, state). Ann and Ben meet in every pass, so their match page is /event/match/0.
+    """
+    state = SessionState(rng=NoShuffle())
+    client = create_app(state=state).test_client()
+    form = stage1_form(2, 36)
+    form["setup_mode"] = "advanced"
+    client.post("/event/stage1", data=form)
+    data = {"update_handicaps": "yes" if update else "no", "n_lookback": "1", "start_weight": "2"}
+    for i, (name, handicap) in enumerate((("Ann", 30), ("Ben", 40))):
+        data.update({f"name_{i}": name, f"bowstyle_{i}": "Recurve", f"handicap_{i}": str(handicap),
+                     f"face_type_{i}": "10_zone", f"face_cm_{i}": "60", f"distance_{i}": "20yd"})
+    assert client.post("/event/stage2", data=data).status_code == 302
+    client.post("/event/stage3")
+    client.post("/graph-view", data={"next": "/event/rotation"})
+    return client, state
+
+
+def curve_of(payload, side):
+    """A payload curve as {score: probability}."""
+    return {point["x"]: point["y"] for point in payload[side]}
+
+
+def differs_on_shared_scores(curve_1, curve_2):
+    """True if two curves give a different probability at some score that both cover.
+
+    (The x-range itself grows as scores accumulate, so whole curves can differ in length without
+    the distribution having changed; only the values at shared scores say whether it did.)
+    """
+    return any(curve_1[x] != pytest.approx(curve_2[x]) for x in curve_1.keys() & curve_2.keys())
+
+
+def match_payload(client):
+    """The chart payload embedded in the current pass's match page."""
+    return embedded_payload(client.get("/event/match/0").data.decode())
+
+
+def play_curve_passes(client, state, scores):
+    """Save each pass's (Ann, Ben) scores, advancing between passes; returns each pass's payload."""
+    payloads = []
+    for i, pair in enumerate(scores):
+        payloads.append(match_payload(client))  # the page as the scorer sees it, before scoring the pass
+        assert save_match(client, 0, {0: pair[0], 1: pair[1]}).status_code == 302
+        if i < len(scores) - 1:
+            client.post("/event/advance")
+    return payloads
+
+
+def test_with_updating_on_each_archers_plotted_curve_changes_from_pass_to_pass_and_matches_the_model():
+    """The curve on pass 2's page is not pass 1's; each equals the distribution of that pass's handicap."""
+    client, state = start_curve_pair(update=True)
+    first, second, third = play_curve_passes(client, state, [(80, 100), (95, 99), (100, 104)])
+    event = state.event
+    for side, archer in (("distribution_a", 0), ("distribution_b", 1)):
+        c1, c2, c3 = curve_of(first, side), curve_of(second, side), curve_of(third, side)
+        assert differs_on_shared_scores(c1, c2) and differs_on_shared_scores(c2, c3)
+        assert differs_on_shared_scores(c1, c3)
+        for payload, rotation in ((first, 0), (second, 1), (third, 2)):
+            distribution = event.distribution_for(archer, rotation)
+            for x, y in curve_of(payload, side).items():
+                assert y == pytest.approx(distribution.get(float(x), 0.0))
+    # Ann scored poorly in pass 1, so her pass-2 curve sits to the left (a higher handicap, a lower mean).
+    mean = lambda curve: sum(x * y for x, y in curve.items()) / sum(curve.values())  # noqa: E731
+    assert mean(curve_of(second, "distribution_a")) < mean(curve_of(first, "distribution_a"))
+
+
+def test_with_updating_off_the_plotted_curve_is_the_same_in_every_pass():
+    """No handicap movement, no change in the curve."""
+    client, state = start_curve_pair(update=False)
+    first, second, third = play_curve_passes(client, state, [(80, 100), (95, 99), (100, 104)])
+    for side in ("distribution_a", "distribution_b"):
+        c1, c2, c3 = curve_of(first, side), curve_of(second, side), curve_of(third, side)
+        assert not differs_on_shared_scores(c1, c2) and not differs_on_shared_scores(c2, c3)
+        assert not differs_on_shared_scores(c1, c3)
+
+
+def test_the_legend_handicap_and_the_plotted_curve_always_agree():
+    """The legend text is the one-decimal handicap of the pass, and the curve is built from that handicap."""
+    from h2h import stats as h2h_stats
+
+    client, state = start_curve_pair(update=True)
+    payloads = play_curve_passes(client, state, [(80, 100), (95, 99), (100, 104)])
+    event = state.event
+    for rotation, payload in enumerate(payloads):
+        for side, archer, name in (("archer_a", 0, "Ann"), ("archer_b", 1, "Ben")):
+            handicap = event.handicap_for(archer, rotation)
+            assert payload[side]["legend"] == f"{name} (handicap {handicap:.1f})"
+            expected = h2h_stats.n_pass_score_distribution(
+                h2h_stats.per_arrow_pmf(handicap, event.target_for(archer)), 12
+            )
+            curve = curve_of(payload, "distribution_a" if archer == 0 else "distribution_b")
+            assert all(y == pytest.approx(expected.get(float(x), 0.0)) for x, y in curve.items())
+    assert payloads[0]["archer_a"]["legend"] == "Ann (handicap 30.0)"
+    assert payloads[1]["archer_a"]["legend"] != payloads[0]["archer_a"]["legend"]
+
+
+def test_the_pair_history_page_also_plots_the_current_passes_curve():
+    """/event/pair/0/1 changes with the pass too when handicaps are updated."""
+    client, state = start_curve_pair(update=True)
+    save_match(client, 0, {0: 80, 1: 100})
+    before = embedded_payload(client.get("/event/pair/0/1").data.decode())
+    client.post("/event/advance")
+    after = embedded_payload(client.get("/event/pair/0/1").data.decode())
+    assert differs_on_shared_scores(curve_of(before, "distribution_a"), curve_of(after, "distribution_a"))
+    assert after["archer_a"]["legend"] == f"Ann (handicap {state.event.handicap_for(0):.1f})"
+    assert before["current_pass"] == 0 and after["current_pass"] == 1
+
+
+def test_markers_of_earlier_passes_are_drawn_against_the_current_curve_not_the_one_they_were_judged_by():
+    """Recorded finding (Assumption 54): the payload carries the earlier scores, but one curve per archer."""
+    client, state = start_curve_pair(update=True)
+    play_curve_passes(client, state, [(80, 100), (95, 99)])
+    payload = match_payload(client)  # on pass 2, scored: markers for passes 1 and 2, but one curve each
+    event = state.event
+    assert [p["index"] for p in payload["archer_a"]["passes"]] == [0, 1]
+    current = curve_of(payload, "distribution_a")
+    pass_2 = event.distribution_for(0, 1)
+    pass_1 = event.distribution_for(0, 0)
+    assert all(y == pytest.approx(pass_2.get(float(x), 0.0)) for x, y in current.items())
+    assert any(y != pytest.approx(pass_1.get(float(x), 0.0)) for x, y in current.items())
