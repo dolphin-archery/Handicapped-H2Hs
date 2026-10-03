@@ -956,3 +956,14 @@ no template or rendered page says "advanced mode", "basic mode" or "Mode:", and
 that toggling keeps scores and the current pass. Suite: 418 passed. The README
 still describes the old nav toggle; it is rewritten with the rest of the docs in
 task 44.
+
+### Task 35: Show each archer's handicap on the match pages (complete)
+The match page's heading and each score-box label now carry the archer's
+handicap: "Alice (handicap 15) vs Bob (handicap 22.5)", and for a bye match
+"Alice (handicap 15) - bye, no opponent". A small Jinja macro (`named`) builds
+the "name (handicap N)" text once, and the number uses `%g` so a whole-number
+handicap shows without ".0" (15.0 -> 15) while decimals stay in full (22.5,
+7.25). Tests cover before and after scoring, the formatting, that each handicap
+sits against its own archer (deliberately very different values, 5 and 120), and
+the bye match. Only the match page changed; the overview and results tables are
+untouched (the overview table is reworked in task 37).

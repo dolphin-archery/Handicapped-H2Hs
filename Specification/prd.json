@@ -450,7 +450,7 @@
       "A whole-number handicap renders without '.0' and a decimal one (e.g. 22.5) renders in full.",
       "The handicaps shown belong to the right archers (checked with differing handicaps so they cannot be swapped unnoticed)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 36,

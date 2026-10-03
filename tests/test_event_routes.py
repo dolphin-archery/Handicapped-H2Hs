@@ -789,3 +789,53 @@ def test_toggling_graph_view_keeps_scores_and_the_current_pass():
     assert state.event.results == before
     assert state.event.current_rotation_index == 0
     assert b"Alice 100 - 60 Bob" in client.get("/event/rotation").data
+
+
+# --- Handicaps on the match pages (Feedback 4) ------------------------------
+
+
+def start_event_with_handicaps(client, handicaps):
+    """A 2-archer event (Alice, Bob) with the given handicaps."""
+    complete_stage1(client, n_archers=2, total_arrows=12, n_pass=12)
+    complete_stage2(client, [("Alice", "Recurve", handicaps[0]), ("Bob", "Compound", handicaps[1])])
+
+
+def test_match_page_shows_both_archers_handicaps_in_heading_and_beside_score_boxes():
+    """Heading and score labels carry each archer's handicap, before and after scoring."""
+    client = make_client()
+    start_event_with_handicaps(client, (15, 22.5))
+    for expected_state in ("before", "after"):
+        page = client.get("/event/match/0").data.decode()
+        assert "Alice (handicap 15) vs Bob (handicap 22.5)" in page, expected_state
+        assert "Alice (handicap 15) score" in page
+        assert "Bob (handicap 22.5) score" in page
+        save_match(client, 0, {0: 100, 1: 60})
+
+
+def test_whole_number_handicaps_have_no_trailing_zero_and_decimals_are_in_full():
+    """15.0 shows as 15, while 22.5 and 7.25 keep their decimals."""
+    client = make_client()
+    start_event_with_handicaps(client, (15.0, 7.25))
+    page = client.get("/event/match/0").data.decode()
+    assert "handicap 15)" in page and "handicap 15.0" not in page
+    assert "handicap 7.25)" in page
+
+
+def test_handicaps_are_attached_to_the_right_archers():
+    """With very different handicaps, each appears against its own archer's name."""
+    client = make_client()
+    start_event_with_handicaps(client, (5, 120))
+    page = client.get("/event/match/0").data.decode()
+    assert "Alice (handicap 5)" in page and "Bob (handicap 120)" in page
+    assert "Alice (handicap 120)" not in page and "Bob (handicap 5)" not in page
+
+
+def test_bye_match_page_shows_the_bye_archers_handicap():
+    """A bye match shows its single archer's handicap."""
+    client, state = make_client_and_state()
+    start_three_archer_event(client, shoot_byes=True)
+    bye_archer = state.event.schedule[0].bye
+    expected = state.event.archers[bye_archer]
+    page = client.get("/event/match/1").data.decode()
+    assert f"{expected.name} (handicap {expected.handicap:g}) - bye" in page
+    assert f"{expected.name} (handicap {expected.handicap:g}) score" in page
