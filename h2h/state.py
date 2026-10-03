@@ -9,7 +9,9 @@ single-user local tool for one scorer running one event at a time.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from .models import DEFAULT_TARGET_SETUP, Archer, Event, TargetSetup
 from .rotation import Rotation, build_schedule, build_sit_out_schedule
@@ -58,6 +60,9 @@ class SessionState:
         The full event, built when Stage 3 is confirmed.
     rng : random.Random
         Source of randomness for the Stage 3 draw (injectable for tests).
+    clock : Callable[[], datetime]
+        Gives the current local date and time, which the exports are stamped with
+        (injectable for tests).
     """
 
     graph_view: bool = False
@@ -73,6 +78,7 @@ class SessionState:
     assignment: list[int] | None = None
     event: Event | None = None
     rng: random.Random = field(default_factory=random.Random, repr=False, compare=False)
+    clock: Callable[[], datetime] = field(default=datetime.now, repr=False, compare=False)
 
     def start_stage1(
         self,

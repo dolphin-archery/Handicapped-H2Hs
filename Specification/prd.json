@@ -880,7 +880,7 @@
       "Exports still cover only completed passes, redirect to Stage 1 without an event, and the Results and Archer results pages still link to all three.",
       "The full suite passes with the migrated export tests."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 64,

@@ -598,8 +598,12 @@ def test_after_the_last_pass_every_output_and_export_agrees_with_the_event():
          "-" if r.to_date_handicap is None else f"{r.to_date_handicap:.1f}"]
         for r in board
     ]
-    assert csv_rows(client.get("/event/export/leaderboard.csv").data.decode())[1:] == [
+    exported_board = csv_rows(client.get("/event/export/leaderboard.csv").data.decode())[1:]
+    assert [row[:4] for row in exported_board] == [
         [str(r.rank), r.name, str(r.points), str(r.passes_decided)] for r in board
+    ]
+    assert [row[4:6] for row in exported_board] == [
+        [f"{r.starting_handicap:g}", f"{r.to_date_handicap:.1f}"] for r in board
     ]
 
     archer_page = client.get("/event/archers").data.decode()
@@ -613,12 +617,13 @@ def test_after_the_last_pass_every_output_and_export_agrees_with_the_event():
             f"{section.name} - total score {section.total_score} - starting handicap "
             f"{section.handicap:g} - to-date handicap {to_date}"
         ) in " ".join(re.sub(r"<[^>]+>", " ", archer_page).split())
-        assert f"{section.name} - total score {section.total_score}" in pdf_text
+        assert f"{section.name} - total score {section.total_score} - starting handicap" in pdf_text
         mine = [row for row in csv_all if row[0] == section.name]
-        assert [(r[2], r[3], r[4]) for r in mine] == [
+        assert {(r[1], r[2]) for r in mine} == {(f"{section.handicap:g}", f"{section.to_date_handicap:.1f}")}
+        assert [(r[3], r[4], r[5]) for r in mine] == [
             (str(row.pass_number), row.opponent, str(row.score)) for row in section.rows
         ]
-        assert [r[5] for r in mine] == [f"{row.percentile * 100:.1f}" for row in section.rows]
+        assert [r[6] for r in mine] == [f"{row.percentile * 100:.1f}" for row in section.rows]
     # One results table per archer on the page, each with its 3 passes plus the Average row.
     assert archer_page.count("<table>") == 4
     assert len(table_rows(archer_page, results_columns)) == 3 + 1

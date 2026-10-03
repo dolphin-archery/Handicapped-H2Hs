@@ -557,7 +557,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         mimetype : str
             The content type, e.g. "text/csv" or "application/pdf".
         filename : str
-            The name the browser should save it as.
+            The name the browser should save it as (it carries the export's time stamp).
 
         Returns
         -------
@@ -573,21 +573,36 @@ def create_app(state: SessionState | None = None) -> Flask:
         """The leaderboard as a CSV download (live, completed passes only)."""
         if session.event is None:
             return redirect(url_for("stage1"))
-        return _download(exports.leaderboard_csv(session.event), "text/csv", "leaderboard.csv")
+        now = session.clock()
+        return _download(
+            exports.leaderboard_csv(session.event, now),
+            "text/csv",
+            f"leaderboard_{exports.filename_stamp(now)}.csv",
+        )
 
     @app.get("/event/export/archer-results.csv")
     def export_archer_results_csv():
         """Every archer's results as one tidy CSV download (live, completed passes only)."""
         if session.event is None:
             return redirect(url_for("stage1"))
-        return _download(exports.archer_results_csv(session.event), "text/csv", "archer-results.csv")
+        now = session.clock()
+        return _download(
+            exports.archer_results_csv(session.event, now),
+            "text/csv",
+            f"archer-results_{exports.filename_stamp(now)}.csv",
+        )
 
     @app.get("/event/export/results.pdf")
     def export_results_pdf():
         """The leaderboard and every archer's results as one PDF download."""
         if session.event is None:
             return redirect(url_for("stage1"))
-        return _download(exports.results_pdf(session.event), "application/pdf", "results.pdf")
+        now = session.clock()
+        return _download(
+            exports.results_pdf(session.event, now),
+            "application/pdf",
+            f"results_{exports.filename_stamp(now)}.pdf",
+        )
 
     @app.get("/event/pair/<int:a>/<int:b>")
     def pair_chart(a: int, b: int):

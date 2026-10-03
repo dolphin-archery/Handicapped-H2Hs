@@ -1836,3 +1836,24 @@ construction the full-round handicap once every arrow is shot: a test checks it 
 total after 1, 2 and 3 passes, leaderboard and archer results agree, whole-round equality, None cases
 (no pass, sat out, total 0), bye pass counted, half-scored pass changes nothing, plus the migrated page
 and integration tests. Suite: 833 passed. (The CSV and PDF exports get the columns in task 63.)
+
+### Task 63: Exports - date-time stamp and starting/to-date handicap (complete)
+Every export now says when it was made and carries both handicaps. `h2h/exports.py` functions take an
+optional `now` (default the current local time); `SessionState` gained an injectable `clock` (default
+`datetime.now`) that the routes read once per request, so the file name and the file's contents use the
+same instant and tests can fix it. Leaderboard CSV: `Rank,Archer,Points,Passes decided,Starting
+handicap,To-date handicap,Exported`. Archer-results CSV: `Archer,Starting handicap,To-date
+handicap,Pass,Opponent,Score,Percentile (%),Handicap of score,Exported` (the old `Handicap` column, the
+entered one, is now `Starting handicap`; the two handicap columns repeat the archer's values on each of
+their rows; the to-date cell is empty if there is none; `Exported` is `YYYY-MM-DD HH:MM:SS` on every
+row). The PDF has "Exported YYYY-MM-DD HH:MM:SS (local time)" under its title, the two handicaps in the
+leaderboard table, and "<name> - total score N - starting handicap H - to-date handicap D" as each
+archer's heading. File names are `leaderboard_YYYYMMDD-HHMMSS.csv`, `archer-results_...csv` and
+`results_...pdf`. I chose a final `Exported` column over a comment line at the top of the CSV so it stays
+a plain table that spreadsheets and `pandas.read_csv` read without options (Assumption 46). Tests: the
+export test file was rewritten for the new formats (fixed clock: header and stamp on every row,
+handicaps equal to the outputs model and repeated per archer, to-date equal to the whole-round value,
+awkward names, partial pass, zero total, default clock, PDF text incl. the stamp and both headings with
+a note that a long heading may wrap inside its cell, filenames carrying the stamp equal to the stamp in
+the contents, a real-clock filename pattern, redirects, links, liveness), and the integration test. Suite:
+839 passed.
