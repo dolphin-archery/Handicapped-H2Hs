@@ -95,12 +95,26 @@ All outputs should be live up to the last completed pass with all results inputt
 ## Handicap Calculator
 For the standalone tool add a choice of indoor or outdoor round, then display a drop down of all standard indoor/outdoor rounds accounding to the first input. Then the user can input their score and the handicap can be calculated. Keep current choice of specifying if a compound bow was used, only if an indoor round is selected.
 
-# Future Plans - DO NOT IMPLEMENT YET
+
+
+# Feedback 6
+## Iterations
+- Do not display handicap next to archer names during score input. Ignore previous instructions saying to 
+- If percentiles are the same for both archers to 1 decimal place then increment decimal places displayed until they are different, unless they are both 100%. 
+- Tie break input should only be visible if percentiles and scores tie
+- Add a column of per pass handicap to table on score input page
+- Have per pass results in /event/results display the data the same way as the tables as on the score input pages, with double or thick horizontal lines between matches so it is clear who was paired with who.
+- Exports should have a date time stamp on them
+- Exports should have both starting and to-date handicap. To date handicap is caluclated from total score over number of arrows shot so far. This matches final handicap after all arrows are shot.
+- Rename start event button on event setup page 2, as now there is an extra step before starting the event.
 
 ## Handicap Moving Average
-- For each pass take a weighted average of starting handicap and handicap of arrows shot today so far. Controlled by a parameter
-- Toggle on/off in event setup stage 1, if on set parameter
+During setup stage 2 if in advanced mode have a yes/no toggle for 'Update Handicaps During Matches'. 
+- If no use a constant handicap for per archer probability distribution for all passes.
+- If yes for each pass take a weighted average of starting handicap and handicap of arrows shot so far. Parameterise this via $n_{lookback}$, an integer which decides how many $n_{pass}$ arrows back in time to use for calculating handicap at the start of each pass. $n_{lookback} = 1$ uses only the previous $n_{pass}$ to decide the probability distribution for the pass to come. A second integer paramter, _Start Weight_, controls how many $n_{pass}$ arrows the inital handicap counts for, defaulting to $n_{arrows}/n_{pass}$ =5 for 60 arrow round and 12 arrow passes.
 
+
+# Future Plans - DO NOT IMPLEMENT YET
 
 ## UI and Deployment
 - Nicer UI
