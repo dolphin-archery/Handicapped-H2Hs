@@ -10,6 +10,8 @@ app/state sees no prior event.
 import random
 import re
 
+import pytest
+
 from h2h.app import create_app
 from h2h.models import Bowstyle, resolve_target
 from h2h.state import SessionState
@@ -720,3 +722,153 @@ def test_calculator_flow_over_http_for_an_indoor_compound_and_an_outdoor_round()
     ).data.decode()
     expected = round(scheme.handicap_from_score(1100, load_rounds.WA_outdoor.wa1440_90), 1)
     assert f"Handicap: {expected}" in outdoor
+
+
+# --- Feedback 6: handicap updating, names-only match pages, grouped results, export stamps ---
+
+from datetime import datetime  # noqa: E402
+
+from h2h import stats  # noqa: E402
+
+from .helpers import NoShuffle  # noqa: E402
+
+FIXED_NOW = datetime(2026, 10, 4, 15, 30, 12)
+
+
+def updating_client():
+    """A client whose state has a fixed export clock and a non-shuffling Stage 3 draw."""
+    state = SessionState(rng=NoShuffle(), clock=lambda: FIXED_NOW)
+    return create_app(state=state).test_client(), state
+
+
+def start_updating_event(client, rows=ADVANCED_FOUR, n_lookback=2, start_weight=3, total_arrows=36):
+    """Advanced setup with 'Update handicaps during matches' on, through Stage 3."""
+    form = stage1_form(len(rows), total_arrows)
+    form["setup_mode"] = "advanced"
+    client.post("/event/stage1", data=form)
+    data = {"update_handicaps": "yes", "n_lookback": str(n_lookback), "start_weight": str(start_weight)}
+    for i, (name, bowstyle, handicap, face_type, face_cm, distance) in enumerate(rows):
+        data.update(
+            {
+                f"name_{i}": name, f"bowstyle_{i}": bowstyle, f"handicap_{i}": str(handicap),
+                f"face_type_{i}": face_type, f"face_cm_{i}": str(face_cm), f"distance_{i}": distance,
+            }
+        )
+    assert client.post("/event/stage2", data=data).status_code == 302
+    client.post("/event/stage3")
+
+
+def test_full_advanced_event_with_updating_agrees_across_pages_exports_and_archeryutils():
+    """Moving handicaps drive the percentiles; the leaderboard, archer results, CSVs and PDF agree; the
+    to-date handicap is the whole-round handicap of each total; every export carries the same stamp."""
+    from archeryutils import rounds as au_rounds
+
+    client, state = updating_client()
+    start_updating_event(client)
+    event = state.event
+    assert (event.update_handicaps, event.n_lookback, event.start_weight) == (True, 2, 3)
+    for pass_number in range(1, 4):
+        score_current_pass(client, lambda i, n=pass_number: int(event.max_score_for(i) * 0.6) + 3 * n + i)
+        if pass_number < 3:
+            client.post("/event/advance")
+    assert event.is_complete
+
+    # Every recorded percentile is from the distribution of the handicap that pass was scored with.
+    for r in event.results:
+        expected = stats.percentile(event.distribution_for(r.archer_index, r.rotation_index), r.score)
+        assert r.percentile == pytest.approx(expected)
+    moved = [event.handicap_for(i, 2) != event.archers[i].handicap for i in range(4)]
+    assert any(moved)  # pass 3 was scored with at least one updated handicap
+
+    sections = outputs.archer_results(event)
+    board = outputs.leaderboard(event)
+    for section in sections:
+        target = event.target_for(section.archer_index)
+        whole = au_rounds.Round("whole", [au_rounds.Pass(36, target)])
+        expected = float(stats._AGB_SCHEME.handicap_from_score(section.total_score, whole))
+        assert section.arrows_shot == 36 and section.to_date_handicap == pytest.approx(expected)
+
+    page = client.get("/event/results").data.decode()
+    assert table_rows(page, LEADERBOARD_HEADINGS) == [
+        [str(r.rank), r.name, str(r.points), str(r.passes_decided), f"{r.starting_handicap:g}",
+         f"{r.to_date_handicap:.1f}"]
+        for r in board
+    ]
+    leaderboard_csv = client.get("/event/export/leaderboard.csv")
+    archer_csv = client.get("/event/export/archer-results.csv")
+    pdf = client.get("/event/export/results.pdf")
+    stamp = "2026-10-04 15:30:12"
+    assert "leaderboard_20261004-153012.csv" in leaderboard_csv.headers["Content-Disposition"]
+    assert "archer-results_20261004-153012.csv" in archer_csv.headers["Content-Disposition"]
+    assert "results_20261004-153012.pdf" in pdf.headers["Content-Disposition"]
+    board_rows = csv_rows(leaderboard_csv.data.decode())
+    assert board_rows[0][-1] == "Exported" and {r[-1] for r in board_rows[1:]} == {stamp}
+    assert [r[4:6] for r in board_rows[1:]] == [
+        [f"{r.starting_handicap:g}", f"{r.to_date_handicap:.1f}"] for r in board
+    ]
+    archer_rows = csv_rows(archer_csv.data.decode())
+    assert len(archer_rows) == 1 + 12 and {r[-1] for r in archer_rows[1:]} == {stamp}
+    for section in sections:
+        mine = [r for r in archer_rows[1:] if r[0] == section.name]
+        assert {(r[1], r[2]) for r in mine} == {(f"{section.handicap:g}", f"{section.to_date_handicap:.1f}")}
+    pdf_text = " ".join(
+        "\n".join(p.extract_text() for p in pypdf.PdfReader(io.BytesIO(pdf.data)).pages).split()
+    )
+    assert f"Exported {stamp}" in pdf_text
+    for section in sections:
+        assert (
+            f"{section.name} - total score {section.total_score} - starting handicap {section.handicap:g}"
+            f" - to-date handicap {section.to_date_handicap:.1f}"
+        ) in pdf_text
+
+
+def body_text(html):
+    """A page's text after the navigation bar, lower-cased."""
+    return html.split("</nav>")[1].lower()
+
+
+def test_match_pages_never_show_a_handicap_or_tie_boxes_until_an_exact_tie_and_then_show_boxes():
+    """End to end: names only throughout; the tick boxes appear when, and only when, there is a tie."""
+    client, state = make_client_and_state()
+    client.post("/event/stage1", data=stage1_form(2, 24))
+    client.post("/event/stage2", data=stage2_form([("Ann", "Recurve", 30), ("Ben", "Recurve", 30)]))
+    client.post("/event/stage3")
+
+    fresh = client.get("/event/match/0").data.decode()
+    assert "handicap" not in body_text(fresh) and 'name="closest"' not in fresh
+    assert "Ann score (0-120):" in fresh and "Ben score (0-120):" in fresh
+
+    save_match(client, 0, {0: 100, 1: 95})
+    saved = client.get("/event/match/0").data.decode()
+    assert 'name="closest"' not in saved and "handicap" not in body_text(saved).replace("<th>handicap</th>", "")
+    client.post("/event/advance")
+
+    tie = save_match(client, 0, {0: 90, 1: 90}).data.decode()
+    assert tie.count('name="closest" value=') == 2 and "Percentile and score are tied" in tie
+    assert "handicap" not in body_text(tie).replace("<th>handicap</th>", "")
+    assert save_match(client, 0, {0: 90, 1: 90}, closest=0).status_code == 302
+    assert client.get("/event/match/0").data.decode().count('name="closest" value=') == 2
+    assert save_match(client, 0, {0: 91, 1: 90}).status_code == 302
+    assert 'name="closest"' not in client.get("/event/match/0").data.decode()
+
+
+def test_results_page_groups_each_matchs_rows_in_overview_order_with_distinct_percentile_texts():
+    """Per-pass tables list the matches in the overview's order, and each scored pair's percentiles differ."""
+    client, state = make_client_and_state()
+    start_event(client, [(f"A{i}", "Recurve", 20 + 10 * i) for i in range(4)], total_arrows=36)
+    for pass_number in (1, 2):
+        score_current_pass(client, lambda i, n=pass_number: [118, 112, 104, 95][i] - n)
+        if pass_number < 2:
+            client.post("/event/advance")
+    event = state.event
+    page = client.get("/event/results").data.decode()
+    for pass_index in (0, 1):
+        block = page[page.index(f"<h3>Pass {pass_index + 1}</h3>") :]
+        block = block[: block.index("</table>")]
+        groups = re.findall(r'<tbody class="match">(.*?)</tbody>', block, re.S)
+        assert len(groups) == 2
+        overview_order = [[event.archers[p].name for p in match] for match in event.matches(pass_index)]
+        for group, names in zip(groups, overview_order, strict=True):
+            cells = [re.findall(r"<td>(.*?)</td>", row, re.S) for row in re.findall(r"<tr>(.*?)</tr>", group, re.S)]
+            assert [c[0] for c in cells] == names
+            assert cells[0][2] != cells[1][2]  # the pair's percentile texts tell them apart

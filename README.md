@@ -54,35 +54,57 @@ Setup has three stages, then you score the event one pass at a time.
      passes so that everyone still shoots all their arrows.
 2. **Stage 2 - archers:** name, bowstyle (Recurve, Compound, Barebow, Longbow)
    and handicap (0-150) for each archer (plus the three target dropdowns in
-   advanced setup). A score-to-handicap calculator is linked from here and from the
-   nav bar, for working out starting handicaps.
+   advanced setup, and an "Update handicaps during matches" choice, below). A
+   score-to-handicap calculator is linked from here and from the nav bar, for working
+   out starting handicaps. The button reads **Continue to Stage 3**.
+   - *Update handicaps during matches* (advanced setup only, default No): No keeps
+     every archer's handicap as entered for every pass. Yes updates it before each
+     pass to a weighted average of the entered handicap and the handicap implied by
+     the archer's recent shooting: `(start_weight x entered + m x recent) /
+     (start_weight + m)`, where `m` is the number of their latest passes used
+     (`n_lookback`, or fewer if they have shot fewer) and *recent* is the handicap
+     their total score over those `m` passes implies. `n_lookback` is how many passes
+     back to look (1 = only the previous pass); *Start weight* is how many passes'
+     worth of arrows the entered handicap counts for. Both are whole numbers of at
+     least 1 and default to the number of passes each archer shoots (5 for 60 arrows
+     in 12-arrow passes), i.e. use everything shot so far. The updated handicap sets
+     the distribution a pass is judged against (so the percentiles and the chart);
+     it is not displayed.
 3. **Stage 3 - pairings:** the archers are drawn at random into the round-robin,
    and every pass's pairings are shown. Press **Redraw pairings** for a fresh draw
    as often as you like, then **Confirm pairings and start event**.
 4. **Scoring:** the **overview** page shows the current pass as a table of
    Match | Score | Percentiles | Winner | Actions. Open each match to enter its
-   scores on its own page: the heading is the two names, each archer's handicap is
-   beside their score box, and once saved a table shows just this pass
-   (Archer | Score | Percentile | Winner). Once every match has scores, press
-   **Advance to next pass**.
+   scores on its own page. No handicap is shown beside an archer's name while scoring;
+   once saved, a table shows just this pass (Archer | Score | Percentile | Handicap |
+   Winner, the handicap being the one the pass score implies). Where two percentiles
+   would look the same at one decimal place, more places are shown until they differ.
+   Once every match has scores, press **Advance to next pass**.
    - *Tie-break:* a pass is won by the higher percentile, then the higher score,
      then whichever archer's arrow was **closest to the middle**, which the archers
-     judge and you enter with the two "closest to the middle" tick boxes (only one
-     can be ticked). They are used only if the percentile and score are exactly tied;
-     if they are tied and neither box is ticked the scores are not saved and you are
-     asked to tick one. There is no coin flip.
+     judge and you enter with two "closest to the middle" tick boxes (only one can be
+     ticked). The boxes appear only when the percentile and score are exactly tied:
+     save the scores, and if they tie the page asks for the tick and shows the boxes
+     (with the scores kept). There is no coin flip.
 5. **Results:** the **Results** page has a **leaderboard** (1 point per pass won,
-   archers on equal points share a rank), the head-to-head result for every pair
-   that has met, and the per-pass results. The **Archer results** page has, for each
-   archer, a heading (name, total score, handicap) and a table of their passes
-   (Pass | Opponent | Score | Percentile | Handicap) with an Average row. Both count
-   only **completed passes** (every match in the pass scored) and update live. Both
-   pages offer downloads: the leaderboard and the archer results as **CSV**, and a
-   full report as **PDF** (`fpdf2` is used for the PDF).
+   archers on equal points share a rank, with each archer's starting and to-date
+   handicap), the head-to-head result for every pair that has met, and the per-pass
+   results, shown in the same format as the match pages with a thick double line
+   between one match and the next so it is clear who was paired with whom. The
+   **Archer results** page has, for each archer, a heading (name, total score,
+   starting handicap, to-date handicap) and a table of their passes (Pass | Opponent |
+   Score | Percentile | Handicap) with an Average row. The to-date handicap is the
+   handicap implied by the archer's total score over all the arrows shot so far; after
+   the last pass it is the full-round handicap of their whole score. The leaderboard
+   and archer results count only **completed passes** (every match in the pass scored)
+   and update live. Both pages offer downloads: the leaderboard and the archer results
+   as **CSV**, and a full report as **PDF** (`fpdf2` is used for the PDF). Every export
+   carries the date and time it was made (in the file name, in a final `Exported`
+   column of the CSVs, and under the PDF's title) and both handicaps.
 
 Graph view (a button on the match pages) shows or hides the interactive
 distribution chart and a short explanation of how the winner is decided. The chart
-names each curve with its archer's handicap, marks every score either archer has
+names each curve with its archer's name, marks every score either archer has
 shot so far (against any opponent) with a vertical line labelled with its pass
 number ("P3"; by default only this pass's scores, with a tick box for the earlier
 ones), and widens its axis if a score falls outside the usual range.
