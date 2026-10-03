@@ -1379,3 +1379,25 @@ order, values equal to the Event's results for four score pairs, only the curren
 pass's rows when a pair meets twice, no other match's archers), and the heading
 tests now assert the names-only heading with handicaps in the score labels.
 Suite: 573 passed.
+
+### Task 47: Tie-break tick boxes on the match page (complete)
+A paired match's form now has a "Tie-break: closest to the middle" fieldset with one
+checkbox per archer (both named `closest`, value = archer index) and a note that
+they are only used if the percentile and score are exactly tied; a bye match has
+none. A small script at the end of the page clears the other box when one is
+ticked; the server independently rejects two ticks ("Tick only one archer as
+closest to the middle.") and a value outside the match. The route (whose
+`_closest_archer` helper came with task 45) now turns `TieBreakRequired` into
+"Percentile and score are tied. Tick which archer's arrow was closest to the
+middle, then save again." - nothing is saved, the typed scores stay in the boxes and
+the ticks are shown as submitted. A saved match decided by the tick shows that
+archer's box ticked on reopening and a note under the This pass table ("Percentile
+and score were tied; decided by closest to the middle."); an unneeded tick is
+ignored (the model does not store it), so it is not shown again. Tests: eleven
+route tests (box markup and bye, refused tie with kept scores and message, accepted
+tie and winner everywhere incl. the overview, both boxes ticked, foreign archer,
+unneeded tick, edit to untied scores clears the note, edit back to a tie keeps the
+saved result, a tie with both ticks is rejected for the ticks, the script is
+present). Suite: 583 passed. The in-browser check of the script (ticking A then B
+leaves only B) is run by a subagent against this commit; its result is recorded
+below before the task is marked complete.

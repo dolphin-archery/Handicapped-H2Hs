@@ -40,6 +40,20 @@
     </label>
   </div>
   {% endif %}
+  {% if b is not none %}
+  {# Used only if percentile and score are exactly tied; the script below keeps at most one ticked. #}
+  <fieldset class="tiebreak">
+    <legend>Tie-break: closest to the middle</legend>
+    <small>Only used if the percentile and the score are exactly tied. Tick the archer whose arrow
+      was closest to the middle of the target.</small>
+    <div class="row">
+      <label><input type="checkbox" name="closest" value="{{ a }}"
+          {% if a in ticked_closest %}checked{% endif %}> {{ event.archers[a].name }}</label>
+      <label style="margin-left: 1rem;"><input type="checkbox" name="closest" value="{{ b }}"
+          {% if b in ticked_closest %}checked{% endif %}> {{ event.archers[b].name }}</label>
+    </div>
+  </fieldset>
+  {% endif %}
   <button type="submit">{{ 'Save changed scores' if results else 'Save scores' }}</button>
   {% if results %}
   <small>Saving again replaces the scores below, until the event advances to the next pass.</small>
@@ -64,6 +78,9 @@
     {% endfor %}
   </tbody>
 </table>
+{% if results[0].decided_by == 'closest' %}
+<p><small>Percentile and score were tied; decided by closest to the middle.</small></p>
+{% endif %}
 {% endif %}
 
 {% if graph_view %}
@@ -73,4 +90,16 @@
   <p>A bye match has no opponent to compare against, so there is no distribution chart.</p>
   {% endif %}
 {% endif %}
+<script>
+  // The two "closest to the middle" boxes are mutually exclusive: ticking one clears the other.
+  const closestBoxes = document.querySelectorAll('input[name="closest"]');
+  closestBoxes.forEach((box) => {
+    box.addEventListener("change", () => {
+      if (!box.checked) return;
+      closestBoxes.forEach((other) => {
+        if (other !== box) other.checked = false;
+      });
+    });
+  });
+</script>
 {% endblock %}

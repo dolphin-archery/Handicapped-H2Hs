@@ -79,7 +79,7 @@ def save_match_breaking_ties(client, match_index, scores):
         The response of the save that finally succeeded (or failed for another reason).
     """
     response = save_match(client, match_index, scores)
-    if response.status_code == 200 and b"closest to the middle" in response.data:
+    if response.status_code == 200 and b"Percentile and score are tied" in response.data:
         response = save_match(client, match_index, scores, closest=min(scores))
     return response
 

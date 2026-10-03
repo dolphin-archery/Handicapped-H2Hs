@@ -328,6 +328,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         match_index: int,
         error: str | None = None,
         form_scores: dict[int, str] | None = None,
+        form_closest: list[int] | None = None,
     ):
         """One match of the current pass: score entry plus that match's results.
 
@@ -342,6 +343,9 @@ def create_app(state: SessionState | None = None) -> Flask:
             Raw text to refill the score boxes with after a rejected
             submission, keyed by archer index; defaults to the match's
             already-saved scores, if any.
+        form_closest : list[int] | None, default=None
+            The "closest to the middle" boxes to show ticked after a rejected
+            submission; defaults to the archer a saved tie was decided for.
 
         Returns
         -------
@@ -364,6 +368,8 @@ def create_app(state: SessionState | None = None) -> Flask:
         results = [by_archer[i] for i in (a, b) if i in by_archer]  # in match order
         if form_scores is None:
             form_scores = {r.archer_index: r.score for r in results}
+        if form_closest is None:
+            form_closest = [r.archer_index for r in results if r.won and r.decided_by == "closest"]
 
         # A bye match has no opponent, so no chart.
         chart_data = None
@@ -379,6 +385,7 @@ def create_app(state: SessionState | None = None) -> Flask:
             results=results,
             chart_data=chart_data,
             form_scores=form_scores,
+            ticked_closest=form_closest,
             error=error,
         )
 
@@ -407,8 +414,10 @@ def create_app(state: SessionState | None = None) -> Flask:
         archers = [p for p in matches[match_index] if p is not None]
 
         form_scores = {i: request.form.get(f"score_{i}", "") for i in archers}
+        ticked = request.form.getlist("closest")
+        form_closest = [int(v) for v in ticked if v.isdigit()]
         try:
-            closest = _closest_archer(request.form.getlist("closest"), archers)
+            closest = _closest_archer(ticked, archers)
             scores = {}
             for archer_idx, raw in form_scores.items():
                 try:
@@ -417,8 +426,18 @@ def create_app(state: SessionState | None = None) -> Flask:
                     msg = f"{event.archers[archer_idx].name}'s score must be a number."
                     raise ValueError(msg) from None
             event.record_match(scores, closest=closest)
+        except stats.TieBreakRequired:
+            msg = (
+                "Percentile and score are tied. Tick which archer's arrow was closest "
+                "to the middle, then save again."
+            )
+            return event_match(
+                match_index, error=msg, form_scores=form_scores, form_closest=form_closest
+            )
         except ValueError as exc:
-            return event_match(match_index, error=str(exc), form_scores=form_scores)
+            return event_match(
+                match_index, error=str(exc), form_scores=form_scores, form_closest=form_closest
+            )
         return redirect(url_for("event_match", match_index=match_index))
 
     @app.get("/event/results")
