@@ -15,7 +15,7 @@
 {% include "_export_links.html" %}
 <table>
   <thead>
-    <tr><th>Rank</th><th>Archer</th><th>Points</th><th>Passes decided</th></tr>
+    <tr><th>Rank</th><th>Archer</th><th>Points</th><th>Passes decided</th><th>Starting handicap</th><th>To-date handicap</th></tr>
   </thead>
   <tbody>
     {% for row in leaderboard %}
@@ -24,6 +24,8 @@
       <td>{{ row.name }}</td>
       <td>{{ row.points }}</td>
       <td>{{ row.passes_decided }}</td>
+      <td>{{ '%g'|format(row.starting_handicap) }}</td>
+      <td>{{ '%.1f'|format(row.to_date_handicap) if row.to_date_handicap is not none else '-' }}</td>
     </tr>
     {% endfor %}
   </tbody>

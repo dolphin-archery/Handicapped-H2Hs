@@ -538,7 +538,9 @@ def csv_rows(text):
     return list(csv.reader(io.StringIO(text, newline="")))
 
 
-LEADERBOARD_HEADINGS = ["Rank", "Archer", "Points", "Passes decided"]
+LEADERBOARD_HEADINGS = [
+    "Rank", "Archer", "Points", "Passes decided", "Starting handicap", "To-date handicap",
+]
 
 
 def wins_so_far(event, passes):
@@ -592,7 +594,9 @@ def test_after_the_last_pass_every_output_and_export_agrees_with_the_event():
 
     page = client.get("/event/results").data.decode()
     assert table_rows(page, LEADERBOARD_HEADINGS) == [
-        [str(r.rank), r.name, str(r.points), str(r.passes_decided)] for r in board
+        [str(r.rank), r.name, str(r.points), str(r.passes_decided), f"{r.starting_handicap:g}",
+         "-" if r.to_date_handicap is None else f"{r.to_date_handicap:.1f}"]
+        for r in board
     ]
     assert csv_rows(client.get("/event/export/leaderboard.csv").data.decode())[1:] == [
         [str(r.rank), r.name, str(r.points), str(r.passes_decided)] for r in board
@@ -604,9 +608,11 @@ def test_after_the_last_pass_every_output_and_export_agrees_with_the_event():
     pdf = pypdf.PdfReader(io.BytesIO(client.get("/event/export/results.pdf").data))
     pdf_text = "\n".join(p.extract_text() for p in pdf.pages)
     for section in sections:
-        assert f"{section.name} - total score {section.total_score} - handicap {section.handicap:g}" in " ".join(
-            re.sub(r"<[^>]+>", " ", archer_page).split()
-        )
+        to_date = "-" if section.to_date_handicap is None else f"{section.to_date_handicap:.1f}"
+        assert (
+            f"{section.name} - total score {section.total_score} - starting handicap "
+            f"{section.handicap:g} - to-date handicap {to_date}"
+        ) in " ".join(re.sub(r"<[^>]+>", " ", archer_page).split())
         assert f"{section.name} - total score {section.total_score}" in pdf_text
         mine = [row for row in csv_all if row[0] == section.name]
         assert [(r[2], r[3], r[4]) for r in mine] == [
@@ -655,7 +661,7 @@ def test_a_half_scored_pass_is_left_out_of_the_outputs_and_the_exports_match():
     rows = table_rows(client.get("/event/results").data.decode(), LEADERBOARD_HEADINGS)
     assert [row[3] for row in rows] == ["1", "1", "1", "1"]  # pass 1 only
     exported = csv_rows(client.get("/event/export/leaderboard.csv").data.decode())[1:]
-    assert [row[1:] for row in exported] == [row[1:] for row in rows]
+    assert [row[1:4] for row in exported] == [row[1:4] for row in rows]
     assert len(csv_rows(client.get("/event/export/archer-results.csv").data.decode())) == 1 + 4
 
 

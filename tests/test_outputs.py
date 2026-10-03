@@ -370,3 +370,99 @@ def test_match_results_come_back_in_match_order_whatever_order_they_were_saved_i
     event.record_match({b: 90, a: 80})
     assert [r.archer_index for r in event.match_results(0, (a, b))] == [a, b]
     assert [r.archer_index for r in event.match_results(0, (b, a))] == [b, a]
+
+
+# --- Feedback 6: starting and to-date handicap -------------------------------------------
+
+from h2h import stats  # noqa: E402
+
+
+def test_to_date_handicap_is_the_equivalent_handicap_of_the_total_over_the_arrows_shot():
+    """After 1, 2 and 3 passes: stats.equivalent_handicap(total, n_pass x passes, own target)."""
+    event = make_event(4)
+    for passes_done in (1, 2, 3):
+        score_pass(event, lambda a, n=passes_done: 80 + 4 * a + 3 * n)
+        for section in archer_results(event):
+            rows = section.rows
+            assert len(rows) == passes_done
+            assert section.arrows_shot == 12 * passes_done
+            expected = stats.equivalent_handicap(
+                section.total_score, 12 * passes_done, event.target_for(section.archer_index)
+            )
+            assert section.to_date_handicap == pytest.approx(expected)
+        if passes_done < 3:
+            event.advance()
+
+
+def test_leaderboard_rows_carry_the_starting_and_to_date_handicaps():
+    """Starting is the entered handicap; to-date matches the archer results section."""
+    event = make_event(4)
+    score_pass(event, lambda a: 80 + 4 * a)
+    sections = {s.archer_index: s for s in archer_results(event)}
+    for row in leaderboard(event):
+        assert row.starting_handicap == event.archers[row.archer_index].handicap
+        assert row.to_date_handicap == sections[row.archer_index].to_date_handicap
+        assert row.to_date_handicap is not None
+
+
+def test_after_every_arrow_the_to_date_handicap_equals_a_whole_round_calculation():
+    """For two archers on different targets (advanced setup), the final value is the full-round handicap."""
+    from archeryutils import rounds as au_rounds
+
+    from h2h.models import YARD, TargetSetup
+
+    archers = [
+        Archer("Ten", 30, Bowstyle.RECURVE, target_setup=TargetSetup(20, YARD, 60, "10_zone")),
+        Archer("Five", 30, Bowstyle.RECURVE, target_setup=TargetSetup(50, YARD, 122, "5_zone")),
+    ]
+    event = Event(archers, 12, None, build_schedule(2, 5))
+    for i in range(5):
+        event.record_match({0: 100 + i, 1: 90 + i})
+        if i < 4:
+            event.advance()
+    for section in archer_results(event):
+        target = event.target_for(section.archer_index)
+        whole_round = au_rounds.Round("whole", [au_rounds.Pass(60, target)])
+        expected = float(stats._AGB_SCHEME.handicap_from_score(section.total_score, whole_round))
+        assert section.arrows_shot == 60
+        assert section.to_date_handicap == pytest.approx(expected)
+
+
+def test_no_completed_pass_a_sat_out_archer_and_a_zero_total_have_no_to_date_handicap():
+    """None until there is something to calculate from."""
+    event = make_event(4)
+    assert all(s.to_date_handicap is None and s.arrows_shot == 0 for s in archer_results(event))
+    assert all(r.to_date_handicap is None for r in leaderboard(event))
+
+    sit = make_event(3, schedule=build_sit_out_schedule(3, 3))
+    sitter = sit.schedule[0].sitting_out[0]
+    score_pass(sit)
+    assert archer_results(sit)[sitter].to_date_handicap is None
+
+    zero = make_event(2, rotations=1)
+    zero.record_match({0: 0, 1: 5})
+    assert archer_results(zero)[0].to_date_handicap is None  # a total of 0 has no handicap
+    assert archer_results(zero)[1].to_date_handicap is not None
+
+
+def test_a_bye_pass_counts_as_arrows_shot_for_the_to_date_handicap():
+    """The solo pass is shot, so it is in the arrows and the total."""
+    event = make_event(3, rotations=3)
+    bye_archer = event.schedule[0].bye
+    score_pass(event, lambda a: 90 + a)
+    section = archer_results(event)[bye_archer]
+    assert section.arrows_shot == 12 and section.total_score == 90 + bye_archer
+    assert section.to_date_handicap == pytest.approx(
+        stats.equivalent_handicap(90 + bye_archer, 12, event.target_for(bye_archer))
+    )
+
+
+def test_a_half_scored_pass_changes_no_to_date_handicap_or_arrows_shot():
+    """Only completed passes count."""
+    event = make_event(4)
+    score_pass(event)
+    event.advance()
+    before = [(s.arrows_shot, s.to_date_handicap) for s in archer_results(event)]
+    first, _ = event.matches(1)
+    event.record_match({first[0]: 95, first[1]: 90})
+    assert [(s.arrows_shot, s.to_date_handicap) for s in archer_results(event)] == before

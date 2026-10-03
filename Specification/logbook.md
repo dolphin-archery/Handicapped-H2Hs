@@ -1818,3 +1818,21 @@ The Stage 2 button (simple and advanced setup) now reads "Continue to Stage 3" i
 event", since Stage 3 (pairings) now sits between it and the start of the event; the only button that
 starts the event is Stage 3's "Confirm pairings and start event". Two tests (button text in both
 modes, and that no setup page other than Stage 3 says "start event"). Suite: 827 passed.
+
+### Task 62: Starting and to-date handicap in the outputs model, leaderboard and archer results pages (complete)
+`h2h/outputs.py` gained `_to_date_handicaps`: each archer's total score over the completed passes,
+divided over `n_pass` times the number of passes they shot (byes included, sit-outs not), turned into a
+handicap with `stats.equivalent_handicap` on their own target; None if they have no completed pass or
+the total is 0. `LeaderboardRow` gained `starting_handicap` and `to_date_handicap`, and
+`ArcherResults` gained `to_date_handicap` and `arrows_shot` (its `handicap` field is the starting
+one). The Results page's leaderboard is now Rank | Archer | Points | Passes decided | Starting handicap
+| To-date handicap (the starting one as entered, 15.0 shown as 15; the to-date one to one decimal
+place or "-"), and each Archer results heading reads "<name> - total score <N> - starting handicap
+<H> - to-date handicap <D>". The feedback asks for the handicaps in the exports; putting them on the
+two pages too keeps pages and exports matching (Assumption 47). The to-date handicap is by
+construction the full-round handicap once every arrow is shot: a test checks it against a
+`handicap_from_score` over a one-pass round of all 60 arrows for two archers on different targets (a
+10-zone face at 20 yd and a 5-zone face at 50 yd). Tests: to-date equals the equivalent handicap of the
+total after 1, 2 and 3 passes, leaderboard and archer results agree, whole-round equality, None cases
+(no pass, sat out, total 0), bye pass counted, half-scored pass changes nothing, plus the migrated page
+and integration tests. Suite: 833 passed. (The CSV and PDF exports get the columns in task 63.)

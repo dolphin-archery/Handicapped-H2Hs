@@ -1923,20 +1923,32 @@ def start_named_four_archer_event(client, total_arrows=36):
     complete_stage2(client, [(n, "Recurve", 20 + 10 * i) for i, n in enumerate(("Ann", "Ben", "Cat", "Dan"))])
 
 
+LEADERBOARD_COLUMNS = [
+    "Rank", "Archer", "Points", "Passes decided", "Starting handicap", "To-date handicap",
+]
+
+
+def to_date_text(handicap):
+    """How the pages show a to-date handicap: one decimal place, or '-' if there is none."""
+    return "-" if handicap is None else f"{handicap:.1f}"
+
+
 def test_results_page_has_a_leaderboard_table_matching_the_outputs_model():
-    """Rank | Archer | Points | Passes decided, one row per archer, equal to outputs.leaderboard."""
+    """Rank | Archer | Points | Passes decided | Starting handicap | To-date handicap, equal to outputs.leaderboard."""
     from h2h import outputs
 
     client, state = make_client_and_state()
     start_named_four_archer_event(client)
     score_current_pass(client, lambda archer: 80 + archer)
     page = client.get("/event/results").data.decode()
-    rows = table_with_headings(page, ["Rank", "Archer", "Points", "Passes decided"])
+    rows = table_with_headings(page, LEADERBOARD_COLUMNS)
     expected = [
-        [str(r.rank), r.name, str(r.points), str(r.passes_decided)]
+        [str(r.rank), r.name, str(r.points), str(r.passes_decided),
+         f"{r.starting_handicap:g}", to_date_text(r.to_date_handicap)]
         for r in outputs.leaderboard(state.event)
     ]
     assert rows == expected and len(rows) == 4
+    assert all(row[5] != "-" for row in rows)  # everyone shot a completed pass
     assert sum(int(row[2]) for row in rows) == 2  # one winner in each of the two matches
     assert "not a ranked leaderboard" not in page
 
@@ -1948,20 +1960,20 @@ def test_the_leaderboard_is_live_and_waits_for_the_whole_pass():
     first, second = state.event.matches(0)
     save_match(client, 0, {p: 80 + p for p in first})
     page = client.get("/event/results").data.decode()
-    rows = table_with_headings(page, ["Rank", "Archer", "Points", "Passes decided"])
+    rows = table_with_headings(page, LEADERBOARD_COLUMNS)
     assert [row[2] for row in rows] == ["0", "0", "0", "0"]
     assert "0 of 3 so far" in " ".join(page.split())
 
     save_match(client, 1, {p: 80 + p for p in second})
     page = client.get("/event/results").data.decode()
-    rows = table_with_headings(page, ["Rank", "Archer", "Points", "Passes decided"])
+    rows = table_with_headings(page, LEADERBOARD_COLUMNS)
     assert sorted(int(row[2]) for row in rows) == [0, 0, 1, 1]
     assert [row[3] for row in rows] == ["1", "1", "1", "1"]
     assert "1 of 3 so far" in " ".join(page.split())
 
 
 def test_archer_results_page_has_a_section_per_archer_with_the_agreed_columns():
-    """Heading 'name - total score N - handicap H', a Pass..Handicap table and an Average row."""
+    """Heading 'name - total score N - starting handicap H - to-date handicap D', a Pass..Handicap table and an Average row."""
     from h2h import outputs
 
     client, state = make_client_and_state()
@@ -1975,7 +1987,10 @@ def test_archer_results_page_has_a_section_per_archer_with_the_agreed_columns():
     assert len(tables) == 4
     for (headings, rows), section in zip(tables, sections, strict=True):
         text = " ".join(re.sub(r"<[^>]+>", " ", page).split())
-        assert f"{section.name} - total score {section.total_score} - handicap {section.handicap:g}" in text
+        assert (
+            f"{section.name} - total score {section.total_score} - starting handicap {section.handicap:g}"
+            f" - to-date handicap {to_date_text(section.to_date_handicap)}"
+        ) in text
         assert [row[:3] for row in rows[:-1]] == [
             [str(r.pass_number), r.opponent, str(r.score)] for r in section.rows
         ]
@@ -2024,7 +2039,8 @@ def test_archer_results_before_any_completed_pass_shows_headings_and_an_empty_st
     client, state = make_client_and_state()
     start_named_four_archer_event(client)
     page = client.get("/event/archers").data.decode()
-    assert page.count("total score 0 - handicap") == 4
+    assert page.count("total score 0 - starting handicap") == 4
+    assert page.count("- to-date handicap -") == 4  # nothing shot yet, so no to-date handicap
     assert "No pass has been completed yet" in page
     assert all_tables(page) == []
     first, _ = state.event.matches(0)

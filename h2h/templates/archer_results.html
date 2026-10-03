@@ -11,7 +11,7 @@
 {% endif %}
 
 {% for s in sections %}
-<h2>{{ s.name }} - total score {{ s.total_score }} - handicap {{ '%g'|format(s.handicap) }}</h2>
+<h2>{{ s.name }} - total score {{ s.total_score }} - starting handicap {{ '%g'|format(s.handicap) }} - to-date handicap {{ '%.1f'|format(s.to_date_handicap) if s.to_date_handicap is not none else '-' }}</h2>
 {% if s.rows %}
 <table>
   <thead>

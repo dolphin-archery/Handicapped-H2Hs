@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from . import stats
 from .models import Event, PassResult
 from .stats import PERCENTILE_REL_TOLERANCE
 
@@ -40,6 +41,11 @@ class LeaderboardRow:
     passes_decided : int
         Completed passes in which the archer had an opponent (a bye pass has no
         winner and so is not counted).
+    starting_handicap : float
+        The handicap entered at Stage 2.
+    to_date_handicap : float | None
+        The handicap implied by the archer's total score over every arrow shot in the
+        completed passes (see `_to_date_handicaps`), or None if there is none.
     """
 
     rank: int
@@ -47,6 +53,8 @@ class LeaderboardRow:
     name: str
     points: int
     passes_decided: int
+    starting_handicap: float
+    to_date_handicap: float | None
 
 
 @dataclass(frozen=True)
@@ -103,7 +111,12 @@ class ArcherResults:
     name : str
         The archer's name.
     handicap : float
-        The handicap entered at Stage 2.
+        The starting handicap, the one entered at Stage 2.
+    to_date_handicap : float | None
+        The handicap implied by the total score over `arrows_shot` arrows (see
+        `_to_date_handicaps`), or None if there is none.
+    arrows_shot : int
+        The arrows the archer shot in the completed passes (`n_pass` per pass).
     total_score : int
         The sum of the archer's scores over the completed passes.
     rows : list[ArcherResultRow]
@@ -115,6 +128,8 @@ class ArcherResults:
     archer_index: int
     name: str
     handicap: float
+    to_date_handicap: float | None
+    arrows_shot: int
     total_score: int
     rows: list[ArcherResultRow]
     averages: ArcherAverages | None
@@ -138,6 +153,39 @@ def _completed_results(event: Event) -> list[PassResult]:
     return sorted(kept, key=lambda r: r.rotation_index)
 
 
+def _to_date_handicaps(event: Event, results: list[PassResult]) -> list[float | None]:
+    """Each archer's to-date handicap: their total score over all the arrows shot so far.
+
+    It is the handicap implied by the total of the archer's scores in the completed passes
+    over `n_pass` times the number of passes they shot (byes included), on their own target:
+    the same calculation as a pass's handicap, but over every arrow, so after the last pass
+    it equals the handicap a full-round calculation of their whole score gives
+    (AISpec.md section 5.4a, Assumption 47).
+
+    Parameters
+    ----------
+    event : h2h.models.Event
+        The event.
+    results : list[PassResult]
+        The results of the completed passes (see `_completed_results`).
+
+    Returns
+    -------
+    list[float | None]
+        One entry per archer; None if they have shot no completed pass or their total is 0.
+    """
+    handicaps = []
+    for i in range(len(event.archers)):
+        scores = [r.score for r in results if r.archer_index == i]
+        if not scores:
+            handicaps.append(None)
+            continue
+        handicaps.append(
+            stats.equivalent_handicap(sum(scores), event.n_pass * len(scores), event.target_for(i))
+        )
+    return handicaps
+
+
 def leaderboard(event: Event) -> list[LeaderboardRow]:
     """The event-wide leaderboard over the completed passes.
 
@@ -153,6 +201,7 @@ def leaderboard(event: Event) -> list[LeaderboardRow]:
         rank (competition ranking: 1, 2, 2, 4) and keep event order within it.
     """
     results = _completed_results(event)
+    to_date = _to_date_handicaps(event, results)
     points = [0] * len(event.archers)
     decided = [0] * len(event.archers)
     for r in results:
@@ -167,7 +216,12 @@ def leaderboard(event: Event) -> list[LeaderboardRow]:
     for position, i in enumerate(order):
         tied_with_previous = position > 0 and points[i] == points[order[position - 1]]
         rank = rows[-1].rank if tied_with_previous else position + 1
-        rows.append(LeaderboardRow(rank, i, event.archers[i].name, points[i], decided[i]))
+        rows.append(
+            LeaderboardRow(
+                rank, i, event.archers[i].name, points[i], decided[i],
+                event.archers[i].handicap, to_date[i],
+            )
+        )
     return rows
 
 
@@ -190,6 +244,7 @@ def archer_results(event: Event) -> list[ArcherResults]:
         One entry per archer, in event order. A pass an archer sat out has no row.
     """
     results = _completed_results(event)
+    to_date = _to_date_handicaps(event, results)
     sections = []
     for i, archer in enumerate(event.archers):
         rows = [
@@ -215,6 +270,8 @@ def archer_results(event: Event) -> list[ArcherResults]:
                 archer_index=i,
                 name=archer.name,
                 handicap=archer.handicap,
+                to_date_handicap=to_date[i],
+                arrows_shot=event.n_pass * len(rows),
                 total_score=sum(row.score for row in rows),
                 rows=rows,
                 averages=averages,

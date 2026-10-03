@@ -866,7 +866,7 @@
       "The leaderboard page's headings are exactly Rank, Archer, Points, Passes decided, Starting handicap, To-date handicap, with values equal to the outputs model; the Archer results headings read '<name> - total score N - starting handicap H - to-date handicap D' with '-' before any completed pass.",
       "The full suite passes with the migrated leaderboard and archer-results tests."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 63,
