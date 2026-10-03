@@ -263,6 +263,9 @@ class Event:
 
     Attributes
     ----------
+    current_rotation_index : int
+        Index of the rotation (pass) currently being shot; moves forward only
+        via `advance`.
     results : list[PassResult]
         Every recorded result so far, across all rotations.
     """
@@ -276,11 +279,10 @@ class Event:
     ) -> None:
         max_index = -1
         for rotation in schedule:
-            participants = [p for pair in rotation.pairs for p in pair]
-            if rotation.bye is not None:
-                participants.append(rotation.bye)
-            if participants:
-                max_index = max(max_index, max(participants))
+            referenced = [p for match in rotation.matches for p in match if p is not None]
+            referenced.extend(rotation.sitting_out)
+            if referenced:
+                max_index = max(max_index, max(referenced))
         if max_index >= len(archers):
             msg = (
                 f"Schedule references archer index {max_index}, but only "
@@ -292,6 +294,7 @@ class Event:
         self.n_pass = n_pass
         self.round_mode = round_mode
         self.schedule = schedule
+        self.current_rotation_index = 0
         self.results: list[PassResult] = []
 
         self._targets = [resolve_target(round_mode, a.bowstyle) for a in archers]
@@ -360,52 +363,190 @@ class Event:
 
         results: list[PassResult] = []
         for a, b in rotation.pairs:
-            score_a, score_b = validated[a], validated[b]
-            pct_a = stats.percentile(self._distributions[a], score_a)
-            pct_b = stats.percentile(self._distributions[b], score_b)
-            winner = stats.decide_pass_winner(pct_a, score_a, pct_b, score_b)
-            results.append(
-                PassResult(
-                    rotation_index=rotation_index,
-                    archer_index=a,
-                    score=score_a,
-                    percentile=pct_a,
-                    handicap=stats.equivalent_handicap(score_a, self.n_pass, self._targets[a]),
-                    opponent_index=b,
-                    won=(winner == "a"),
-                )
-            )
-            results.append(
-                PassResult(
-                    rotation_index=rotation_index,
-                    archer_index=b,
-                    score=score_b,
-                    percentile=pct_b,
-                    handicap=stats.equivalent_handicap(score_b, self.n_pass, self._targets[b]),
-                    opponent_index=a,
-                    won=(winner == "b"),
-                )
-            )
-
+            results.extend(self._pair_results(rotation_index, a, b, validated[a], validated[b]))
         if rotation.bye is not None:
-            bye_idx = rotation.bye
-            score_bye = validated[bye_idx]
-            results.append(
-                PassResult(
-                    rotation_index=rotation_index,
-                    archer_index=bye_idx,
-                    score=score_bye,
-                    percentile=stats.percentile(self._distributions[bye_idx], score_bye),
-                    handicap=stats.equivalent_handicap(
-                        score_bye, self.n_pass, self._targets[bye_idx]
-                    ),
-                    opponent_index=None,
-                    won=None,
-                )
-            )
+            results.append(self._solo_result(rotation_index, rotation.bye, validated[rotation.bye]))
 
         self.results.extend(results)
         return results
+
+    def _pair_results(
+        self, rotation_index: int, a: int, b: int, score_a: int, score_b: int
+    ) -> list[PassResult]:
+        """Build both archers' results for a head-to-head match (nothing is stored).
+
+        Parameters
+        ----------
+        rotation_index : int
+            Rotation the match belongs to.
+        a, b : int
+            The two archers' indices.
+        score_a, score_b : int
+            Their already-validated scores.
+
+        Returns
+        -------
+        list[PassResult]
+            `[a's result, b's result]`, each using that archer's OWN
+            distribution/target, with the pass winner decided between them.
+        """
+        pct_a = stats.percentile(self._distributions[a], score_a)
+        pct_b = stats.percentile(self._distributions[b], score_b)
+        winner = stats.decide_pass_winner(pct_a, score_a, pct_b, score_b)
+        return [
+            PassResult(
+                rotation_index=rotation_index,
+                archer_index=a,
+                score=score_a,
+                percentile=pct_a,
+                handicap=stats.equivalent_handicap(score_a, self.n_pass, self._targets[a]),
+                opponent_index=b,
+                won=(winner == "a"),
+            ),
+            PassResult(
+                rotation_index=rotation_index,
+                archer_index=b,
+                score=score_b,
+                percentile=pct_b,
+                handicap=stats.equivalent_handicap(score_b, self.n_pass, self._targets[b]),
+                opponent_index=a,
+                won=(winner == "b"),
+            ),
+        ]
+
+    def _solo_result(self, rotation_index: int, archer: int, score: int) -> PassResult:
+        """Build the result for an archer shooting a bye match alone (nothing is stored).
+
+        Parameters
+        ----------
+        rotation_index : int
+            Rotation the match belongs to.
+        archer : int
+            The archer's index.
+        score : int
+            Their already-validated score.
+
+        Returns
+        -------
+        PassResult
+            Result with no opponent and no winner (nothing to compare against).
+        """
+        return PassResult(
+            rotation_index=rotation_index,
+            archer_index=archer,
+            score=score,
+            percentile=stats.percentile(self._distributions[archer], score),
+            handicap=stats.equivalent_handicap(score, self.n_pass, self._targets[archer]),
+            opponent_index=None,
+            won=None,
+        )
+
+    def matches(self, rotation_index: int) -> list[tuple[int, int | None]]:
+        """list[tuple[int, int | None]]: a rotation's matches (pairs, then any bye match)."""
+        return self.schedule[rotation_index].matches
+
+    def match_results(
+        self, rotation_index: int, match: tuple[int, int | None]
+    ) -> list[PassResult]:
+        """list[PassResult]: results recorded so far for one match of a rotation."""
+        archers = {p for p in match if p is not None}
+        return [
+            r
+            for r in self.results
+            if r.rotation_index == rotation_index and r.archer_index in archers
+        ]
+
+    def is_match_scored(self, rotation_index: int, match_index: int) -> bool:
+        """bool: whether the match at `match_index` in a rotation has scores recorded."""
+        match = self.matches(rotation_index)[match_index]
+        return bool(self.match_results(rotation_index, match))
+
+    def is_rotation_complete(self, rotation_index: int) -> bool:
+        """bool: whether every match in a rotation has scores recorded."""
+        return all(
+            self.is_match_scored(rotation_index, i)
+            for i in range(len(self.matches(rotation_index)))
+        )
+
+    def record_match(self, scores: dict[int, float]) -> list[PassResult]:
+        """Record one match of the current rotation, replacing any earlier scores for it.
+
+        Parameters
+        ----------
+        scores : dict[int, float]
+            Mapping of archer index to raw score covering exactly one match
+            of the current rotation: both archers of a pair, or just the bye
+            archer if byes are shot.
+
+        Returns
+        -------
+        list[PassResult]
+            The results recorded for this match (one per archer). If the
+            match had already been scored, they replace the earlier results
+            in place (same position in `results`), so a mistyped score can be
+            corrected until the rotation is advanced past.
+
+        Raises
+        ------
+        ValueError
+            If `scores`' keys are not exactly one match of the current
+            rotation, or any score is invalid (see `_validate_score`).
+            Raised before anything is recorded.
+        """
+        rotation_index = self.current_rotation_index
+        match = next(
+            (
+                m
+                for m in self.matches(rotation_index)
+                if {p for p in m if p is not None} == set(scores)
+            ),
+            None,
+        )
+        if match is None:
+            msg = (
+                f"Scores must be for exactly one match in pass {rotation_index + 1}; "
+                f"got archers {sorted(scores)}."
+            )
+            raise ValueError(msg)
+
+        validated = {idx: _validate_score(score, self.n_pass) for idx, score in scores.items()}
+        a, b = match
+        if b is None:
+            new_results = [self._solo_result(rotation_index, a, validated[a])]
+        else:
+            new_results = self._pair_results(rotation_index, a, b, validated[a], validated[b])
+
+        for new in new_results:
+            existing = next(
+                (
+                    i
+                    for i, r in enumerate(self.results)
+                    if r.rotation_index == new.rotation_index and r.archer_index == new.archer_index
+                ),
+                None,
+            )
+            if existing is None:
+                self.results.append(new)
+            else:
+                self.results[existing] = new
+        return new_results
+
+    def advance(self) -> None:
+        """Move on to the next rotation, once every match in the current one is scored.
+
+        Raises
+        ------
+        ValueError
+            If the current rotation still has unscored matches, or it is the
+            final rotation (there is no next one).
+        """
+        if not self.is_rotation_complete(self.current_rotation_index):
+            msg = "Every match in the current pass must have scores before advancing."
+            raise ValueError(msg)
+        if self.current_rotation_index >= len(self.schedule) - 1:
+            msg = "This is the final pass; there is no next pass to advance to."
+            raise ValueError(msg)
+        self.current_rotation_index += 1
 
     def pairwise_result(self, a: int, b: int) -> PairwiseResult | None:
         """Aggregated head-to-head result between two archers so far.

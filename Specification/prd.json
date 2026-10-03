@@ -374,7 +374,7 @@
       "record_rotation still behaves as before (existing test_event.py tests pass unchanged).",
       "An Event can be constructed from a sit-out schedule, and rejects one that references an out-of-range archer index in sitting_out."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 31,

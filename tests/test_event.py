@@ -2,8 +2,9 @@
 
 import pytest
 
+from h2h import stats
 from h2h.models import Archer, Bowstyle, Event, RoundMode
-from h2h.rotation import build_schedule
+from h2h.rotation import Rotation, build_schedule, build_sit_out_schedule
 
 
 def make_archers(n, base_handicap=20, step=5):
@@ -158,3 +159,166 @@ def test_outdoor_mode_gives_same_distribution_regardless_of_bowstyle():
     schedule = build_schedule(2, 1)
     event = Event(archers, 12, RoundMode.OUTDOOR, schedule)
     assert event.distribution_for(0) == event.distribution_for(1)
+
+
+# --- Per-match recording and explicit advance (Feedback 3) -----------------
+
+
+def scores_for(match, score=60):
+    """A {archer_index: score} dict covering one match from `Event.matches`."""
+    return {p: score for p in match if p is not None}
+
+
+def test_new_event_starts_at_rotation_zero():
+    """A fresh Event is on the first rotation."""
+    assert make_event(4).current_rotation_index == 0
+
+
+def test_record_match_records_one_pair_without_scoring_the_rest():
+    """Scoring one pair leaves the rotation's other matches unscored."""
+    event = make_event(4)
+    first, second = event.matches(0)
+    results = event.record_match(scores_for(first))
+    assert {r.archer_index for r in results} == set(first)
+    assert event.is_match_scored(0, 0)
+    assert not event.is_match_scored(0, 1)
+    assert not event.is_rotation_complete(0)
+    assert event.match_results(0, second) == []
+
+
+def test_record_match_uses_each_archers_own_distribution():
+    """Percentile/handicap come from each archer's OWN resolved target and distribution."""
+    event = make_event(2)  # Archer0 Recurve, Archer1 Compound: different indoor targets
+    results = {r.archer_index: r for r in event.record_match({0: 100, 1: 100})}
+    for idx in (0, 1):
+        assert results[idx].percentile == stats.percentile(event.distribution_for(idx), 100)
+        assert results[idx].handicap == stats.equivalent_handicap(
+            100, event.n_pass, event.target_for(idx)
+        )
+    assert results[0].percentile != results[1].percentile
+
+
+def test_record_match_on_bye_archer_has_no_winner_or_pairwise_result():
+    """A solo bye match records a result with no opponent/winner, and no pairwise entry."""
+    event = make_event(3, n_rotations=3)
+    pair, solo = event.matches(0)
+    assert solo[1] is None
+    (result,) = event.record_match({solo[0]: 50})
+    assert result.opponent_index is None
+    assert result.won is None
+    assert event.all_pairwise_results() == []
+
+
+def test_record_match_rejects_scores_that_are_not_exactly_one_match():
+    """Mixed matches, partial pairs, unknown archers and sitting-out archers all raise."""
+    event = make_event(4)
+    first, second = event.matches(0)
+    bad_inputs = [
+        {first[0]: 50, second[0]: 50},  # archers from different matches
+        {first[0]: 50},  # half a pair
+        {**scores_for(first), 9: 50},  # extra, unknown archer
+        {**scores_for(first), **scores_for(second)},  # two whole matches at once
+        {},  # nothing
+    ]
+    for bad in bad_inputs:
+        with pytest.raises(ValueError):
+            event.record_match(bad)
+    assert event.results == []
+
+
+def test_record_match_rejects_a_sitting_out_archer():
+    """An archer sitting this pass out has no match to record."""
+    event = Event(make_archers(3), 12, RoundMode.INDOOR_PORTSMOUTH, build_sit_out_schedule(3, 2))
+    (sitting,) = event.schedule[0].sitting_out
+    with pytest.raises(ValueError):
+        event.record_match({sitting: 50})
+    assert event.results == []
+
+
+@pytest.mark.parametrize("bad_score", [100.5, -1, 121])
+def test_record_match_invalid_score_records_nothing(bad_score):
+    """Non-integer, negative and over-maximum scores are rejected, recording nothing."""
+    event = make_event(2)
+    with pytest.raises(ValueError):
+        event.record_match({0: bad_score, 1: 60})
+    assert event.results == []
+
+
+def test_re_recording_a_match_replaces_its_results_in_place():
+    """Re-saving a match replaces (not duplicates) results, recomputes the winner, keeps order."""
+    event = make_event(4)
+    first, second = event.matches(0)
+    event.record_match(scores_for(first, 60))
+    event.record_match(scores_for(second, 60))
+    positions = [(r.rotation_index, r.archer_index) for r in event.results]
+
+    a, b = first
+    event.record_match({a: 120, b: 0})
+    assert event.pairwise_result(a, b).outcome == a
+    event.record_match({a: 0, b: 120})
+
+    assert len(event.results) == 4
+    assert [(r.rotation_index, r.archer_index) for r in event.results] == positions
+    assert {r.archer_index: r.score for r in event.match_results(0, first)} == {a: 0, b: 120}
+    assert event.pairwise_result(a, b).outcome == b
+
+
+def test_is_rotation_complete_only_once_every_match_is_scored():
+    """A rotation is complete only when all its matches (incl. any bye match) have scores."""
+    event = make_event(3, n_rotations=3)
+    pair, solo = event.matches(0)
+    assert not event.is_rotation_complete(0)
+    event.record_match(scores_for(pair))
+    assert not event.is_rotation_complete(0)
+    event.record_match({solo[0]: 40})
+    assert event.is_rotation_complete(0)
+
+
+def test_advance_requires_a_complete_rotation_then_moves_on():
+    """advance() is refused until the pass is fully scored, then applies to the next rotation."""
+    event = make_event(2, n_rotations=2)  # the same pair meets twice
+    with pytest.raises(ValueError):
+        event.advance()
+    assert event.current_rotation_index == 0
+
+    event.record_match({0: 100, 1: 60})
+    event.advance()
+    assert event.current_rotation_index == 1
+
+    results = event.record_match({0: 90, 1: 80})
+    assert {r.rotation_index for r in results} == {1}
+
+
+def test_advance_on_the_final_rotation_raises():
+    """There is nothing to advance to after the last rotation."""
+    event = make_event(2, n_rotations=1)
+    event.record_match({0: 100, 1: 60})
+    with pytest.raises(ValueError):
+        event.advance()
+    assert event.current_rotation_index == 0
+
+
+def test_earlier_rotation_results_cannot_be_altered_after_advancing():
+    """After advancing, record_match only ever touches the new current rotation."""
+    event = make_event(2, n_rotations=2)
+    event.record_match({0: 100, 1: 60})
+    event.advance()
+    event.record_match({0: 10, 1: 20})
+    first_pass = [r for r in event.results if r.rotation_index == 0]
+    assert {r.archer_index: r.score for r in first_pass} == {0: 100, 1: 60}
+
+
+def test_event_accepts_a_sit_out_schedule_and_matches_exclude_sitting_archers():
+    """A sit-out schedule builds an Event whose matches never include the sitting-out archer."""
+    event = Event(make_archers(3), 12, RoundMode.INDOOR_PORTSMOUTH, build_sit_out_schedule(3, 2))
+    for i, rotation in enumerate(event.schedule):
+        in_matches = {p for m in event.matches(i) for p in m if p is not None}
+        assert in_matches.isdisjoint(rotation.sitting_out)
+        assert all(b is not None for _, b in event.matches(i))  # nobody shoots alone
+
+
+def test_schedule_sitting_out_index_out_of_range_rejected():
+    """A sitting_out index beyond len(archers) must raise, like any other schedule index."""
+    schedule = [Rotation(pairs=[(0, 1)], sitting_out=(5,))]
+    with pytest.raises(ValueError):
+        Event(make_archers(2), 12, RoundMode.INDOOR_PORTSMOUTH, schedule)

@@ -679,3 +679,37 @@ of them (ties to lowest index) joins and shoots P+1. No issues hit. 48 odd
 one P+1" rule. Known cases: (5,4) -> 5 rotations, (5,5) -> 7, (3,5) -> 8,
 (3,1) -> 2, (7,5) -> 6. 169 tests added (186 in test_rotation.py; whole suite
 353 passing at the time).
+
+### Task 30: Event: per-match score recording and explicit pass advance (complete)
+Added the primitives the new page flow needs to `h2h.models.Event`, alongside
+the existing `record_rotation` (which task 31 removes along with
+`next_rotation_index`): `current_rotation_index` (starts 0), `matches(i)`
+(delegates to `Rotation.matches`), `match_results`, `is_match_scored`,
+`is_rotation_complete`, `record_match(scores)` and `advance()`.
+
+- `record_match` takes a `{archer: score}` dict that must equal exactly one
+  match of the *current* rotation (both archers of a pair, or just the bye
+  archer), so there is no rotation-index argument to get wrong, and a
+  sitting-out archer or a mix of two matches is a `ValueError`. Scores are
+  validated with the existing `_validate_score` before anything is recorded.
+- Re-recording a match replaces its results in place (same position in
+  `results`) so the display order stays stable and pairwise results, which are
+  derived from `results` on demand, automatically reflect the correction. A
+  coin-flip tie-break (identical percentile and score) is re-rolled on re-save;
+  that needs equal handicaps and equal scores, so it was left alone.
+- The per-match result construction that `record_rotation` did inline was
+  factored into `_pair_results` / `_solo_result`, now shared by both methods
+  rather than copied.
+- `advance()` refuses while any match is unscored and on the final rotation.
+  `is_complete` is deliberately unchanged here; task 31 redefines it as "final
+  rotation fully scored" when the old API goes.
+- `Event.__init__`'s archer-index bounds check now goes through
+  `Rotation.matches` and also covers `sitting_out`.
+
+Tests (tests/test_event.py, 14 new, 29 total in the file): start state, one pair
+scored without the rest, own-distribution percentile/handicap, bye match (no
+winner, no pairwise entry), all the not-exactly-one-match rejections, a
+sitting-out archer rejected, invalid scores record nothing, in-place
+replacement, completeness, advance gating/final-rotation/earlier-pass-frozen,
+and Event construction from a sit-out schedule (including the bounds check).
+Full suite passes. No issues.
