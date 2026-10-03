@@ -40,30 +40,57 @@ Setup has three stages, then you score the event one pass at a time.
      counts as indoor or outdoor is worked out from the distance (up to 25 m /
      25 yd is indoor) and sets the arrow size used in the handicap maths; indoors,
      Compound archers score only the inner ring as 10.
-   - *Advanced* setup (a different scoring method, face and distance per archer)
-     is not built yet and shows a "TBA" message.
+   - *Advanced* setup gives every archer their own target: you choose a target
+     face type (every scoring system `archeryutils` has, e.g. 10 zone, 10 zone
+     compound, 5 zone, 11 zone, Worcester), a face size and a distance for each
+     archer in Stage 2. The face type is used exactly as chosen, so a Compound
+     archer who should score only the inner ring as 10 needs a compound face type.
+     Each archer's highest possible score follows their own face (for example 9 per
+     arrow on a 5-zone face), and percentiles come from each archer's own
+     distribution, so mixed targets are still compared fairly.
    - With an odd number of archers one archer has no opponent each pass, so a
      **Shoot byes?** option appears: *Yes* means that archer shoots alone
      (recorded, but no win/loss); *No* means they sit the pass out, which adds
      passes so that everyone still shoots all their arrows.
 2. **Stage 2 - archers:** name, bowstyle (Recurve, Compound, Barebow, Longbow)
-   and handicap (0-150) for each archer. A score-to-handicap calculator (with a
-   compound-bow option) is linked from here and from the nav bar, for working out
-   starting handicaps.
+   and handicap (0-150) for each archer (plus the three target dropdowns in
+   advanced setup). A score-to-handicap calculator is linked from here and from the
+   nav bar, for working out starting handicaps.
 3. **Stage 3 - pairings:** the archers are drawn at random into the round-robin,
    and every pass's pairings are shown. Press **Redraw pairings** for a fresh draw
    as often as you like, then **Confirm pairings and start event**.
 4. **Scoring:** the **overview** page shows the current pass as a table of
    Match | Score | Percentiles | Winner | Actions. Open each match to enter its
-   scores on its own page (which shows each archer's handicap, that pair's results
-   so far and, with graph view on, their distribution chart). Once every match has
-   scores, press **Advance to next pass**; the overview then shows the new pairings.
-5. **Results:** per-pass results and a head-to-head result for every pair that
-   has met (deliberately no overall leaderboard yet).
+   scores on its own page: the heading is the two names, each archer's handicap is
+   beside their score box, and once saved a table shows just this pass
+   (Archer | Score | Percentile | Winner). Once every match has scores, press
+   **Advance to next pass**.
+   - *Tie-break:* a pass is won by the higher percentile, then the higher score,
+     then whichever archer's arrow was **closest to the middle**, which the archers
+     judge and you enter with the two "closest to the middle" tick boxes (only one
+     can be ticked). They are used only if the percentile and score are exactly tied;
+     if they are tied and neither box is ticked the scores are not saved and you are
+     asked to tick one. There is no coin flip.
+5. **Results:** the **Results** page has a **leaderboard** (1 point per pass won,
+   archers on equal points share a rank), the head-to-head result for every pair
+   that has met, and the per-pass results. The **Archer results** page has, for each
+   archer, a heading (name, total score, handicap) and a table of their passes
+   (Pass | Opponent | Score | Percentile | Handicap) with an Average row. Both count
+   only **completed passes** (every match in the pass scored) and update live. Both
+   pages offer downloads: the leaderboard and the archer results as **CSV**, and a
+   full report as **PDF** (`fpdf2` is used for the PDF).
 
 Graph view (a button on the match pages) shows or hides the interactive
-distribution charts and a short explanation of how the winner is decided.
+distribution chart and a short explanation of how the winner is decided. The chart
+names each curve with its archer's handicap, marks every score either archer has
+shot so far (against any opponent) with a vertical line labelled with its pass
+number ("P3"; by default only this pass's scores, with a tick box for the earlier
+ones), and widens its axis if a score falls outside the usual range.
 **Reset** in the nav bar asks for confirmation before clearing everything.
+
+**Handicap calculator:** choose Indoor or Outdoor, pick the round from the list of
+standard AGB and WA rounds of that kind, tick "shot with a compound bow" (indoor
+rounds only) if it applies, and enter the score to get the AGB handicap.
 
 ## Repo structure
 
@@ -76,12 +103,18 @@ h2h/                    Application package
   rotation.py              Round-robin rotation scheduler, including the
                             sit-out schedule used when byes are not shot.
                             Independent of Flask and the stats engine.
-  models.py                Archer/Event data model: the shared distance/face
-                            setup (TargetSetup) and how each archer's target
-                            follows from it and their bowstyle, recording scores
-                            one match at a time, advancing pass by pass.
-  chart_data.py            Builds the JSON payload for the advanced-mode
+  models.py                Archer/Event data model: the distance/face/face-type
+                            setup (TargetSetup, shared or per archer) and how each
+                            archer's target follows from it and their bowstyle,
+                            recording scores one match at a time (with the
+                            tie-break), advancing pass by pass, and the
+                            calculator's standard rounds.
+  chart_data.py            Builds the JSON payload for the graph view's
                             interactive distribution chart.
+  outputs.py                Leaderboard and per-archer results, from completed
+                            passes only. No Flask dependency.
+  exports.py                CSV and PDF renderings of those outputs (fpdf2).
+                            No Flask dependency.
   state.py                 In-memory session state (single-user, no database).
   app.py                   Flask routes.
   templates/                Jinja2 HTML templates (underscore-prefixed files

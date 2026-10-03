@@ -469,3 +469,238 @@ def test_reset_asks_for_confirmation_and_only_the_post_clears_everything():
     after = client.get("/event/results", follow_redirects=True)
     assert b"Event setup - Stage 1" in after.data  # no event any more: sent back to setup
     assert client.get("/event/stage3").headers["Location"].endswith("/event/stage1")
+
+
+# --- Feedback 5: advanced setup, tie-break, outputs, exports, chart range, calculator ---
+
+import csv  # noqa: E402
+import io  # noqa: E402
+import json  # noqa: E402
+
+import pypdf  # noqa: E402
+from archeryutils import handicaps as _hc  # noqa: E402
+from archeryutils import load_rounds  # noqa: E402
+
+from h2h import outputs  # noqa: E402
+
+ADVANCED_FOUR = [
+    # name, bowstyle, handicap, face type, face size, distance
+    ("Ann", "Recurve", 20, "10_zone", 40, "18m"),
+    ("Ben", "Compound", 25, "10_zone_compound", 40, "18m"),
+    ("Cat", "Barebow", 35, "5_zone", 122, "50yd"),
+    ("Dan", "Longbow", 45, "Worcester", 40, "20yd"),
+]
+
+
+def start_advanced_event(client, rows=ADVANCED_FOUR, total_arrows=36):
+    """Stage 1 (advanced) -> Stage 2 (per-archer targets) -> confirm Stage 3, over HTTP."""
+    form = stage1_form(len(rows), total_arrows)
+    form["setup_mode"] = "advanced"
+    client.post("/event/stage1", data=form)
+    data = {}
+    for i, (name, bowstyle, handicap, face_type, face_cm, distance) in enumerate(rows):
+        data.update(
+            {
+                f"name_{i}": name,
+                f"bowstyle_{i}": bowstyle,
+                f"handicap_{i}": str(handicap),
+                f"face_type_{i}": face_type,
+                f"face_cm_{i}": str(face_cm),
+                f"distance_{i}": distance,
+            }
+        )
+    assert client.post("/event/stage2", data=data).status_code == 302
+    client.post("/event/stage3")
+
+
+def table_rows(html, headings):
+    """The body rows (cell texts) of the first page table with exactly these headings."""
+
+    def text(fragment):
+        return " ".join(re.sub(r"<[^>]+>", " ", fragment).split())
+
+    for block in re.findall(r"<table>(.*?)</table>", html, re.S):
+        if [text(h) for h in re.findall(r"<th>(.*?)</th>", block, re.S)] == headings:
+            return [
+                [text(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+                for row in re.findall(r"<tr[^>]*>(.*?)</tr>", block, re.S)
+                if "<td" in row
+            ]
+    raise AssertionError(f"no table with headings {headings}")
+
+
+def csv_rows(text):
+    """Parse CSV text the way a spreadsheet would."""
+    return list(csv.reader(io.StringIO(text, newline="")))
+
+
+LEADERBOARD_HEADINGS = ["Rank", "Archer", "Points", "Passes decided"]
+
+
+def wins_so_far(event, passes):
+    """{archer_index: passes won among the first `passes` rotations}, from the Event's own results."""
+    wins = {i: 0 for i in range(len(event.archers))}
+    for r in event.results:
+        if r.rotation_index < passes and r.won:
+            wins[r.archer_index] += 1
+    return wins
+
+
+def test_advanced_event_leaderboard_follows_the_winners_after_every_completed_pass():
+    """4 archers on four different targets: each score respects its own maximum, and after every
+    pass the Results page's points equal the passes each archer has won so far."""
+    client, state = make_client_and_state()
+    start_advanced_event(client)
+    event = state.event
+    assert [event.max_score_for(i) for i in range(4)] == [120, 120, 108, 60]
+
+    for pass_number in range(1, 4):
+        score_current_pass(
+            client, lambda i, n=pass_number: int(event.max_score_for(i) * 0.55) + 2 * n + i
+        )
+        page = client.get("/event/results").data.decode()
+        rows = table_rows(page, LEADERBOARD_HEADINGS)
+        wins = wins_so_far(event, pass_number)
+        assert {row[1]: int(row[2]) for row in rows} == {
+            event.archers[i].name: wins[i] for i in range(4)
+        }
+        assert [row[3] for row in rows] == [str(pass_number)] * 4
+        if pass_number < 3:
+            client.post("/event/advance")
+    assert event.is_complete
+
+
+def test_after_the_last_pass_every_output_and_export_agrees_with_the_event():
+    """Leaderboard page, archer results page, both CSVs and the PDF all say the same thing."""
+    client, state = make_client_and_state()
+    start_advanced_event(client)
+    event = state.event
+    for pass_number in range(1, 4):
+        score_current_pass(
+            client, lambda i, n=pass_number: int(event.max_score_for(i) * 0.55) + 2 * n + i
+        )
+        if pass_number < 3:
+            client.post("/event/advance")
+
+    board = outputs.leaderboard(event)
+    sections = outputs.archer_results(event)
+    assert sum(r.points for r in board) == 6  # 2 decided matches in each of 3 passes
+
+    page = client.get("/event/results").data.decode()
+    assert table_rows(page, LEADERBOARD_HEADINGS) == [
+        [str(r.rank), r.name, str(r.points), str(r.passes_decided)] for r in board
+    ]
+    assert csv_rows(client.get("/event/export/leaderboard.csv").data.decode())[1:] == [
+        [str(r.rank), r.name, str(r.points), str(r.passes_decided)] for r in board
+    ]
+
+    archer_page = client.get("/event/archers").data.decode()
+    results_columns = ["Pass", "Opponent", "Score", "Percentile", "Handicap"]
+    csv_all = csv_rows(client.get("/event/export/archer-results.csv").data.decode())[1:]
+    pdf = pypdf.PdfReader(io.BytesIO(client.get("/event/export/results.pdf").data))
+    pdf_text = "\n".join(p.extract_text() for p in pdf.pages)
+    for section in sections:
+        assert f"{section.name} - total score {section.total_score} - handicap {section.handicap:g}" in " ".join(
+            re.sub(r"<[^>]+>", " ", archer_page).split()
+        )
+        assert f"{section.name} - total score {section.total_score}" in pdf_text
+        mine = [row for row in csv_all if row[0] == section.name]
+        assert [(r[2], r[3], r[4]) for r in mine] == [
+            (str(row.pass_number), row.opponent, str(row.score)) for row in section.rows
+        ]
+        assert [r[5] for r in mine] == [f"{row.percentile * 100:.1f}" for row in section.rows]
+    # One results table per archer on the page, each with its 3 passes plus the Average row.
+    assert archer_page.count("<table>") == 4
+    assert len(table_rows(archer_page, results_columns)) == 3 + 1
+
+
+def test_a_tie_is_blocked_until_a_box_is_ticked_then_the_ticked_archer_is_credited():
+    """Same handicap and score: the match will not save without the tick; the leaderboard then counts it."""
+    client, state = make_client_and_state()
+    form = stage1_form(2, 24)
+    client.post("/event/stage1", data=form)
+    client.post("/event/stage2", data=stage2_form([("Ann", "Recurve", 30), ("Ben", "Recurve", 30)]))
+    client.post("/event/stage3")
+
+    blocked = save_match(client, 0, {0: 90, 1: 90})
+    assert blocked.status_code == 200 and b"Percentile and score are tied" in blocked.data
+    assert state.event.results == []
+    assert client.post("/event/advance").status_code == 200  # still refused: the pass is not scored
+
+    assert save_match(client, 0, {0: 90, 1: 90}, closest=1).status_code == 302
+    client.post("/event/advance")
+    assert save_match(client, 0, {0: 100, 1: 95}).status_code == 302
+
+    event = state.event
+    rows = table_rows(client.get("/event/results").data.decode(), LEADERBOARD_HEADINGS)
+    points = {row[1]: int(row[2]) for row in rows}
+    assert points == {"Ann": 1, "Ben": 1}  # Ben on the tie-break, Ann on the percentile
+    assert sum(points.values()) == len([r for r in event.results if r.won]) == 2
+    assert {r.decided_by for r in event.results} == {"closest", "percentile"}
+
+
+def test_a_half_scored_pass_is_left_out_of_the_outputs_and_the_exports_match():
+    """Pass 2 with one match saved changes neither the leaderboard nor the CSVs."""
+    client, state = make_client_and_state()
+    start_event(client, [(f"A{i}", "Recurve", 20 + 10 * i) for i in range(4)], total_arrows=36)
+    score_current_pass(client, lambda i: 80 + i)
+    client.post("/event/advance")
+    first, _ = state.event.matches(1)
+    save_match(client, 0, {p: 85 + p for p in first})
+
+    rows = table_rows(client.get("/event/results").data.decode(), LEADERBOARD_HEADINGS)
+    assert [row[3] for row in rows] == ["1", "1", "1", "1"]  # pass 1 only
+    exported = csv_rows(client.get("/event/export/leaderboard.csv").data.decode())[1:]
+    assert [row[1:] for row in exported] == [row[1:] for row in rows]
+    assert len(csv_rows(client.get("/event/export/archer-results.csv").data.decode())) == 1 + 4
+
+
+def embedded_payload(html):
+    """The JSON embedded in a page as window.MATCH_CHART_DATA."""
+    marker = "window.MATCH_CHART_DATA = "
+    start = html.index(marker) + len(marker)
+    return json.loads(html[start : html.index(";\n", start)])
+
+
+def test_chart_shows_earlier_scores_of_a_pair_that_has_not_met_and_covers_extreme_scores():
+    """Pass 2's pair has not met, but both archers' pass-1 scores are listed and inside the x-range."""
+    client, state = make_client_and_state()
+    start_event(client, [(f"A{i}", "Recurve", 20 + 10 * i) for i in range(4)], total_arrows=36)
+    client.post("/graph-view", data={"next": "/event/rotation"})
+    event = state.event
+    first, second = event.matches(0)
+    save_match(client, 0, {first[0]: 5, first[1]: 118})  # far outside the curves' usual range
+    save_match(client, 1, {p: 90 + p for p in second})
+    client.post("/event/advance")
+
+    a, b = event.matches(1)[0]
+    page = client.get("/event/match/0").data.decode()
+    payload = embedded_payload(page)
+    met_before = {frozenset(m) for m in event.matches(0)}
+    assert frozenset((a, b)) not in met_before  # a genuinely new pairing
+    shown = {p["score"] for side in ("archer_a", "archer_b") for p in payload[side]["passes"]}
+    expected = {r.score for r in event.results if r.archer_index in (a, b)}
+    assert shown == expected and len(expected) == 2
+    assert payload["current_pass"] == 1
+    assert all(payload["x_min"] <= score <= payload["x_max"] for score in shown)
+    assert payload["archer_a"]["legend"].endswith("(handicap %g)" % event.archers[a].handicap)
+
+
+def test_calculator_flow_over_http_for_an_indoor_compound_and_an_outdoor_round():
+    """Indoor compound Portsmouth and outdoor WA 1440 (90m) give archeryutils's own handicaps."""
+    scheme = _hc.handicap_scheme("AGB")
+    client = make_client()
+
+    indoor = client.post(
+        "/event/handicap-calculator",
+        data={"kind": "indoor", "round_indoor": "portsmouth", "compound": "yes", "score": "540"},
+    ).data.decode()
+    expected = round(scheme.handicap_from_score(540, load_rounds.AGB_indoor.portsmouth_compound), 1)
+    assert f"Handicap: {expected}" in indoor
+
+    outdoor = client.post(
+        "/event/handicap-calculator",
+        data={"kind": "outdoor", "round_outdoor": "wa1440_90", "score": "1100"},
+    ).data.decode()
+    expected = round(scheme.handicap_from_score(1100, load_rounds.WA_outdoor.wa1440_90), 1)
+    assert f"Handicap: {expected}" in outdoor
