@@ -681,7 +681,7 @@
       "For two archers on different targets (5-zone vs 10-zone, advanced mode) the payload's x_max never exceeds the larger maximum pass score and the y_max covers both distributions.",
       "The payload is JSON-serialisable and the match page and pair page still render it; the existing chart-data tests are migrated and pass."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 51,

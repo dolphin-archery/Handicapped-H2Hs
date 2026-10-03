@@ -48,15 +48,18 @@
     };
   }
 
-  function markersFor(passList) {
+  // One vertical marker per score shot: every pass of either archer (against any
+  // opponent) when `all` is true, otherwise only the pass currently being scored.
+  function markersFor(all) {
     const datasets = [];
-    for (const p of passList) {
-      datasets.push(
-        markerDataset(p.score_a, COLOR_A, `${data.archer_a.name} pass ${p.index + 1}: ${p.score_a}`)
-      );
-      datasets.push(
-        markerDataset(p.score_b, COLOR_B, `${data.archer_b.name} pass ${p.index + 1}: ${p.score_b}`)
-      );
+    for (const [archer, color] of [[data.archer_a, COLOR_A], [data.archer_b, COLOR_B]]) {
+      for (const p of archer.passes) {
+        if (all || p.index === data.current_pass) {
+          datasets.push(
+            markerDataset(p.score, color, `${archer.name} pass ${p.index + 1}: ${p.score}`)
+          );
+        }
+      }
     }
     return datasets;
   }
@@ -65,9 +68,6 @@
     curveDataset(data.distribution_a, COLOR_A, data.archer_a.name),
     curveDataset(data.distribution_b, COLOR_B, data.archer_b.name),
   ];
-
-  const passes = data.passes || [];
-  const latestOnly = passes.length ? [passes[passes.length - 1]] : [];
 
   /*
    * Custom interaction mode used for hover and the tooltip: for each archer's
@@ -114,7 +114,7 @@
 
   const chart = new Chart(canvas, {
     type: "line",
-    data: { datasets: baseDatasets.concat(markersFor(latestOnly)) },
+    data: { datasets: baseDatasets.concat(markersFor(false)) },
     options: {
       parsing: false,
       scales: {
@@ -137,8 +137,7 @@
   const checkbox = document.getElementById("show-previous-passes");
   if (checkbox) {
     checkbox.addEventListener("change", () => {
-      const shown = checkbox.checked ? passes : latestOnly;
-      chart.data.datasets = baseDatasets.concat(markersFor(shown));
+      chart.data.datasets = baseDatasets.concat(markersFor(checkbox.checked));
       chart.update();
     });
   }

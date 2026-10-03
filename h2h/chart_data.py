@@ -2,10 +2,11 @@
 
 Builds a JSON-serialisable payload consumed by the client-side Chart.js
 rendering in `h2h/static/match_chart.js`: each archer's score-distribution
-curve (trimmed to a sensible range, per Specification/feedback.md), plus
-every scored pass's raw scores, so the browser can toggle which passes'
-markers are shown without a server round-trip. Kept independent of Flask so
-it can be tested in isolation.
+curve (trimmed to a sensible range, per Specification/feedback.md), plus every
+score each of the two archers has shot so far (against any opponent), so the
+browser can toggle which passes' markers are shown without a server round-trip.
+The x-range always covers every one of those scores. Kept independent of Flask
+so it can be tested in isolation.
 """
 
 from __future__ import annotations
@@ -22,6 +23,9 @@ _DISPLAY_STD_SPAN = 4.0
 # low or very high handicap) doesn't render as a single spike with no
 # visible context either side.
 _MIN_DISPLAY_WIDTH = 10
+
+# Room left beside the outermost score marker so its line is not on the plot's edge.
+_MARKER_MARGIN = 1
 
 
 def _mean_and_std(distribution: dict[float, float]) -> tuple[float, float]:
@@ -65,36 +69,75 @@ def _display_range(
     return math.floor(x_min), math.ceil(x_max)
 
 
+def _scored_passes(event: Event, archer: int) -> list[dict[str, int]]:
+    """Every pass an archer has scored so far, whoever their opponent was.
+
+    Parameters
+    ----------
+    event : h2h.models.Event
+        The event the archer belongs to.
+    archer : int
+        The archer's index.
+
+    Returns
+    -------
+    list[dict[str, int]]
+        `{"index": rotation index (0-based), "score": score}` per scored pass,
+        oldest first. Includes a bye pass shot alone; a pass sat out is absent.
+    """
+    results = sorted(
+        (r for r in event.results if r.archer_index == archer), key=lambda r: r.rotation_index
+    )
+    return [{"index": r.rotation_index, "score": r.score} for r in results]
+
+
+def _legend_label(event: Event, archer: int) -> str:
+    """The archer's chart legend text: "Name (handicap H)", H as entered (15.0 shows 15)."""
+    entered = event.archers[archer]
+    return f"{entered.name} (handicap {entered.handicap:g})"
+
+
 def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     """Build the JSON payload for a pair-of-archers' interactive distribution chart.
 
     Each archer's distribution comes from their own resolved target
-    (`Event.distribution_for`), and the marked passes are only those this
-    specific pair has actually shared under the rotation schedule (usually
-    one, but possibly more -- see AISpec.md Assumption 13).
+    (`Event.distribution_for`). The marked scores are every score each of the
+    two archers has shot so far, against any opponent -- not only passes the
+    pair shared -- and the x-range is widened (beyond the curves' trimmed range)
+    to include all of them, so no marker is ever outside the plot.
 
     Parameters
     ----------
     event : h2h.models.Event
         The event both archers belong to.
     a, b : int
-        The two archers' indices. They need not have shared a rotation yet:
-        a match page charts the pair before their first scored pass, in which
-        case `passes` is empty and only the two distributions are drawn.
+        The two archers' indices. They need not have met: a match page charts
+        the pair before their first scored pass, in which case each archer's
+        `passes` is just whatever they shot in earlier passes against others.
 
     Returns
     -------
     dict
-        JSON-serialisable structure: each archer's name/handicap and
-        (score, probability) points over a shared, trimmed x-range; the
-        y-axis ceiling to use for vertical pass-score markers; and every
-        rotation this pair has shared, with each archer's raw score.
+        JSON-serialisable structure: for each archer a `name`, `handicap`,
+        `legend` label and `passes` (`{"index", "score"}` per scored pass);
+        each archer's (score, probability) curve points over the shared x-range
+        (`x_min` to `x_max`, covering the curves' trimmed range and every
+        score in either archer's `passes`, with a margin); the y-axis ceiling
+        for the vertical markers; and `current_pass`, the index of the pass
+        being scored, whose scores the chart shows by default.
     """
     dist_a = event.distribution_for(a)
     dist_b = event.distribution_for(b)
     max_possible = max(event.max_score_for(a), event.max_score_for(b))
 
     x_min, x_max = _display_range(dist_a, dist_b, max_possible)
+
+    passes_a = _scored_passes(event, a)
+    passes_b = _scored_passes(event, b)
+    shot = [p["score"] for p in passes_a + passes_b]
+    if shot:
+        x_min = max(0, min(x_min, min(shot) - _MARKER_MARGIN))
+        x_max = min(max_possible, max(x_max, max(shot) + _MARKER_MARGIN))
 
     def points(dist: dict[float, float]) -> list[dict[str, float]]:
         return [
@@ -105,29 +148,23 @@ def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
 
     y_max = max(max(dist_a.values()), max(dist_b.values())) * 1.15
 
-    results_a = {
-        r.rotation_index: r for r in event.results if r.archer_index == a and r.opponent_index == b
-    }
-    results_b = {
-        r.rotation_index: r for r in event.results if r.archer_index == b and r.opponent_index == a
-    }
-    shared_rotations = sorted(set(results_a) & set(results_b))
-    passes = [
-        {
-            "index": idx,
-            "score_a": results_a[idx].score,
-            "score_b": results_b[idx].score,
-        }
-        for idx in shared_rotations
-    ]
-
     return {
-        "archer_a": {"name": event.archers[a].name, "handicap": event.archers[a].handicap},
-        "archer_b": {"name": event.archers[b].name, "handicap": event.archers[b].handicap},
+        "archer_a": {
+            "name": event.archers[a].name,
+            "handicap": event.archers[a].handicap,
+            "legend": _legend_label(event, a),
+            "passes": passes_a,
+        },
+        "archer_b": {
+            "name": event.archers[b].name,
+            "handicap": event.archers[b].handicap,
+            "legend": _legend_label(event, b),
+            "passes": passes_b,
+        },
         "distribution_a": points(dist_a),
         "distribution_b": points(dist_b),
         "x_min": x_min,
         "x_max": x_max,
         "y_max": y_max,
-        "passes": passes,
+        "current_pass": event.current_rotation_index,
     }

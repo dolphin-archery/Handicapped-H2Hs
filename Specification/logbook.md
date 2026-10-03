@@ -1459,3 +1459,26 @@ defaults, simple Stage 2 unchanged, valid rows reaching each archer's resolved t
 Worcester face), bad values per field, missing fields, and a full 2-archer event with a
 5-zone and a 10-zone archer over HTTP (maximum 108 vs 120, percentiles from each own
 distribution); five state tests. Suite: 712 passed.
+
+### Task 50: Chart data - every score each archer has shot, axis limits that include them, handicaps for the legend (complete)
+Root cause of "Show previous passes adds no lines in later passes": `build_pair_chart_data`
+built its marker list only from passes in which *these two archers* had faced each
+other (`results_a` and `results_b` keyed by opponent), so for a pair meeting for the
+first time in pass 3 there was nothing earlier to show. The payload now has, for each
+archer, `passes: [{index, score}]` covering every scored pass of theirs against any
+opponent (a bye pass is included, a sat-out pass is absent), plus a `legend` label
+("Name (handicap H)", 15.0 shown as 15) and the event's `current_pass` (the pass shown
+by default); the old top-level shared `passes` list is gone. The x-range is the curves'
+trimmed range widened to include every score in either list with a margin of 1, clamped
+to [0, the larger archer maximum], and is one fixed range (so it does not move when the
+box is ticked); curve points are listed over the final range. The pair of archers on
+different faces use `max(Event.max_score_for(a), ...(b))` as the clamp (from task 48).
+`match_chart.js` was changed just enough to read the new payload (markers from each
+archer's own list, only `current_pass` by default, all when ticked); the on-chart labels,
+the legend and the real-browser verification are task 51. Tests: `test_pair_chart_data.py`
+rewritten (16 tests: scores across three different opponents, a pair that has not met
+still showing earlier scores - the reported bug, bye and sit-out passes, current_pass,
+far-out low and high scores widening the range, clamping at 0 and 120, an in-range event
+leaving the range unchanged, the range covering an early far-out score, curve points over
+the final range, legend labels, a 5-zone vs 10-zone pair, JSON-serialisable) and the two
+route tests that read the payload. Suite: 726 passed.

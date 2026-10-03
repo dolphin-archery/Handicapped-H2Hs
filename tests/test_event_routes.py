@@ -805,8 +805,10 @@ def test_graph_view_match_page_renders_chart_even_before_any_scoring():
     assert 'id="show-previous-passes"' in page
     assert "How the winner is decided" in page
     payload = embedded_chart_payload(page)
-    assert payload["passes"] == []
+    assert payload["archer_a"]["passes"] == [] and payload["archer_b"]["passes"] == []
     assert payload["archer_a"]["name"] == "Alice"
+    assert payload["archer_a"]["legend"] == "Alice (handicap 15)"
+    assert payload["archer_b"]["legend"] == "Bob (handicap 45)"
     assert payload["distribution_a"] and payload["distribution_b"]
 
 
@@ -817,7 +819,9 @@ def test_graph_view_match_page_chart_gains_the_scored_pass():
     turn_on_graph_view(client)
     save_match(client, 0, {0: 100, 1: 60})
     payload = embedded_chart_payload(client.get("/event/match/0").data.decode())
-    assert [(p["score_a"], p["score_b"]) for p in payload["passes"]] == [(100, 60)]
+    assert payload["archer_a"]["passes"] == [{"index": 0, "score": 100}]
+    assert payload["archer_b"]["passes"] == [{"index": 0, "score": 60}]
+    assert payload["current_pass"] == 0
 
 
 def test_match_page_with_graph_view_off_has_no_chart_or_maths_explanation():
