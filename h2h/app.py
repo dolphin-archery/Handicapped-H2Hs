@@ -367,6 +367,7 @@ def create_app(state: SessionState | None = None) -> Flask:
         error: str | None = None,
         form_scores: dict[int, str] | None = None,
         form_closest: list[int] | None = None,
+        show_tiebreak: bool = False,
     ):
         """One match of the current pass: score entry plus that match's results.
 
@@ -384,6 +385,10 @@ def create_app(state: SessionState | None = None) -> Flask:
         form_closest : list[int] | None, default=None
             The "closest to the middle" boxes to show ticked after a rejected
             submission; defaults to the archer a saved tie was decided for.
+        show_tiebreak : bool, default=False
+            Whether to show the "closest to the middle" boxes (a tie was just refused). They
+            are also shown whenever the saved result was decided by the tick, so it can be
+            corrected; otherwise they are not on the page.
 
         Returns
         -------
@@ -424,6 +429,8 @@ def create_app(state: SessionState | None = None) -> Flask:
             chart_data=chart_data,
             form_scores=form_scores,
             ticked_closest=form_closest,
+            show_tiebreak=show_tiebreak
+            or any(r.decided_by == "closest" for r in results),
             error=error,
         )
 
@@ -470,11 +477,19 @@ def create_app(state: SessionState | None = None) -> Flask:
                 "to the middle, then save again."
             )
             return event_match(
-                match_index, error=msg, form_scores=form_scores, form_closest=form_closest
+                match_index,
+                error=msg,
+                form_scores=form_scores,
+                form_closest=form_closest,
+                show_tiebreak=True,
             )
         except ValueError as exc:
             return event_match(
-                match_index, error=str(exc), form_scores=form_scores, form_closest=form_closest
+                match_index,
+                error=str(exc),
+                form_scores=form_scores,
+                form_closest=form_closest,
+                show_tiebreak=bool(form_closest),  # a ticked box means the boxes were on the page
             )
         return redirect(url_for("event_match", match_index=match_index))
 

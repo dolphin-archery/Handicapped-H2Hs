@@ -40,12 +40,13 @@
     </label>
   </div>
   {% endif %}
-  {% if b is not none %}
-  {# Used only if percentile and score are exactly tied; the script below keeps at most one ticked. #}
+  {% if b is not none and show_tiebreak %}
+  {# Shown only when percentile and score are tied (a refused save, or a saved tie-break); the
+     script at the end keeps at most one box ticked. #}
   <fieldset class="tiebreak">
     <legend>Tie-break: closest to the middle</legend>
-    <small>Only used if the percentile and the score are exactly tied. Tick the archer whose arrow
-      was closest to the middle of the target.</small>
+    <small>The percentile and the score are tied, so the pass is decided by whose arrow was closest to
+      the middle of the target. Tick that archer.</small>
     <div class="row">
       <label><input type="checkbox" name="closest" value="{{ a }}"
           {% if a in ticked_closest %}checked{% endif %}> {{ event.archers[a].name }}</label>
@@ -76,6 +77,7 @@
   <p>A bye match has no opponent to compare against, so there is no distribution chart.</p>
   {% endif %}
 {% endif %}
+{% if b is not none and show_tiebreak %}
 <script>
   // The two "closest to the middle" boxes are mutually exclusive: ticking one clears the other.
   const closestBoxes = document.querySelectorAll('input[name="closest"]');
@@ -88,4 +90,5 @@
     });
   });
 </script>
+{% endif %}
 {% endblock %}

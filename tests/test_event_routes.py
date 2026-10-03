@@ -1474,18 +1474,45 @@ def closest_boxes(html):
     return [(value, "checked" in attrs) for value, attrs in found]
 
 
-def test_paired_match_page_has_two_closest_boxes_and_the_note_but_a_bye_match_has_none():
-    """One box per archer, with the 'only used if tied' explanation; no boxes for a solo bye."""
+def has_no_tiebreak_ui(html):
+    """True if a page has no closest-to-the-middle boxes, fieldset or script."""
+    return (
+        'name="closest"' not in html
+        and "Tie-break" not in html
+        and "other.checked" not in html
+        and 'type="checkbox"' not in html
+    )
+
+
+def test_a_normal_match_page_has_no_tie_break_boxes_text_or_script():
+    """Feedback 6: fresh, and saved by percentile or by score, the page shows nothing about a tie-break."""
     client, state = make_client_and_state()
     start_tied_pair_event(client)
-    page = client.get("/event/match/0").data.decode()
-    assert closest_boxes(page) == [("0", False), ("1", False)]
-    assert "Only used if the percentile and the score are exactly tied" in page
-    assert page.count('type="checkbox"') == 2
+    fresh = client.get("/event/match/0").data.decode()
+    assert has_no_tiebreak_ui(fresh) and closest_boxes(fresh) == []
+    save_match(client, 0, {0: 100, 1: 60})
+    saved = client.get("/event/match/0").data.decode()
+    assert has_no_tiebreak_ui(saved) and closest_boxes(saved) == []
 
+
+def test_a_bye_match_page_never_has_the_boxes_even_after_a_refused_looking_post():
+    """A solo bye has nothing to tie with."""
     client, state = make_client_and_state()
     start_three_archer_event(client, shoot_byes=True)
-    assert 'type="checkbox"' not in client.get("/event/match/1").data.decode()
+    assert has_no_tiebreak_ui(client.get("/event/match/1").data.decode())
+    resp = client.post("/event/match/1", data={"score_%d" % state.event.schedule[0].bye: "abc", "closest": "0"})
+    assert has_no_tiebreak_ui(resp.data.decode())
+
+
+def test_the_refused_tie_page_shows_the_two_boxes_the_explanation_and_the_script():
+    """The boxes appear exactly when the tie is found, on the page that asks for the tick."""
+    client, state = make_client_and_state()
+    start_tied_pair_event(client)
+    page = save_match(client, 0, {0: 90, 1: 90}).data.decode()
+    assert closest_boxes(page) == [("0", False), ("1", False)]
+    assert "The percentile and the score are tied" in page
+    assert page.count('type="checkbox"') == 2
+    assert 'input[name="closest"]' in page and "other.checked = false" in page
 
 
 def test_a_tie_without_a_tick_is_refused_with_a_message_and_the_typed_scores_kept():
@@ -1547,7 +1574,7 @@ def test_an_unneeded_tick_is_ignored_and_not_shown_afterwards():
     page = client.get("/event/match/0").data.decode()
     _, rows = match_page_table(page)
     assert [row[4] for row in rows] == ["Yes", "No"]  # the better score won, not the tick
-    assert closest_boxes(page) == [("0", False), ("1", False)]
+    assert closest_boxes(page) == []  # no tie, so no boxes
     assert "decided by closest" not in page
 
 
@@ -1561,7 +1588,7 @@ def test_editing_a_decided_by_closest_match_to_untied_scores_clears_the_note():
     _, rows = match_page_table(page)
     assert [row[4] for row in rows] == ["No", "Yes"]
     assert "decided by closest" not in page
-    assert closest_boxes(page) == [("0", False), ("1", False)]
+    assert closest_boxes(page) == []  # the tie is gone, so are the boxes
 
 
 def test_editing_a_decided_match_back_to_a_tie_without_a_tick_keeps_the_saved_result():
@@ -1584,13 +1611,43 @@ def test_the_tie_message_survives_a_rejected_tie_that_had_a_wrong_tick():
     assert closest_boxes(page) == [("0", True), ("1", True)]  # shown as submitted
 
 
-def test_the_match_page_script_makes_the_boxes_exclusive():
-    """The page carries the small script that clears the other box (browser-checked separately)."""
+def test_a_saved_tie_break_match_shows_the_boxes_ticked_so_it_can_be_corrected():
+    """Reopened, a match decided by the tick has its two boxes (the winner's ticked) and the script."""
     client, state = make_client_and_state()
     start_tied_pair_event(client)
+    save_match(client, 0, {0: 90, 1: 90}, closest=1)
     page = client.get("/event/match/0").data.decode()
-    assert "input[name=\"closest\"]" in page
+    assert closest_boxes(page) == [("0", False), ("1", True)]
     assert "other.checked = false" in page
+
+
+def test_a_refused_re_save_into_a_tie_shows_the_boxes_over_a_percentile_decided_match():
+    """Editing a normal match to an exact tie brings the boxes up, and the earlier result stays."""
+    client, state = make_client_and_state()
+    start_tied_pair_event(client)
+    save_match(client, 0, {0: 100, 1: 60})
+    assert closest_boxes(client.get("/event/match/0").data.decode()) == []
+    page = save_match(client, 0, {0: 90, 1: 90}).data.decode()
+    assert closest_boxes(page) == [("0", False), ("1", False)]
+    assert [r.score for r in state.event.results] == [100, 60]
+
+
+def test_a_forced_tick_with_no_tie_is_ignored_and_the_next_page_has_no_boxes():
+    """A tick that is not needed is accepted, not stored, and not shown."""
+    client, state = make_client_and_state()
+    start_tied_pair_event(client)
+    assert save_match(client, 0, {0: 100, 1: 60}, closest=0).status_code == 302
+    assert closest_boxes(client.get("/event/match/0").data.decode()) == []
+
+
+def test_both_ticked_is_rejected_with_the_boxes_shown_as_submitted():
+    """The one-archer message, no save, and the boxes visible (they must have been on the page)."""
+    client, state = make_client_and_state()
+    start_tied_pair_event(client)
+    resp = client.post("/event/match/0", data={"score_0": "100", "score_1": "60", "closest": ["0", "1"]})
+    page = resp.data.decode()
+    assert "Tick only one archer" in page and closest_boxes(page) == [("0", True), ("1", True)]
+    assert state.event.results == []
 
 
 # --- Per-target maximum score on the match page (Feedback 5) ------------------------

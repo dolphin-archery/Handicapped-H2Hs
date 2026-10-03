@@ -1777,3 +1777,22 @@ column), two new tests (the percentile rule on the match page agreeing with the 
 table), a payload test replacing the legend-label tests, and the tie-break tests' column index.
 One of my own prd test lines was wrong (the overview also has a "Winner" column, so that heading is
 not unique to the partial); the check now uses "Handicap | Winner" together. Suite: 815 passed.
+
+### Task 59: Tie-break boxes only when percentile and score tie (complete apart from the browser check)
+The "closest to the middle" fieldset, its explanation and the exclusivity script are now rendered
+only when `show_tiebreak` is true: after a save was refused because of a tie (the page asks for
+the tick, keeps the typed scores and shows the two boxes, with the text "The percentile and the
+score are tied, so the pass is decided by whose arrow was closest to the middle ... Tick that
+archer."), after a rejected request that had a box ticked (e.g. both ticked, shown as submitted),
+and whenever the saved result was decided by "closest" (so it can be corrected, with the winner's
+box ticked). On any other page - a fresh match, one saved by percentile or score, a bye match, an
+invalid-score error - there is no checkbox, no tie-break text and no script. A forced tick with no
+tie is still accepted, ignored and not stored. A tie can only be known once the scores are saved,
+so the scorer cannot pre-tick; it costs one extra click in the rare tie (Assumption 43). Tests: the
+"always shown" tests became "never shown" ones (fresh and saved pages, bye page, an invalid score
+on a bye) plus the cases that bring the boxes back (refused tie with explanation and script, a
+saved tie-break match with the winner ticked, a refused re-save into a tie over a percentile-decided
+match keeping the earlier result, both ticked), and the existing note/edit tests now expect no
+boxes after the tie is gone. Suite: 820 passed. The real-browser check (no boxes on a normal page,
+the boxes and message on an exact tie, exclusivity, correct saved result) is combined with the
+task 60 check below.
