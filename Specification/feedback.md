@@ -62,16 +62,27 @@ Output for this stage - pairings initalised for full rotation over total arrows
     - Winner should be the name of the person who won that pass
     - Actions links to the score input pages, as currently but the table needs the heading.
 
-# Future Plans - DO NOT IMPLEMENT YET
+# Feedback 5
+
+## Graphs
+- Update axis limits if scores shot are outside current limits. Currently vertical lines are plotted outside of visible area of graph
+- Show previous passes tick box is not making more lines appear in later passes as it should - is it only plotting from previous matches with the same opponent pairing as the current matches at present? If so change it to show all scores that archer has shot so far, irrespective of which opponent they were against. Label each with pass number
+- Remove base handicap from title of score input pages and instead add it to legend for score distributions in graph
+
+## Per Pass Tables
+- On score input pages have a single table for just the data that has been entered this pass, not including previous pairings as well. Columns of: Archer | Score | Percentile | Winner. Winner should tisplay yes/no not names as each row relates to an archer. Data from previous passes can be accessed via the per acher results described below.
+
+## Tie breaks
+- Percentile, then score if same percentile, then closest to the middle inspected by archers, inputted as a  pair of mutually exclusive tick boxes. This removes the random coin flip currently used in event of ties.
 
 ## Advanced mode
-- Different scoring method/face/distance per archer. All to have drop downs
-    - Scoring method and target face to have all options in `archeryutils`
-    - Distances to be input in meters or yards, toggle for which units
+- Different target face type/face size/distance shot per archer. All to have drop downs
+    - target face type and shape to have all options in `archeryutils`
+    - Distances to have same drop down as in simple mode, but specifying per archer
 
 ## Outputs
-- Overall leaderboard across all archers, 1 point for winning a match, 0 for loosing, draws never happen
-- Results print out to .pdf and .csv
+All outputs should be live up to the last completed pass with all results inputted.
+- Overall leaderboard across all archers, 1 point for winning a pass, 0 for loosing, draws never happen with above tiebreak logic
 - page of per archer results
     - for each archer have a heading of name, total score and handicap, table with columns as below and a row at the bottom of averages for numeric columns.
         - Pass, an integer
@@ -79,7 +90,16 @@ Output for this stage - pairings initalised for full rotation over total arrows
         - Score, score shot in that pass
         - Percentile, percentile in the archer's distribution of that score
         - Handicap, handicap of that score
+- Exports to PDF or CSV of all, using sensible formats
 
+## Handicap Calculator
+For the standalone tool add a choice of indoor or outdoor round, then display a drop down of all standard indoor/outdoor rounds accounding to the first input. Then the user can input their score and the handicap can be calculated. Keep current choice of specifying if a compound bow was used, only if an indoor round is selected.
+
+# Future Plans - DO NOT IMPLEMENT YET
+
+## Handicap Moving Average
+- For each pass take a weighted average of starting handicap and handicap of arrows shot today so far. Controlled by a parameter
+- Toggle on/off in event setup stage 1, if on set parameter
 
 
 ## UI and Deployment
