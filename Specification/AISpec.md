@@ -14,7 +14,10 @@ levels — without needing to give the weaker archer a flat handicap allowance,
 and without collecting arrow-by-arrow data during the match. As of
 `Specification/feedback.md` "Feedback 2", this covers a full event of any
 number of archers, who rotate through different opponents every `n_pass`
-arrows, rather than a fixed pair for the whole round.
+arrows, rather than a fixed pair for the whole round. As of `Specification/
+feedback.md` "Feedback 3", the event is driven one pass at a time: the scorer
+enters results on a separate page per match and explicitly advances the whole
+event to the next pass once every match in the current pass has been scored.
 
 ## 2. Statistical model (summary — see `Testing/idea_evaluation.md` for full derivation)
 
@@ -49,16 +52,20 @@ arrows, rather than a fixed pair for the whole round.
 ## 3. Scope
 
 - One "event" = a fixed number of archers (`n_archers`) shooting a single round of
-  `total_arrows` arrows each (default 60), split into rotations of `n_pass` arrows.
-  At the start of each rotation, archers are paired up per a pre-computed rotation
-  schedule (see §5.3), shoot one pass (`n_pass` arrows) against that opponent, then
-  rotate to a new opponent for the next rotation. This replaces the earlier "one
-  fixed pair for the whole round" design.
+  `total_arrows` arrows each (default 60), split into rotations of `n_pass` arrows
+  (a rotation is called a "pass" in the UI). At the start of each rotation, archers
+  are paired up per a pre-computed rotation schedule (see §5.3), shoot one pass
+  (`n_pass` arrows) against that opponent, then rotate to a new opponent for the
+  next rotation. This replaces the earlier "one fixed pair for the whole round"
+  design. With an odd `n_archers`, one archer per rotation has no opponent: the
+  scorer chooses at setup whether that archer shoots anyway or sits the pass out
+  (§5.1, §5.3).
 - The rotation schedule is a full round-robin (every archer paired with every other
   archer once, so far as the number of available rotations allows — see §5.3) rather
   than an arbitrary/manual pairing.
 - No arrow-by-arrow entry — only each archer's total score for each pass is entered
-  by the scorer, once per rotation for every archer active in it.
+  by the scorer, on that match's own page, for every archer shooting in the
+  rotation.
 - Results are tracked at two levels (see §5.4): each individual pass's winner, and
   an aggregated pairwise win/loss/draw result for every pair of archers who shared
   at least one rotation. There is **no** event-wide leaderboard/ranking across all
@@ -82,8 +89,6 @@ Out of scope for this version (may be revisited later):
   `Specification/feedback.md` "Future Feedback".
 - Multi-event history, brackets/elimination, or persistence across sessions.
 - User accounts / multi-scorer concurrent access.
-- A second "sit out entirely, with an additional rotation added later" bye mode —
-  see Assumption 14; only the "shoot alone, no comparison" bye mode is implemented.
 
 ## 4. Architecture
 
@@ -104,24 +109,29 @@ Out of scope for this version (may be revisited later):
 - **Rotation scheduling** (new, `h2h/rotation.py`): a standalone, Flask- and
   stats-independent module that generates a round-robin rotation schedule (the
   standard "circle method") for `n_archers` archer positions over a requested
-  number of rotations, handling an odd `n_archers` via a bye slot. Operates on
-  plain archer *indices* (`0..n_archers-1`), not `Archer` objects — Stage 1 (§5.1)
-  runs before archer identities are known.
+  number of rotations, handling an odd `n_archers` via a bye slot. For an odd
+  `n_archers` whose bye archers do not shoot (§5.3), a second entry point builds
+  the longer schedule that mode needs, in which sitting-out archers are recorded
+  per rotation. Operates on plain archer *indices* (`0..n_archers-1`), not
+  `Archer` objects — Stage 1 (§5.1) runs before archer identities are known.
 - **Event orchestration** (`h2h/models.py`'s `Event`, replacing the old fixed-pair
   `Match`): holds the archers, the rotation schedule, each archer's *own*
   pre-computed score distribution (dependent on their handicap **and** their
   resolved target per §5.2a — no longer a single shared target for a pair),
-  records each rotation's scores, and derives both per-pass results and
-  aggregated pairwise results (§5.5).
+  which rotation is currently being shot, records scores one *match* at a time,
+  advances to the next rotation on request once the current one is fully scored,
+  and derives both per-pass results and aggregated pairwise results (§5.4).
 - **Frontend:** server-rendered HTML pages (Flask templates) with plain forms/inputs
   and a small amount of JS for sliders and the basic/advanced toggle. No SPA
-  framework required.
-- **Charting (advanced mode only):** a single interactive chart per pair-with-shared-
-  history (`Chart.js`, loaded from a pinned CDN version), fed by a small JSON payload
+  framework required. The event itself is driven by an overview page (current
+  pass's matches) plus one page per match (§5.3).
+- **Charting (advanced mode only):** a single interactive chart per pair
+  (`Chart.js`, loaded from a pinned CDN version), fed by a small JSON payload
   built server-side (`h2h/chart_data.py`) and rendered client-side
   (`h2h/static/match_chart.js`). Both archers' distributions are drawn as one
   smoothed, filled curve each on a shared graph, with hover tooltips (per
-  Specification/feedback.md "Feedback 1"); see §5.6.
+  Specification/feedback.md "Feedback 1"); see §5.6. The chart appears on each
+  match page and on a read-only pair-history page.
 
 ## 5. Functional requirements
 
@@ -131,10 +141,15 @@ A single form, submitted once at the start of an event, collecting only
 event-wide settings (no archer identities yet):
 
 - `n_archers`: integer, >= 2.
-- If `n_archers` is odd: exactly one archer sits out ("has a bye") each rotation.
-  Per Assumption 14, the only implemented bye behaviour is "shoot alone, no
-  comparison" (§5.3) — there is no toggle for an alternative bye mode in this
-  version.
+- If `n_archers` is odd: exactly one archer has no opponent ("has a bye") each
+  rotation, so a **"Shoot byes?"** Yes/No option is shown (hidden for an even
+  `n_archers`; default Yes). Its meaning (§5.3):
+  - **Yes:** every archer shoots in every pass. The archer with the bye shoots a
+    "bye match" with no opponent; each archer gets one bye match per full
+    round-robin cycle.
+  - **No:** the archer with the bye sits that pass out and only matches with an
+    opponent are shot. This changes the total number of passes the event takes,
+    so that every archer still shoots `total_arrows` arrows.
 - `total_arrows`: integer, default 60.
 - `n_pass`: integer, default 12; must evenly divide `total_arrows` (the set of
   allowed values is recomputed as the divisors of whatever `total_arrows` is
@@ -145,14 +160,15 @@ event-wide settings (no archer identities yet):
   - If `outdoor`: no further choice in this version — a single fixed reference
     round is used for every archer regardless of bowstyle (see Assumption 12).
 - Submitting this stage computes and stores the full rotation schedule (§5.3)
-  for `total_arrows // n_pass` rotations over `n_archers` archer *positions*
-  (not yet bound to names/handicaps), then proceeds to Stage 2.
+  over `n_archers` archer *positions* (not yet bound to names/handicaps), then
+  proceeds to Stage 2. The schedule has `total_arrows // n_pass` rotations,
+  except when byes are not shot, where it has more (§5.3).
 
 ### 5.2 Stage 2: archer details
 
 - Exactly `n_archers` rows (fixed from Stage 1, not a generic fixed-size form),
-  each collecting: `name`, `bowstyle` (dropdown: Recurve / Compound / Barebow —
-  required, no longer optional free text), `handicap`.
+  each collecting: `name`, `bowstyle` (dropdown: Recurve / Compound / Barebow /
+  Longbow — required, no longer optional free text), `handicap`.
 - A standalone score-to-handicap conversion utility is also reachable from this
   stage (§5.5) — for working out a starting handicap, not tied to any archer's
   stored data.
@@ -168,11 +184,14 @@ event-wide settings (no archer identities yet):
 Each archer's target (and therefore their per-arrow PMF, per §2) is resolved
 from the event's round mode and that archer's bowstyle:
 
-| Round mode | Recurve / Barebow | Compound |
+| Round mode | Recurve / Barebow / Longbow | Compound |
 |---|---|---|
 | Indoor (Portsmouth) | `portsmouth` | `portsmouth_compound` |
 | Indoor (WA 18) | `wa18` | `wa18_compound` |
 | Outdoor | the single fixed outdoor target (Assumption 12), for every bowstyle |
+
+Longbow was added by Feedback 3 and is scored exactly like Recurve/Barebow
+(Assumption 18): it has no scoring-system variant of its own in scope here.
 
 The compound indoor targets have the same face diameter/distance as their
 non-compound counterparts, differing only in scoring system (`10_zone` vs
@@ -181,29 +200,60 @@ ships both as ready-made rounds. Arrow diameter (indoor vs outdoor) is already
 handled automatically by the existing `per_arrow_pmf` (it reads `target.indoor`),
 so no separate handling is needed for that part of the feedback.
 
-### 5.3 Rotation schedule & pass score entry
+### 5.3 Rotation schedule, bye handling & pass flow
+
+#### Schedule
 
 - The rotation schedule (built at the end of Stage 1) is a round-robin ("circle
   method") over `n_archers` positions: each rotation pairs up archers such that,
   across the full schedule, every archer faces every other archer at most once,
-  with one archer taking the bye in a rotation if `n_archers` is odd.
-  - If the number of available rotations (`total_arrows // n_pass`) is fewer
-    than a full round-robin needs, the schedule is truncated (not every pair
-    necessarily meets).
+  with one archer having no opponent (the "bye") in a rotation if `n_archers` is
+  odd.
+- With an even `n_archers`, or an odd `n_archers` with "Shoot byes?" = **Yes**:
+  every archer shoots in every rotation and the schedule has exactly
+  `total_arrows // n_pass` rotations.
+  - If that is fewer than a full round-robin needs, the schedule is truncated
+    (not every pair necessarily meets, and not every archer necessarily gets a
+    bye match).
   - If more rotations are available than a full round-robin needs, the schedule
     repeats from the start to fill the remaining rotations (Assumption 13).
-- For the current rotation, the UI shows one score-entry box per archer who is
-  paired that rotation (grouped by pair), plus a single box for the bye
-  archer's own score if there is one. All scores for the rotation are submitted
-  together.
-- Score validation is unchanged from Feedback 1 (§5.2 in the previous revision
-  of this document): whole numbers in `[0, n_pass * MAX_SCORE_PER_ARROW]`,
-  friendly errors, integer display.
-- On submission, the system computes and displays, per archer: their percentile
-  for that pass and (for paired archers) the pass winner and full-round-
-  equivalent handicap implied by their score. The bye archer's score and
-  percentile are recorded but produce no winner (no opponent to compare against).
-- The event advances to the next rotation once the current one is fully scored.
+  - With byes shot, the archer with the bye shoots a **bye match**: they shoot
+    the pass alone, and their score and percentile are recorded for their own
+    record but produce no winner (no opponent to compare against).
+- With an odd `n_archers` and "Shoot byes?" = **No:** the bye archer sits that
+  rotation out (no score entered, no match). Each archer must still shoot
+  `total_arrows // n_pass` passes, so more rotations are scheduled than that
+  (Assumption 15): the round-robin is run for as long as no archer would
+  exceed their passes, then one final catch-up rotation pairs up the archers
+  who are exactly one pass short, with everyone else sitting that rotation out.
+  The bye archer's seat in each rotation, and everyone not in the catch-up
+  rotation's matches, is recorded as "sitting out" and shown as such.
+
+#### Pass flow: overview page and per-match pages
+
+- The event is driven one **pass** (rotation) at a time. The **overview page**
+  shows the current pass ("Pass k of N"): every match in it (each pair, plus the
+  bye archer's solo match if byes are shot), the archers sitting out (if any),
+  whether each match has scores yet, and a link into each match.
+- Each match has its **own page**, reached from the overview, where the scorer
+  enters that match's scores: one score-entry box per archer in the match (a
+  single box for a bye match). Score validation is unchanged from Feedback 1:
+  whole numbers in `[0, n_pass * MAX_SCORE_PER_ARROW]`, friendly errors, integer
+  display. The page also shows the match's results so far (§5.4: every pass this
+  pair has shared, including the current one) and, in advanced mode, the pair's
+  distribution chart (§5.6), plus a link back to the overview. Scores for all
+  matches are **not** entered on one page at once.
+- On saving a match's scores, the system computes and displays, per archer: their
+  percentile for that pass, the full-round-equivalent handicap implied by their
+  score, and (for paired archers) the pass winner. Saving again while the pass
+  is still current replaces that match's earlier scores (Assumption 17); a pass
+  that has been advanced past is no longer editable.
+- The overview has an **Advance to next pass** button, enabled only once every
+  match in the current pass has scores (also enforced server-side). Pressing it
+  makes the next rotation current: the overview then shows the new pairings and
+  the match pages accept the next pass's scores. On the final pass there is no
+  advance button: once every match in it is scored, the event is complete and
+  the overview links to the final results.
 
 ### 5.4 Results tracking
 
@@ -221,11 +271,16 @@ Two levels are tracked, per the resolution of Feedback 2's "match model" questio
 ### 5.5 Static handicap conversion tool
 
 - A small, standalone page/widget (reachable from Stage 2 and at any other
-  time): pick a round (`Portsmouth` or `WA 18`), enter a full-round score,
-  and see the resulting AGB handicap to 1 decimal place.
-- Uses `archeryutils`'s real `Portsmouth`/`WA18` round objects directly (not a
-  synthetic partial round) via the same `handicap_from_score` rootfinder used
-  elsewhere. Purely a convenience calculator — its result is never stored
+  time): pick a round (`Portsmouth` or `WA 18`), say whether it was shot with a
+  compound bow (Yes/No, default No), enter a full-round score, and see the
+  resulting AGB handicap to 1 decimal place.
+- Uses `archeryutils`'s real round objects directly (not a synthetic partial
+  round) via the same `handicap_from_score` rootfinder used elsewhere: the plain
+  `Portsmouth`/`WA18` round for a non-compound bow, or the `portsmouth_compound`/
+  `wa18_compound` round (same face and distance, only the X-ring scores 10) for a
+  compound bow — the same indoor-compound distinction as §5.2a, and needed
+  because the same score implies a different handicap under the compound scoring
+  system. Purely a convenience calculator — its result is never stored
   against an archer or otherwise wired into the event.
 
 ### 5.6 Basic vs Advanced UI toggle
@@ -233,8 +288,10 @@ Two levels are tracked, per the resolution of Feedback 2's "match model" questio
 - A visible toggle switches between:
   - **Basic mode:** archer names/handicaps, score entry boxes, pass/pairwise
     winners and running scores only. No statistical detail shown.
-  - **Advanced mode:** everything in Basic mode, plus, for each pair with a
-    shared history, a single interactive chart showing both archers'
+  - **Advanced mode:** everything in Basic mode, plus, on each match page (for
+    the match's pair, with whatever history that pair has so far — none before
+    their first scored pass) and on the read-only pair-history page linked from
+    the results page, a single interactive chart showing both archers'
     handicap-implied pass-score distributions as smoothed, shaded curves on one
     shared graph (not discretised bars, and not two separate charts), trimmed
     to a sensible x-range rather than the full achievable score range.
@@ -244,7 +301,7 @@ Two levels are tracked, per the resolution of Feedback 2's "match model" questio
     reveal every previous pass's markers too (verified working in a real
     browser — see `Specification/logbook.md`). A short in-UI explanation of the
     underlying maths (summarising §2 above, not a full re-derivation) is also
-    shown.
+    shown. A bye match (one archer, no opponent) has no chart.
 - The toggle applies globally to the session and can be switched at any time
   without losing entered scores.
 - Any underscore-separated identifier shown in user-facing text (e.g. `n_pass`,
@@ -261,14 +318,20 @@ Two levels are tracked, per the resolution of Feedback 2's "match model" questio
 
 ## 6. Data model (indicative)
 
-- `Archer`: `name`, `handicap`, `bowstyle` (`Recurve` | `Compound` | `Barebow`,
-  affects target resolution per §5.2a when indoor).
+- `Archer`: `name`, `handicap`, `bowstyle` (`Recurve` | `Compound` | `Barebow` |
+  `Longbow`, affects target resolution per §5.2a when indoor).
 - `Rotation`: `pairs: list[tuple[int, int]]` (archer-index pairs facing off this
-  rotation), `bye: int | None` (archer index sitting out this rotation, if any).
+  rotation), `bye: int | None` (archer index shooting alone with no opponent this
+  rotation — only when byes are shot), `sitting_out: tuple[int, ...]` (archer
+  indices not shooting this rotation — only when byes are not shot). Its
+  `matches` are the pairs followed by the bye archer's solo match, if any.
 - `Event` (replaces the old fixed-pair `Match`): `archers: list[Archer]`,
   `total_arrows`, `n_pass`, `round_mode`, `schedule: list[Rotation]`,
-  `passes: list[RotationResult]` recorded so far. Precomputes each archer's own
-  score distribution once (handicap + resolved target), independent of opponent.
+  `current_rotation_index` (the pass being shot), and `results: list[PassResult]`
+  recorded so far. Precomputes each archer's own score distribution once
+  (handicap + resolved target), independent of opponent. Scores are recorded one
+  match at a time, and the event moves to the next rotation only on an explicit
+  advance once the current rotation's matches are all scored.
 - `PassResult`: per archer per rotation: `score`, `percentile`, `handicap`
   (equivalent), and (if paired) `winner`.
 - `PairwiseResult`: for a given pair of archer indices, the aggregated win/loss/
@@ -340,13 +403,55 @@ Two levels are tracked, per the resolution of Feedback 2's "match model" questio
     If it's larger, the schedule repeats from the start to fill the remaining
     rotations (so later rotations can repeat earlier pairings rather than being
     left unscheduled).
-14. **Bye handling:** `Specification/feedback.md` asked for a toggle between two
-    bye modes ("the bye match should be shot" vs. "sit pass out and have an
-    additional rotation"). Only the first was resolved during clarification
-    ("shoot alone, no comparison" — the archer still shoots that pass, it's
-    recorded for their own record, but produces no win/loss since there's no
-    opponent). The second mode's fairness mechanics (exactly how the "additional
-    rotation" compensates the affected archer) were not pinned down, so it is
-    **not implemented** in this version, and there is no toggle — every bye is
-    handled the "shoot alone" way. Flagged prominently (not just here) so this
-    can be corrected if the toggle itself was actually wanted now.
+14. ~~**Bye handling:** only the "shoot alone, no comparison" bye mode is
+    implemented; the "sit out + additional rotation" mode and its toggle are not
+    built.~~ Superseded by Feedback 3: both modes are now implemented behind a
+    "Shoot byes?" Yes/No option (§5.1, §5.3). The mechanics of "No" are
+    Assumption 15; "Yes" is the earlier behaviour (the bye archer shoots alone,
+    recorded but with no win/loss), unchanged.
+15. **Rotation count and catch-up rule when byes are not shot** (odd
+    `n_archers`, "Shoot byes?" = No). `Specification/feedback.md` Feedback 3 says
+    only that archers with byes sit that pass out and that "this will change the
+    total number of passes it takes to shoot the full round" — it does not say by
+    how much, so this rule is an assumption. Let `P = total_arrows // n_pass` be
+    the passes each archer must shoot. The round-robin is run (cycling, as in
+    Assumption 13) for the *largest* number of rotations `R` in which no archer
+    would shoot more than `P` passes, with each rotation's bye archer sitting
+    out. Byes are shared out as evenly as possible, so at that point every archer
+    has shot either `P` passes or `P - 1`. If any archer has shot only `P - 1`,
+    one final catch-up rotation is added in which just those archers are paired
+    with each other (preferring opponents they have not yet faced) and everyone
+    else sits out. Giving every archer *exactly* `P` passes is impossible when
+    `n_archers` and `P` are both odd (every rotation has an even number of
+    shooters, so the total number of passes shot is even, but `n_archers * P` is
+    odd), so if the number of short archers is odd, one archer who already has `P`
+    passes is added to the catch-up rotation as a partner and shoots `P + 1`.
+    Rationale: this is the smallest schedule in which every archer shoots at
+    least their full `total_arrows`, with the fewest "extra" passes. Example: 5
+    archers, `P = 5` -> 7 rotations (6 round-robin rotations plus one catch-up
+    rotation of two archers), 4 archers shoot 5 passes and 1 archer shoots 6.
+    Revisit if a different compensation is wanted.
+16. **"Shoot byes?" is shown only for an odd `n_archers`, and defaults to Yes** (the
+    previously implemented behaviour). For an even `n_archers` the option is
+    hidden and ignored, since there are no byes.
+17. **Scores can be corrected until the pass is advanced.** Feedback 3 does not
+    mention editing, but with scores now saved per match a mistyped score would
+    otherwise be unrecoverable short of resetting the whole event. Saving a match
+    again while its pass is current replaces its earlier results (recomputing
+    percentile, equivalent handicap and winner); once the event advances, that
+    pass is read-only.
+18. **Longbow is scored exactly like Recurve/Barebow** (the plain scoring system
+    for indoor rounds; the same fixed target outdoors), and like every bowstyle
+    does not affect `sigma_r` (Assumption 9). Only Compound has a distinct indoor
+    scoring variant.
+19. **The handicap calculator's compound option is a Yes/No checkbox**, not the full
+    bowstyle dropdown, because Feedback 3 only asks whether the round was shot
+    "with a compound bow or not" — Recurve, Barebow and Longbow all score
+    identically indoors.
+20. **Match pages are addressed by position in the current pass.** A match's URL
+    indexes the current rotation's matches (pairs first, then the bye archer's
+    solo match if byes are shot), so the same URL refers to a different match
+    after advancing. The overview page is the only supported entry point to them.
+21. **No separate "finish" step.** The event is complete as soon as every match in
+    the final pass has been scored (there is no advance button on the last pass),
+    rather than requiring an extra confirmation click.
