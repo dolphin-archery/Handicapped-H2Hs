@@ -340,8 +340,7 @@
       "The catch-up rotation (when present) contains only archers who were exactly one pass short, plus at most one already-complete partner.",
       "When the catch-up rotation can avoid repeating an earlier opponent it does (checked on a case where that is possible).",
       "An even n_archers returns exactly build_schedule(n_archers, passes_per_archer).",
-      "n_archers < 2 or passes_per_archer < 1 raises ValueError.",
-      "An Event can be constructed from a sit-out schedule, and rejects one that references an out-of-range archer index in sitting_out."
+      "n_archers < 2 or passes_per_archer < 1 raises ValueError."
     ],
     "completed": false
   },
@@ -372,7 +371,8 @@
       "is_rotation_complete is False until every match of the rotation has results and True afterwards.",
       "advance() raises ValueError while the current rotation is incomplete, and on the final rotation; otherwise it increments current_rotation_index and subsequent record_match calls apply to the new rotation.",
       "After advancing, the earlier rotation's results cannot be altered via record_match.",
-      "record_rotation still behaves as before (existing test_event.py tests pass unchanged)."
+      "record_rotation still behaves as before (existing test_event.py tests pass unchanged).",
+      "An Event can be constructed from a sit-out schedule, and rejects one that references an out-of-range archer index in sitting_out."
     ],
     "completed": false
   },
