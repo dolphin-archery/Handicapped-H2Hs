@@ -1,0 +1,21 @@
+{# A pass results table. `groups` is a list of lists of outputs.PassTableRow, one list per match:
+   a match's rows sit together and a thick double line (see base.html) separates one match from the
+   next, so it is clear who was paired with whom. #}
+<table>
+  <thead>
+    <tr><th>Archer</th><th>Score</th><th>Percentile</th><th>Handicap</th><th>Winner</th></tr>
+  </thead>
+  {% for group in groups %}
+  <tbody class="match">
+    {% for row in group %}
+    <tr>
+      <td>{{ row.archer }}</td>
+      <td>{{ row.score }}</td>
+      <td>{{ row.percentile }}</td>
+      <td>{{ row.handicap }}</td>
+      <td>{{ row.winner }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% endfor %}
+</table>

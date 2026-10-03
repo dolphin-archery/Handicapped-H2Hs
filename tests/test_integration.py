@@ -683,7 +683,8 @@ def test_chart_shows_earlier_scores_of_a_pair_that_has_not_met_and_covers_extrem
     assert shown == expected and len(expected) == 2
     assert payload["current_pass"] == 1
     assert all(payload["x_min"] <= score <= payload["x_max"] for score in shown)
-    assert payload["archer_a"]["legend"].endswith("(handicap %g)" % event.archers[a].handicap)
+    assert payload["archer_a"]["name"] == event.archers[a].name
+    assert "legend" not in payload["archer_a"]
 
 
 def test_calculator_flow_over_http_for_an_indoor_compound_and_an_outdoor_round():

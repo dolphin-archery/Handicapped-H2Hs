@@ -1758,3 +1758,22 @@ many decimals for those (as the user's rule says), so they now compute the expec
 `percentile_pair_text`. Tests: 16 unit tests (differing pairs unchanged, places added, rounding,
 ties staying at one place, tiny pairs, the 20-place limit and a sweep that never raises, row
 building incl. zero score and bye, match order) and two overview route tests. Suite: 816 passed.
+
+### Task 58: Match page - names only, a Handicap column, the shared pass table (complete)
+The match page no longer shows a handicap beside an archer: the score-box labels read "<name> score
+(0-<max>):" (the heading was already names only), the chart's curves are named by the archer's name,
+and the chart payload lost its `legend` and `handicap` keys (nothing in the page or its JSON now
+contains "handicap"). The This pass table gained a Handicap column (the handicap implied by the
+pass score, one decimal place, "-" for 0) between Percentile and Winner, so it reads Archer | Score
+| Percentile | Handicap | Winner, and it is now rendered by a new shared partial `_pass_table.html`
+that takes groups of `PassTableRow` (one group per match; a `tbody.match` per group, with a CSS rule in
+`base.html` that gives every group after the first a 3px double top border) so the Results page can
+reuse it in task 60. Percentiles in the table follow the display rule and match the overview's text
+for the same match. The old `named` handicap macro is gone. Tests: the heading/label/legend tests
+became the opposite checks (names only before and after saving, with graph view on and no
+`"handicap"` in the payload, the chart script naming curves by name, a bye match), the table tests
+read the five columns (rows equal to the Event's results, handicap '-' for 0, Winner in the last
+column), two new tests (the percentile rule on the match page agreeing with the overview, a bye
+table), a payload test replacing the legend-label tests, and the tie-break tests' column index.
+One of my own prd test lines was wrong (the overview also has a "Winner" column, so that heading is
+not unique to the partial); the check now uses "Handicap | Winner" together. Suite: 815 passed.

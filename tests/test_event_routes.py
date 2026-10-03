@@ -699,7 +699,7 @@ def match_page_table(html):
 
 
 def test_match_page_has_no_results_table_before_scoring_and_one_this_pass_table_after():
-    """After saving, the page has one table: Archer | Score | Percentile | Winner."""
+    """After saving, the page has one table: Archer | Score | Percentile | Handicap | Winner."""
     client = make_client()
     start_two_archer_event(client)
     before = client.get("/event/match/0").data.decode()
@@ -709,27 +709,31 @@ def test_match_page_has_no_results_table_before_scoring_and_one_this_pass_table_
     save_match(client, 0, {0: 120, 1: 0})
     page = client.get("/event/match/0").data.decode()
     headings, rows = match_page_table(page)
-    assert headings == ["Archer", "Score", "Percentile", "Winner"]
+    assert headings == ["Archer", "Score", "Percentile", "Handicap", "Winner"]
     assert [row[0] for row in rows] == ["Alice", "Bob"]
     assert [row[1] for row in rows] == ["120", "0"]
-    assert [row[3] for row in rows] == ["Yes", "No"]
+    assert [row[4] for row in rows] == ["Yes", "No"]
     assert all(re.fullmatch(r"\d+\.\d%", row[2]) for row in rows)
+    assert rows[0][3] != "-" and rows[1][3] == "-"  # a score of 0 has no handicap
     assert "Results so far" not in page
 
 
 def test_match_page_table_agrees_with_the_events_recorded_results():
-    """Score, percentile and winner in the table are the Event's own, for several score pairs."""
+    """Score, percentile, handicap and winner in the table are the Event's own, for several score pairs."""
     for scores in ({0: 100, 1: 60}, {0: 60, 1: 100}, {0: 118, 1: 119}, {0: 0, 1: 1}):
         client, state = make_client_and_state()
         start_two_archer_event(client)
         save_match(client, 0, scores)
         _, rows = match_page_table(client.get("/event/match/0").data.decode())
         results = {r.archer_index: r for r in state.event.results}
+        texts = percentile_pair_text(results[0].percentile, results[1].percentile)
         for index, row in enumerate(rows):
             assert row[0] == state.event.archers[index].name
             assert row[1] == str(results[index].score)
-            assert row[2] == f"{results[index].percentile * 100:.1f}%"
-            assert row[3] == ("Yes" if results[index].won else "No")
+            assert row[2] == texts[index]
+            handicap = results[index].handicap
+            assert row[3] == ("-" if handicap is None else f"{handicap:.1f}")
+            assert row[4] == ("Yes" if results[index].won else "No")
 
 
 def test_match_page_shows_only_this_pass_not_earlier_passes_of_the_same_pair():
@@ -792,8 +796,8 @@ def test_graph_view_match_page_renders_chart_even_before_any_scoring():
     payload = embedded_chart_payload(page)
     assert payload["archer_a"]["passes"] == [] and payload["archer_b"]["passes"] == []
     assert payload["archer_a"]["name"] == "Alice"
-    assert payload["archer_a"]["legend"] == "Alice (handicap 15)"
-    assert payload["archer_b"]["legend"] == "Bob (handicap 45)"
+    assert "legend" not in payload["archer_a"] and "handicap" not in payload["archer_a"]
+    assert payload["archer_b"]["name"] == "Bob" and "handicap" not in payload["archer_b"]
     assert payload["distribution_a"] and payload["distribution_b"]
 
 
@@ -840,6 +844,7 @@ def test_chart_maths_and_results_table_markup_is_not_duplicated_across_templates
         ("How the winner is decided", "_pair_chart.html"),
         ("window.MATCH_CHART_DATA", "_pair_chart.html"),
         ("<th>Equiv. handicap</th>", "_results_table.html"),
+        ("<th>Handicap</th><th>Winner</th>", "_pass_table.html"),
     ):
         assert [name for name, src in sources.items() if needle in src] == [owner]
 
@@ -939,45 +944,37 @@ def heading(html):
     return " ".join(re.sub(r"<[^>]+>", " ", re.search(r"<h1>(.*?)</h1>", html, re.S).group(1)).split())
 
 
-def test_match_page_heading_has_no_handicaps_but_the_score_labels_do():
-    """Feedback 5: names only in the heading; each handicap stays beside its score box."""
+def test_match_page_shows_names_only_no_handicap_beside_an_archer_before_or_after_scoring():
+    """Feedback 6: the heading, the score labels and the chart legend carry no handicap."""
     client = make_client()
     start_event_with_handicaps(client, (15, 22.5))
+    client.post("/graph-view", data={"next": "/event/match/0"})
     for expected_state in ("before", "after"):
         page = client.get("/event/match/0").data.decode()
         assert heading(page) == "Alice vs Bob", expected_state
-        assert "Alice (handicap 15) score" in page
-        assert "Bob (handicap 22.5) score" in page
+        assert "Alice score (0-120):" in page and "Bob score (0-120):" in page
+        assert "(handicap " not in page and "handicap 15" not in page and "handicap 22" not in page
+        assert '"handicap"' not in page  # nor in the chart's payload
         save_match(client, 0, {0: 100, 1: 60})
 
 
-def test_whole_number_handicaps_have_no_trailing_zero_and_decimals_are_in_full():
-    """15.0 shows as 15, while 22.5 and 7.25 keep their decimals."""
-    client = make_client()
-    start_event_with_handicaps(client, (15.0, 7.25))
-    page = client.get("/event/match/0").data.decode()
-    assert "handicap 15)" in page and "handicap 15.0" not in page
-    assert "handicap 7.25)" in page
+def test_the_chart_script_names_each_curve_by_the_archer_name_alone():
+    """The legend text comes from the payload's name; no handicap is composed into it."""
+    script = (Path(__file__).resolve().parent.parent / "h2h" / "static" / "match_chart.js").read_text(encoding="utf-8")
+    assert "curveDataset(data.distribution_a, COLOR_A, data.archer_a.name)" in script
+    assert "curveDataset(data.distribution_b, COLOR_B, data.archer_b.name)" in script
+    assert ".legend" not in script and "handicap)" not in script
 
 
-def test_handicaps_are_attached_to_the_right_archers():
-    """With very different handicaps, each appears against its own archer's name."""
-    client = make_client()
-    start_event_with_handicaps(client, (5, 120))
-    page = client.get("/event/match/0").data.decode()
-    assert "Alice (handicap 5)" in page and "Bob (handicap 120)" in page
-    assert "Alice (handicap 120)" not in page and "Bob (handicap 5)" not in page
-
-
-def test_bye_match_page_shows_the_bye_archers_handicap():
-    """A bye match shows its single archer's handicap."""
+def test_bye_match_page_has_the_bye_archers_name_only():
+    """A bye match shows its single archer's name, with no handicap."""
     client, state = make_client_and_state()
     start_three_archer_event(client, shoot_byes=True)
     bye_archer = state.event.schedule[0].bye
     expected = state.event.archers[bye_archer]
     page = client.get("/event/match/1").data.decode()
     assert heading(page) == f"{expected.name} - bye, no opponent"
-    assert f"{expected.name} (handicap {expected.handicap:g}) score" in page
+    assert f"{expected.name} score (0-" in page and "handicap)" not in page
 
 
 # --- Simplified "How the winner is decided" text (Feedback 4) ----------------
@@ -1513,7 +1510,7 @@ def test_a_tie_with_a_tick_is_saved_and_decided_for_the_ticked_archer():
 
     page = client.get("/event/match/0").data.decode()
     _, rows = match_page_table(page)
-    assert [row[3] for row in rows] == ["No", "Yes"]
+    assert [row[4] for row in rows] == ["No", "Yes"]
     assert "Percentile and score were tied; decided by closest to the middle." in page
     assert closest_boxes(page) == [("0", False), ("1", True)]
     _, overview = overview_table(client.get("/event/rotation").data.decode())
@@ -1549,7 +1546,7 @@ def test_an_unneeded_tick_is_ignored_and_not_shown_afterwards():
     assert save_match(client, 0, {0: 100, 1: 60}, closest=1).status_code == 302
     page = client.get("/event/match/0").data.decode()
     _, rows = match_page_table(page)
-    assert [row[3] for row in rows] == ["Yes", "No"]  # the better score won, not the tick
+    assert [row[4] for row in rows] == ["Yes", "No"]  # the better score won, not the tick
     assert closest_boxes(page) == [("0", False), ("1", False)]
     assert "decided by closest" not in page
 
@@ -1562,7 +1559,7 @@ def test_editing_a_decided_by_closest_match_to_untied_scores_clears_the_note():
     save_match(client, 0, {0: 90, 1: 95})
     page = client.get("/event/match/0").data.decode()
     _, rows = match_page_table(page)
-    assert [row[3] for row in rows] == ["No", "Yes"]
+    assert [row[4] for row in rows] == ["No", "Yes"]
     assert "decided by closest" not in page
     assert closest_boxes(page) == [("0", False), ("1", False)]
 
@@ -1614,8 +1611,8 @@ def test_match_page_score_boxes_use_each_archers_own_maximum():
     client = create_app(state=state).test_client()
 
     page = client.get("/event/match/0").data.decode()
-    assert "Fiver (handicap 30) score (0-108)" in page
-    assert "Tenner (handicap 30) score (0-120)" in page
+    assert "Fiver score (0-108)" in page
+    assert "Tenner score (0-120)" in page
     assert 'max="108" name="score_0"' in page and 'max="120" name="score_1"' in page
 
     too_high = save_match(client, 0, {0: 109, 1: 100})
@@ -2020,3 +2017,27 @@ def test_overview_percentiles_keep_one_place_when_they_already_differ():
     save_match(client, 0, {0: 119, 1: 100})
     _, rows = overview_table(client.get("/event/rotation").data.decode())
     assert re.fullmatch(r"\d+\.\d% - \d+\.\d%", rows[0][2])
+
+
+def test_match_page_percentiles_follow_the_display_rule_and_agree_with_the_overview():
+    """Two very low percentiles gain places in the This pass table, the same as in the overview."""
+    client, state = make_client_and_state()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 100, 1: 90})
+    _, rows = match_page_table(client.get("/event/match/0").data.decode())
+    texts = [row[2] for row in rows]
+    assert texts[0] != texts[1] and all(len(t.split(".")[1]) > 2 for t in texts)
+    _, overview = overview_table(client.get("/event/rotation").data.decode())
+    assert overview[0][2] == " - ".join(texts)
+
+
+def test_bye_match_table_has_one_row_with_a_handicap_and_no_winner():
+    """A solo match: percentile to one decimal place, its handicap, and '-' for the winner."""
+    client, state = make_client_and_state()
+    start_three_archer_event(client, shoot_byes=True)
+    bye_archer = state.event.schedule[0].bye
+    save_match(client, 1, {bye_archer: 100})
+    headings, rows = match_page_table(client.get("/event/match/1").data.decode())
+    assert headings == ["Archer", "Score", "Percentile", "Handicap", "Winner"]
+    assert len(rows) == 1 and rows[0][4] == "-" and rows[0][3] != "-"
+    assert re.fullmatch(r"\d+\.\d%", rows[0][2])

@@ -809,10 +809,10 @@
       "The This pass table's headings are exactly Archer, Score, Percentile, Handicap, Winner; each row's Handicap equals the Event's recorded equivalent handicap to one decimal place ('-' for a score of 0).",
       "A paired match whose percentiles both show 0.0% at one decimal place shows more places in the table (display rule), and the same two texts appear in the overview row.",
       "A bye match shows one row with percentile to one decimal place, a handicap and Winner '-'.",
-      "The table is produced by a partial shared with the Results page (the string '<th>Winner</th>' appears in exactly one template file).",
+      "The table is produced by a partial shared with the Results page (the heading markup '<th>Handicap</th><th>Winner</th>' appears in exactly one template file).",
       "The existing handicap-on-the-match-page tests are replaced by the opposite checks and the full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 59,

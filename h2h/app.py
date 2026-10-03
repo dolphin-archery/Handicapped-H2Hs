@@ -420,6 +420,7 @@ def create_app(state: SessionState | None = None) -> Flask:
             a=a,
             b=b,
             results=results,
+            pass_rows=outputs.pass_table_rows(event, results),
             chart_data=chart_data,
             form_scores=form_scores,
             ticked_closest=form_closest,

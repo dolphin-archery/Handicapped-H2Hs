@@ -188,16 +188,14 @@ def test_each_curve_has_a_point_at_every_whole_score_in_the_final_range_zero_whe
     assert any(p["y"] > 0 for p in data["distribution_a"])
 
 
-@pytest.mark.parametrize(
-    ("handicap", "label"), [(22.5, "Alice (handicap 22.5)"), (15.0, "Alice (handicap 15)"), (7.25, "Alice (handicap 7.25)")]
-)
-def test_legend_label_is_name_and_handicap_as_entered(handicap, label):
-    """Whole handicaps have no trailing .0; decimals are kept."""
-    archers = [Archer("Alice", handicap, Bowstyle.RECURVE), Archer("Bob", 40, Bowstyle.RECURVE)]
+def test_payload_names_each_archer_without_a_handicap_or_legend_label():
+    """Feedback 6: the chart carries names only (the legend is the archer's name)."""
+    archers = [Archer("Alice", 22.5, Bowstyle.RECURVE), Archer("Bob", 40, Bowstyle.RECURVE)]
     event = Event(archers, 12, PORTSMOUTH, build_schedule(2, 1))
     data = build_pair_chart_data(event, 0, 1)
-    assert data["archer_a"]["legend"] == label
-    assert data["archer_b"]["legend"] == "Bob (handicap 40)"
+    assert set(data["archer_a"]) == {"name", "passes"} and data["archer_a"]["name"] == "Alice"
+    assert set(data["archer_b"]) == {"name", "passes"} and data["archer_b"]["name"] == "Bob"
+    assert "handicap" not in json.dumps(data)
 
 
 def test_pair_of_archers_on_different_faces_gets_one_shared_range_within_the_larger_maximum():
