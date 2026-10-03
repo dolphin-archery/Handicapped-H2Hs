@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .models import Archer, Event, RoundMode
+from .models import DEFAULT_TARGET_SETUP, Archer, Event, TargetSetup
 from .rotation import Rotation, build_schedule, build_sit_out_schedule
 
 
@@ -25,8 +25,9 @@ class SessionState:
         feedback.md "Feedback 4" renamed the old advanced mode to graph view).
     n_pass : int
         Arrows per rotation's pass.
-    n_archers, total_arrows, round_mode : int | int | RoundMode
-        Stage 1 event configuration.
+    n_archers, total_arrows, target_setup : int | int | TargetSetup
+        Stage 1 event configuration (`target_setup` is the shared distance
+        and face size).
     shoot_byes : bool
         For an odd `n_archers`: whether the archer with the bye shoots alone
         (True) or sits the pass out, adding passes to the event (False).
@@ -43,7 +44,7 @@ class SessionState:
 
     n_archers: int | None = None
     total_arrows: int = 60
-    round_mode: RoundMode = RoundMode.INDOOR_PORTSMOUTH
+    target_setup: TargetSetup = DEFAULT_TARGET_SETUP
     shoot_byes: bool = True
     schedule: list[Rotation] | None = None
     event: Event | None = None
@@ -53,7 +54,7 @@ class SessionState:
         n_archers: int,
         total_arrows: int,
         n_pass: int,
-        round_mode: RoundMode,
+        target_setup: TargetSetup,
         shoot_byes: bool = True,
     ) -> None:
         """Validate event configuration and build the rotation schedule.
@@ -67,8 +68,8 @@ class SessionState:
             `n_pass`.
         n_pass : int
             Arrows per rotation's pass.
-        round_mode : RoundMode
-            The event's round mode.
+        target_setup : TargetSetup
+            The shared shooting distance and target face size.
         shoot_byes : bool, default=True
             Whether the bye archer shoots alone (True) or sits out (False)
             when `n_archers` is odd; ignored for an even `n_archers`. Sitting
@@ -101,7 +102,7 @@ class SessionState:
         self.n_archers = n_archers
         self.total_arrows = total_arrows
         self.n_pass = n_pass
-        self.round_mode = round_mode
+        self.target_setup = target_setup
         self.shoot_byes = shoot_byes
         self.schedule = new_schedule
         self.event = None  # discard any previous event
@@ -128,7 +129,7 @@ class SessionState:
             msg = f"Expected {self.n_archers} archers, got {len(archers)}."
             raise ValueError(msg)
 
-        self.event = Event(archers, self.n_pass, self.round_mode, self.schedule)
+        self.event = Event(archers, self.n_pass, self.target_setup, self.schedule)
 
     def toggle_graph_view(self) -> None:
         """Switch graph view (charts and explanation) on or off."""
@@ -140,7 +141,7 @@ class SessionState:
         self.n_pass = 12
         self.n_archers = None
         self.total_arrows = 60
-        self.round_mode = RoundMode.INDOOR_PORTSMOUTH
+        self.target_setup = DEFAULT_TARGET_SETUP
         self.shoot_byes = True
         self.schedule = None
         self.event = None

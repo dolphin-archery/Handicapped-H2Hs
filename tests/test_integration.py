@@ -8,10 +8,17 @@ app/state sees no prior event.
 """
 
 from h2h.app import create_app
-from h2h.models import Bowstyle, RoundMode, resolve_target
+from h2h.models import Bowstyle, resolve_target
 from h2h.state import SessionState
 
-from .helpers import pass_position, play_whole_event, save_match, score_current_pass
+from .helpers import (
+    OUTDOOR_70M,
+    PORTSMOUTH,
+    pass_position,
+    play_whole_event,
+    save_match,
+    score_current_pass,
+)
 
 
 def make_client():
@@ -97,8 +104,8 @@ def test_odd_n_archers_each_rotation_has_exactly_one_bye():
 
 def test_indoor_mode_compound_archer_uses_compound_target():
     """Indoor mode: a Compound archer's distribution must use the compound scoring target."""
-    compound_target = resolve_target(RoundMode.INDOOR_PORTSMOUTH, Bowstyle.COMPOUND)
-    recurve_target = resolve_target(RoundMode.INDOOR_PORTSMOUTH, Bowstyle.RECURVE)
+    compound_target = resolve_target(PORTSMOUTH, Bowstyle.COMPOUND)
+    recurve_target = resolve_target(PORTSMOUTH, Bowstyle.RECURVE)
     assert compound_target.scoring_system == "10_zone_compound"
     assert recurve_target.scoring_system == "10_zone"
 
@@ -115,9 +122,9 @@ def test_indoor_mode_compound_archer_uses_compound_target():
 def test_outdoor_mode_ignores_bowstyle_for_target():
     """Outdoor mode: every bowstyle resolves to the same target."""
     for bowstyle in Bowstyle:
-        target = resolve_target(RoundMode.OUTDOOR, bowstyle)
+        target = resolve_target(OUTDOOR_70M, bowstyle)
         assert target.scoring_system == "10_zone"
-        assert target.distance == resolve_target(RoundMode.OUTDOOR, Bowstyle.RECURVE).distance
+        assert target.distance == resolve_target(OUTDOOR_70M, Bowstyle.RECURVE).distance
 
 
 def test_fresh_app_state_sees_no_prior_event():

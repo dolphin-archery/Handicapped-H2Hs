@@ -2,26 +2,28 @@
 
 import pytest
 
-from h2h.models import Archer, Bowstyle, RoundMode
+from h2h.models import DEFAULT_TARGET_SETUP, METRE, Archer, Bowstyle, TargetSetup
 from h2h.state import SessionState
+
+from .helpers import OUTDOOR_70M, PORTSMOUTH, WA18
 
 
 def test_start_stage1_builds_schedule():
     """A valid Stage 1 config builds and stores a rotation schedule."""
     state = SessionState()
-    state.start_stage1(4, 60, 12, RoundMode.INDOOR_PORTSMOUTH)
+    state.start_stage1(4, 60, 12, PORTSMOUTH)
     assert state.schedule is not None
     assert len(state.schedule) == 60 // 12
     assert state.n_archers == 4
     assert state.n_pass == 12
-    assert state.round_mode == RoundMode.INDOOR_PORTSMOUTH
+    assert state.target_setup == PORTSMOUTH
 
 
 def test_start_stage1_rejects_too_few_archers():
     """n_archers < 2 must be rejected without touching state."""
     state = SessionState()
     with pytest.raises(ValueError):
-        state.start_stage1(1, 60, 12, RoundMode.INDOOR_PORTSMOUTH)
+        state.start_stage1(1, 60, 12, PORTSMOUTH)
     assert state.schedule is None
 
 
@@ -29,20 +31,20 @@ def test_start_stage1_rejects_non_dividing_n_pass():
     """n_pass that doesn't evenly divide total_arrows must be rejected."""
     state = SessionState()
     with pytest.raises(ValueError):
-        state.start_stage1(4, 60, 7, RoundMode.INDOOR_PORTSMOUTH)
+        state.start_stage1(4, 60, 7, PORTSMOUTH)
     assert state.schedule is None
 
 
 def test_start_stage1_discards_previous_event():
     """Starting a new Stage 1 clears any previously built Event."""
     state = SessionState()
-    state.start_stage1(2, 12, 12, RoundMode.INDOOR_PORTSMOUTH)
+    state.start_stage1(2, 12, 12, PORTSMOUTH)
     state.start_stage2([
         Archer(name="A", handicap=20, bowstyle=Bowstyle.RECURVE),
         Archer(name="B", handicap=30, bowstyle=Bowstyle.RECURVE),
     ])
     assert state.event is not None
-    state.start_stage1(3, 60, 12, RoundMode.INDOOR_WA18)
+    state.start_stage1(3, 60, 12, WA18)
     assert state.event is None
 
 
@@ -56,7 +58,7 @@ def test_start_stage2_requires_stage1_first():
 def test_start_stage2_requires_matching_archer_count():
     """The archer count must match Stage 1's n_archers."""
     state = SessionState()
-    state.start_stage1(3, 60, 12, RoundMode.INDOOR_PORTSMOUTH)
+    state.start_stage1(3, 60, 12, PORTSMOUTH)
     with pytest.raises(ValueError):
         state.start_stage2(
             [
@@ -69,7 +71,7 @@ def test_start_stage2_requires_matching_archer_count():
 def test_start_stage2_builds_event():
     """A matching archer count builds a usable Event."""
     state = SessionState()
-    state.start_stage1(2, 12, 12, RoundMode.OUTDOOR)
+    state.start_stage1(2, 12, 12, OUTDOOR_70M)
     state.start_stage2(
         [
             Archer(name="A", handicap=20, bowstyle=Bowstyle.RECURVE),
@@ -83,7 +85,7 @@ def test_start_stage2_builds_event():
 def test_reset_clears_new_event_fields_too():
     """reset() clears the new Stage 1/2/event fields, not just the old ones."""
     state = SessionState()
-    state.start_stage1(2, 12, 12, RoundMode.INDOOR_PORTSMOUTH)
+    state.start_stage1(2, 12, 12, PORTSMOUTH)
     state.start_stage2(
         [
             Archer(name="A", handicap=20, bowstyle=Bowstyle.RECURVE),
@@ -107,7 +109,7 @@ def test_shoot_byes_defaults_to_true():
 def test_odd_archers_with_byes_shot_keeps_the_ordinary_schedule():
     """shoot_byes=True: total_arrows // n_pass rotations, each with a solo bye archer."""
     state = SessionState()
-    state.start_stage1(5, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=True)
+    state.start_stage1(5, 60, 12, PORTSMOUTH, shoot_byes=True)
     assert len(state.schedule) == 5
     assert all(r.bye is not None and r.sitting_out == () for r in state.schedule)
 
@@ -115,7 +117,7 @@ def test_odd_archers_with_byes_shot_keeps_the_ordinary_schedule():
 def test_odd_archers_without_byes_shot_gets_a_longer_sit_out_schedule():
     """shoot_byes=False with 5 archers needing 5 passes -> 7 rotations, nobody shoots alone."""
     state = SessionState()
-    state.start_stage1(5, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=False)
+    state.start_stage1(5, 60, 12, PORTSMOUTH, shoot_byes=False)
     assert state.shoot_byes is False
     assert len(state.schedule) == 7
     assert all(r.bye is None and r.sitting_out for r in state.schedule)
@@ -124,9 +126,9 @@ def test_odd_archers_without_byes_shot_gets_a_longer_sit_out_schedule():
 def test_even_archers_ignore_shoot_byes():
     """With an even archer count there are no byes, so the flag changes nothing."""
     with_flag = SessionState()
-    with_flag.start_stage1(4, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=False)
+    with_flag.start_stage1(4, 60, 12, PORTSMOUTH, shoot_byes=False)
     without = SessionState()
-    without.start_stage1(4, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=True)
+    without.start_stage1(4, 60, 12, PORTSMOUTH, shoot_byes=True)
     assert with_flag.schedule == without.schedule
     assert len(with_flag.schedule) == 5
 
@@ -134,7 +136,7 @@ def test_even_archers_ignore_shoot_byes():
 def test_reset_restores_shoot_byes_default():
     """reset() puts shoot_byes back to its default of True."""
     state = SessionState()
-    state.start_stage1(5, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=False)
+    state.start_stage1(5, 60, 12, PORTSMOUTH, shoot_byes=False)
     state.reset()
     assert state.shoot_byes is True
 
@@ -159,3 +161,53 @@ def test_reset_turns_graph_view_off():
     state.toggle_graph_view()
     state.reset()
     assert state.graph_view is False
+
+
+# --- Target setup (Feedback 4) ----------------------------------------------
+
+
+def test_session_starts_with_the_default_target_setup():
+    """A fresh session has the default 20 yd / 60 cm setup."""
+    assert SessionState().target_setup == DEFAULT_TARGET_SETUP
+
+
+def test_start_stage1_stores_the_chosen_target_setup():
+    """Stage 1 keeps the shared distance and face size it was given."""
+    state = SessionState()
+    chosen = TargetSetup(distance=50, unit=METRE, face_cm=80)
+    state.start_stage1(4, 60, 12, chosen)
+    assert state.target_setup == chosen
+
+
+def test_rejected_stage1_leaves_the_previous_target_setup_untouched():
+    """A failed Stage 1 (bad n_pass) does not half-update the setup."""
+    state = SessionState()
+    with pytest.raises(ValueError):
+        state.start_stage1(4, 60, 7, TargetSetup(distance=50, unit=METRE, face_cm=80))
+    assert state.target_setup == DEFAULT_TARGET_SETUP
+
+
+def test_reset_restores_the_default_target_setup():
+    """reset() puts the setup back to 20 yd / 60 cm."""
+    state = SessionState()
+    state.start_stage1(4, 60, 12, TargetSetup(distance=90, unit=METRE, face_cm=122))
+    state.reset()
+    assert state.target_setup == DEFAULT_TARGET_SETUP
+
+
+def test_the_event_is_built_with_the_chosen_target_setup():
+    """The Event resolves every archer's target from the session's setup."""
+    state = SessionState()
+    chosen = TargetSetup(distance=50, unit=METRE, face_cm=80)
+    state.start_stage1(2, 12, 12, chosen)
+    state.start_stage2(
+        [
+            Archer(name="A", handicap=20, bowstyle=Bowstyle.RECURVE),
+            Archer(name="B", handicap=30, bowstyle=Bowstyle.COMPOUND),
+        ]
+    )
+    event = state.event
+    assert event.target_setup == chosen
+    for i in (0, 1):
+        assert event.target_for(i).distance == 50
+        assert event.target_for(i).diameter == pytest.approx(0.8)

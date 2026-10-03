@@ -1,20 +1,20 @@
 """Tests for h2h.chart_data.build_pair_chart_data (Event-based chart payload)."""
 
 from h2h.chart_data import build_pair_chart_data
-from h2h.models import Archer, Bowstyle, Event, RoundMode
+from h2h.models import Archer, Bowstyle, Event
 from h2h.rotation import build_schedule
 
-from .helpers import record_whole_rotation
+from .helpers import PORTSMOUTH, record_whole_rotation
 
 
-def make_event(n_archers=4, n_pass=12, round_mode=RoundMode.INDOOR_PORTSMOUTH):
+def make_event(n_archers=4, n_pass=12, target_setup=PORTSMOUTH):
     bowstyles = [Bowstyle.RECURVE, Bowstyle.COMPOUND, Bowstyle.BAREBOW]
     archers = [
         Archer(name=f"A{i}", handicap=15 + i * 10, bowstyle=bowstyles[i % 3])
         for i in range(n_archers)
     ]
     schedule = build_schedule(n_archers, n_archers - 1 if n_archers % 2 == 0 else n_archers)
-    return Event(archers, n_pass, round_mode, schedule)
+    return Event(archers, n_pass, target_setup, schedule)
 
 
 def test_payload_uses_each_archers_own_distribution():
@@ -27,7 +27,7 @@ def test_payload_uses_each_archers_own_distribution():
 
 def test_different_bowstyles_give_visibly_different_curves():
     """Two archers with different resolved targets must get different distributions."""
-    event = make_event(round_mode=RoundMode.INDOOR_PORTSMOUTH)
+    event = make_event(target_setup=PORTSMOUTH)
     # Archer 0 is Recurve, archer 1 is Compound (per make_event's bowstyle cycle).
     data = build_pair_chart_data(event, 0, 1)
     assert data["distribution_a"] != data["distribution_b"]

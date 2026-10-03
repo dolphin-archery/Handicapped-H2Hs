@@ -76,36 +76,23 @@ class Bowstyle(str, Enum):
     LONGBOW = "Longbow"
 
 
-class RoundMode(str, Enum):
-    """The round-mode choices offered at event setup (AISpec.md section 5.1)."""
+class IndoorRound(str, Enum):
+    """The two named indoor rounds the standalone handicap calculator offers."""
 
-    INDOOR_PORTSMOUTH = "indoor_portsmouth"
-    INDOOR_WA18 = "indoor_wa18"
-    OUTDOOR = "outdoor"
-
-
-def _outdoor_target() -> targets.Target:
-    """The single fixed outdoor target used for every bowstyle (Assumption 12).
-
-    Returns
-    -------
-    archeryutils.targets.Target
-        WA720's 70m / 122cm 10-zone target.
-    """
-    return load_rounds.WA_outdoor.wa720_70.passes[0].target
+    PORTSMOUTH = "portsmouth"
+    WA18 = "wa18"
 
 
-def resolve_indoor_round(round_mode: RoundMode, compound: bool) -> rounds.Round:
-    """Look up the real archeryutils indoor round for a round mode and bow type.
+def resolve_indoor_round(indoor_round: IndoorRound, compound: bool) -> rounds.Round:
+    """Look up the real archeryutils indoor round for a named round and bow type.
 
-    Shared by `resolve_target` and the standalone handicap calculator so the
-    compound/non-compound round choice (AISpec.md sections 5.2a and 5.5) lives
-    in exactly one place.
+    Used by the standalone handicap calculator (AISpec.md section 5.5), which
+    scores against `archeryutils`'s own complete Portsmouth / WA 18 rounds.
 
     Parameters
     ----------
-    round_mode : RoundMode
-        `INDOOR_PORTSMOUTH` or `INDOOR_WA18`.
+    indoor_round : IndoorRound
+        `PORTSMOUTH` or `WA18`.
     compound : bool
         Whether the round is shot with a compound bow, which selects the
         `*_compound` variant (same face/distance, only the X-ring scores 10).
@@ -114,37 +101,155 @@ def resolve_indoor_round(round_mode: RoundMode, compound: bool) -> rounds.Round:
     -------
     archeryutils.rounds.Round
         The complete indoor round (e.g. `portsmouth` or `portsmouth_compound`).
-
-    Raises
-    ------
-    ValueError
-        If `round_mode` is not an indoor round mode.
     """
-    if round_mode == RoundMode.INDOOR_PORTSMOUTH:
+    if indoor_round == IndoorRound.PORTSMOUTH:
         return (
             load_rounds.AGB_indoor.portsmouth_compound
             if compound
             else load_rounds.AGB_indoor.portsmouth
         )
-    if round_mode == RoundMode.INDOOR_WA18:
-        return load_rounds.WA_indoor.wa18_compound if compound else load_rounds.WA_indoor.wa18
-    msg = f"{round_mode.value!r} is not an indoor round mode."
-    raise ValueError(msg)
+    return load_rounds.WA_indoor.wa18_compound if compound else load_rounds.WA_indoor.wa18
 
 
-def resolve_target(round_mode: RoundMode, bowstyle: Bowstyle) -> targets.Target:
-    """Resolve an archer's effective target from round mode and bowstyle.
+# --- Shared target setup (AISpec.md sections 5.1 and 5.2a) --------------------
 
-    Per AISpec.md section 5.2a: indoor Compound archers use the AGB
-    indoor-compound scoring variant (same face/distance, only the X-ring
-    scores 10) of whichever indoor round is in use; indoor Recurve/Barebow/
-    Longbow use the plain variant; outdoor mode uses one single fixed target
-    regardless of bowstyle (Assumption 12).
+METRE = "metre"
+YARD = "yard"
+
+# The standard distances offered at Stage 1 (Assumption 24), in their own units.
+STANDARD_DISTANCES_M = (18, 25, 30, 40, 50, 60, 70, 90)
+STANDARD_DISTANCES_YD = (20, 25, 30, 40, 50, 60, 80, 100)
+STANDARD_FACE_SIZES_CM = (40, 60, 80, 122)
+STANDARD_DISTANCES = tuple((d, METRE) for d in STANDARD_DISTANCES_M) + tuple(
+    (d, YARD) for d in STANDARD_DISTANCES_YD
+)
+
+# A distance of at most this many metres is treated as indoor (Assumption 22):
+# 18 m, 25 m, 20 yd and 25 yd are indoor; 30 m / 30 yd and beyond are outdoor.
+INDOOR_MAX_DISTANCE_M = 25.0
+
+_METRES_PER_YARD = 0.9144
+
+
+def _distance_key(distance: int, unit: str) -> str:
+    """The short text form of a distance used in form values, e.g. "18m" or "20yd"."""
+    return f"{distance}{'m' if unit == METRE else 'yd'}"
+
+
+@dataclass(frozen=True)
+class TargetSetup:
+    """The shooting distance and target face size shared by every archer.
+
+    Attributes
+    ----------
+    distance : int
+        Distance, in `unit`.
+    unit : str
+        `METRE` or `YARD`.
+    face_cm : int
+        Target face diameter in centimetres (the standard single-face 10-zone
+        target, not a 3-spot face).
+    """
+
+    distance: int
+    unit: str
+    face_cm: int
+
+    @property
+    def distance_m(self) -> float:
+        """float: the distance in metres."""
+        return float(self.distance) if self.unit == METRE else self.distance * _METRES_PER_YARD
+
+    @property
+    def indoor(self) -> bool:
+        """bool: whether the distance counts as indoor (Assumption 22).
+
+        Decides the arrow diameter used in the handicap maths and whether
+        Compound archers score the reduced 10.
+        """
+        return self.distance_m <= INDOOR_MAX_DISTANCE_M
+
+    @property
+    def distance_key(self) -> str:
+        """str: the distance as used in form values, e.g. "18m" or "20yd"."""
+        return _distance_key(self.distance, self.unit)
+
+    @property
+    def distance_label(self) -> str:
+        """str: the distance for display, e.g. "18 m" or "20 yd"."""
+        return f"{self.distance} {'m' if self.unit == METRE else 'yd'}"
+
+    @classmethod
+    def parse(cls, distance_key: str, face_cm: str | int) -> TargetSetup:
+        """Build a setup from the Stage 1 form values.
+
+        Parameters
+        ----------
+        distance_key : str
+            A distance as in `distance_key`, e.g. "18m" or "20yd".
+        face_cm : str | int
+            A face diameter in centimetres.
+
+        Returns
+        -------
+        TargetSetup
+            The corresponding setup.
+
+        Raises
+        ------
+        ValueError
+            If either value is not one of the standard options.
+        """
+        by_key = {_distance_key(d, u): (d, u) for d, u in STANDARD_DISTANCES}
+        if distance_key not in by_key:
+            msg = f"'{distance_key}' is not one of the standard distances."
+            raise ValueError(msg)
+        try:
+            face = int(face_cm)
+        except (TypeError, ValueError):
+            face = None
+        if face not in STANDARD_FACE_SIZES_CM:
+            msg = f"'{face_cm}' is not one of the standard face sizes."
+            raise ValueError(msg)
+        distance, unit = by_key[distance_key]
+        return cls(distance=distance, unit=unit, face_cm=face)
+
+
+# Stage 1's default: 20 yd on a 60 cm face, which is the Portsmouth round.
+DEFAULT_TARGET_SETUP = TargetSetup(distance=20, unit=YARD, face_cm=60)
+
+
+def distance_option_groups() -> dict[str, list[tuple[str, str]]]:
+    """The standard distances grouped for a dropdown.
+
+    Returns
+    -------
+    dict[str, list[tuple[str, str]]]
+        `{"Metric": [(value, label), ...], "Imperial": [...]}`, where `value`
+        is the form value (e.g. "18m") and `label` the display text ("18 m").
+    """
+    groups: dict[str, list[tuple[str, str]]] = {"Metric": [], "Imperial": []}
+    for distance, unit in STANDARD_DISTANCES:
+        setup = TargetSetup(distance, unit, STANDARD_FACE_SIZES_CM[0])
+        group = "Metric" if unit == METRE else "Imperial"
+        groups[group].append((setup.distance_key, setup.distance_label))
+    return groups
+
+
+def resolve_target(setup: TargetSetup, bowstyle: Bowstyle) -> targets.Target:
+    """Resolve an archer's effective target from the target setup and bowstyle.
+
+    Per AISpec.md section 5.2a: the target has the setup's face size and
+    distance and its inferred indoor/outdoor flag (which picks the arrow
+    diameter in `h2h.stats.per_arrow_pmf`). Compound archers score the reduced
+    10 (`10_zone_compound`, only the X-ring scores 10) when the distance is
+    indoor; everyone else, and Compound outdoors, scores the plain `10_zone`
+    face (Assumption 23).
 
     Parameters
     ----------
-    round_mode : RoundMode
-        The event's round mode.
+    setup : TargetSetup
+        The shared distance and face size.
     bowstyle : Bowstyle
         The archer's bowstyle.
 
@@ -153,11 +258,13 @@ def resolve_target(round_mode: RoundMode, bowstyle: Bowstyle) -> targets.Target:
     archeryutils.targets.Target
         The target to compute this archer's score distribution against.
     """
-    if round_mode == RoundMode.OUTDOOR:
-        return _outdoor_target()
-
-    rnd = resolve_indoor_round(round_mode, compound=bowstyle == Bowstyle.COMPOUND)
-    return rnd.passes[0].target
+    reduced_ten = bowstyle == Bowstyle.COMPOUND and setup.indoor
+    return targets.Target(
+        "10_zone_compound" if reduced_ten else "10_zone",
+        (setup.face_cm, "cm"),
+        (setup.distance, setup.unit),
+        indoor=setup.indoor,
+    )
 
 
 @dataclass
@@ -258,9 +365,9 @@ class Event:
         `schedule`'s archer-index i).
     n_pass : int
         Number of arrows per rotation's pass.
-    round_mode : RoundMode
-        The event's round mode; combined with each archer's bowstyle to
-        resolve their target (AISpec.md section 5.2a).
+    target_setup : TargetSetup
+        The shared distance and face size; combined with each archer's
+        bowstyle to resolve their target (AISpec.md section 5.2a).
     schedule : list[h2h.rotation.Rotation]
         The rotation schedule (built by `h2h.rotation.build_schedule` or, when
         bye archers sit out, `build_sit_out_schedule`, before archers were
@@ -279,7 +386,7 @@ class Event:
         self,
         archers: list[Archer],
         n_pass: int,
-        round_mode: RoundMode,
+        target_setup: TargetSetup,
         schedule: list[Rotation],
     ) -> None:
         max_index = -1
@@ -297,12 +404,12 @@ class Event:
 
         self.archers = archers
         self.n_pass = n_pass
-        self.round_mode = round_mode
+        self.target_setup = target_setup
         self.schedule = schedule
         self.current_rotation_index = 0
         self.results: list[PassResult] = []
 
-        self._targets = [resolve_target(round_mode, a.bowstyle) for a in archers]
+        self._targets = [resolve_target(target_setup, a.bowstyle) for a in archers]
         self._distributions = [
             stats.n_pass_score_distribution(stats.per_arrow_pmf(a.handicap, t), n_pass)
             for a, t in zip(archers, self._targets, strict=True)

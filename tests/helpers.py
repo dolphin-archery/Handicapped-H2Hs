@@ -2,6 +2,13 @@
 
 import re
 
+from h2h.models import METRE, YARD, TargetSetup
+
+# Named target setups reused across tests.
+PORTSMOUTH = TargetSetup(distance=20, unit=YARD, face_cm=60)  # indoor
+WA18 = TargetSetup(distance=18, unit=METRE, face_cm=40)  # indoor
+OUTDOOR_70M = TargetSetup(distance=70, unit=METRE, face_cm=122)  # outdoor
+
 _MATCH_LINK = re.compile(r'href="/event/match/(\d+)"')
 _SCORE_INPUT = re.compile(r'name="score_(\d+)"')
 _PASS_HEADING = re.compile(r"Pass (\d+) of (\d+)")

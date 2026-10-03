@@ -531,11 +531,11 @@
       "resolve_target gives Recurve, Barebow and Longbow '10_zone' always; Compound '10_zone_compound' when indoor and '10_zone' when outdoor; the Target's diameter, distance and indoor flag are the chosen ones.",
       "20 yd / 60 cm equals archeryutils's Portsmouth target (and, for Compound, portsmouth_compound's); 18 m / 40 cm equals WA 18's (and wa18_compound's); 70 m / 122 cm outdoor equals wa720_70's.",
       "An Event built from a TargetSetup gives same-handicap Recurve vs Compound archers different distributions indoors and identical ones outdoors, and Recurve vs Longbow identical ones everywhere.",
-      "RoundMode no longer exists; the calculator's compound/non-compound Portsmouth and WA 18 results are unchanged (existing calculator tests pass); grep finds no RoundMode or round_mode in h2h/ or tests/.",
+      "RoundMode no longer exists; the calculator's compound/non-compound Portsmouth and WA 18 results are unchanged (existing calculator tests pass); grep finds no RoundMode in h2h/ or tests/ (the lowercase round_mode form-field name survives only in the temporary Stage 1 bridge and its tests, until task 42 removes it).",
       "SessionState stores target_setup (default 20 yd / 60 cm) and reset() restores it.",
       "The full suite passes after migrating the event, state, chart-data, target-resolution, route and integration tests."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 42,

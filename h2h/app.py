@@ -16,12 +16,32 @@ from .chart_data import build_pair_chart_data
 from .models import (
     MAX_HANDICAP,
     MIN_HANDICAP,
+    METRE,
     Archer,
     Bowstyle,
-    RoundMode,
+    IndoorRound,
+    TargetSetup,
     resolve_indoor_round,
 )
 from .state import SessionState
+
+
+# TEMPORARY bridge (removed when Stage 1 gets its distance/face dropdowns, prd task 42):
+# the old Indoor/Outdoor + Portsmouth/WA 18 form fields are mapped onto a TargetSetup.
+def _bridge_target_setup(form) -> TargetSetup:
+    """Map the old Stage 1 round-mode form fields onto a `TargetSetup`."""
+    if form.get("round_mode") == "outdoor":
+        return TargetSetup(distance=70, unit=METRE, face_cm=122)
+    if form.get("indoor_round") == "wa18":
+        return TargetSetup(distance=18, unit=METRE, face_cm=40)
+    return TargetSetup.parse("20yd", 60)
+
+
+def _bridge_round_mode(setup: TargetSetup) -> str:
+    """Map a `TargetSetup` back onto the old Stage 1 form's round-mode value."""
+    if not setup.indoor:
+        return "outdoor"
+    return "indoor_wa18" if setup.distance_key == "18m" else "indoor_portsmouth"
 
 
 def create_app(state: SessionState | None = None) -> Flask:
@@ -57,7 +77,7 @@ def create_app(state: SessionState | None = None) -> Flask:
             n_archers=session.n_archers or 4,
             total_arrows=session.total_arrows,
             n_pass=session.n_pass,
-            round_mode=session.round_mode.value,
+            round_mode=_bridge_round_mode(session.target_setup),
             shoot_byes=session.shoot_byes,
             error=error,
         )
@@ -68,14 +88,9 @@ def create_app(state: SessionState | None = None) -> Flask:
             n_archers = int(request.form["n_archers"])
             total_arrows = int(request.form["total_arrows"])
             n_pass = int(request.form["n_pass"])
-            if request.form.get("round_mode") == "outdoor":
-                round_mode = RoundMode.OUTDOOR
-            elif request.form.get("indoor_round") == "wa18":
-                round_mode = RoundMode.INDOOR_WA18
-            else:
-                round_mode = RoundMode.INDOOR_PORTSMOUTH
+            target_setup = _bridge_target_setup(request.form)
             shoot_byes = request.form.get("shoot_byes", "yes") != "no"
-            session.start_stage1(n_archers, total_arrows, n_pass, round_mode, shoot_byes)
+            session.start_stage1(n_archers, total_arrows, n_pass, target_setup, shoot_byes)
         except (ValueError, KeyError) as exc:
             return stage1(error=str(exc) or "Invalid input.")
         return redirect(url_for("stage2"))
@@ -351,12 +366,12 @@ def create_app(state: SessionState | None = None) -> Flask:
 
     @app.post("/event/handicap-calculator")
     def handicap_calculator_submit():
-        round_mode = (
-            RoundMode.INDOOR_PORTSMOUTH
+        indoor_round = (
+            IndoorRound.PORTSMOUTH
             if request.form.get("round", "portsmouth") == "portsmouth"
-            else RoundMode.INDOOR_WA18
+            else IndoorRound.WA18
         )
-        rnd = resolve_indoor_round(round_mode, compound=request.form.get("compound") == "yes")
+        rnd = resolve_indoor_round(indoor_round, compound=request.form.get("compound") == "yes")
         try:
             score = float(request.form.get("score", ""))
             handicap = stats.handicap_for_round_score(score, rnd)

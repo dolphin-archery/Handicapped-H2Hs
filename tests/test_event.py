@@ -3,10 +3,10 @@
 import pytest
 
 from h2h import stats
-from h2h.models import Archer, Bowstyle, Event, RoundMode
+from h2h.models import METRE, YARD, Archer, Bowstyle, Event, TargetSetup
 from h2h.rotation import Rotation, build_schedule, build_sit_out_schedule
 
-from .helpers import record_whole_rotation
+from .helpers import OUTDOOR_70M, PORTSMOUTH, record_whole_rotation
 
 
 def make_archers(n, base_handicap=20, step=5):
@@ -22,13 +22,13 @@ def make_archers(n, base_handicap=20, step=5):
     ]
 
 
-def make_event(n_archers, n_pass=12, round_mode=RoundMode.INDOOR_PORTSMOUTH, n_rotations=None):
+def make_event(n_archers, n_pass=12, target_setup=PORTSMOUTH, n_rotations=None):
     """A ready-to-score Event for n_archers, with a full round-robin schedule."""
     archers = make_archers(n_archers)
     if n_rotations is None:
         n_rotations = n_archers if n_archers % 2 else n_archers - 1
     schedule = build_schedule(n_archers, n_rotations)
-    return Event(archers, n_pass, round_mode, schedule)
+    return Event(archers, n_pass, target_setup, schedule)
 
 
 def test_event_precomputes_own_distribution_per_archer():
@@ -44,12 +44,12 @@ def test_schedule_index_out_of_range_rejected():
     archers = make_archers(2)
     schedule = build_schedule(4, 3)  # references indices up to 3
     with pytest.raises(ValueError):
-        Event(archers, 12, RoundMode.INDOOR_PORTSMOUTH, schedule)
+        Event(archers, 12, PORTSMOUTH, schedule)
 
 
 def test_recording_a_rotation_uses_each_archers_own_distribution():
     """Percentile/handicap for each archer must use their OWN resolved target."""
-    event = make_event(2, round_mode=RoundMode.INDOOR_PORTSMOUTH)
+    event = make_event(2, target_setup=PORTSMOUTH)
     results = event.record_match({0: 100, 1: 60})
     assert len(results) == 2
     for r in results:
@@ -141,7 +141,7 @@ def test_different_bowstyles_give_different_indoor_distributions():
         Archer(name="C", handicap=20, bowstyle=Bowstyle.COMPOUND),
     ]
     schedule = build_schedule(2, 1)
-    event = Event(archers, 12, RoundMode.INDOOR_PORTSMOUTH, schedule)
+    event = Event(archers, 12, PORTSMOUTH, schedule)
     assert event.distribution_for(0) != event.distribution_for(1)
 
 
@@ -152,7 +152,7 @@ def test_longbow_gives_same_indoor_distribution_as_recurve():
         Archer(name="L", handicap=20, bowstyle=Bowstyle.LONGBOW),
     ]
     schedule = build_schedule(2, 1)
-    event = Event(archers, 12, RoundMode.INDOOR_PORTSMOUTH, schedule)
+    event = Event(archers, 12, PORTSMOUTH, schedule)
     assert event.distribution_for(0) == event.distribution_for(1)
 
 
@@ -163,7 +163,7 @@ def test_outdoor_mode_gives_same_distribution_regardless_of_bowstyle():
         Archer(name="C", handicap=20, bowstyle=Bowstyle.COMPOUND),
     ]
     schedule = build_schedule(2, 1)
-    event = Event(archers, 12, RoundMode.OUTDOOR, schedule)
+    event = Event(archers, 12, OUTDOOR_70M, schedule)
     assert event.distribution_for(0) == event.distribution_for(1)
 
 
@@ -234,7 +234,7 @@ def test_record_match_rejects_scores_that_are_not_exactly_one_match():
 
 def test_record_match_rejects_a_sitting_out_archer():
     """An archer sitting this pass out has no match to record."""
-    event = Event(make_archers(3), 12, RoundMode.INDOOR_PORTSMOUTH, build_sit_out_schedule(3, 2))
+    event = Event(make_archers(3), 12, PORTSMOUTH, build_sit_out_schedule(3, 2))
     (sitting,) = event.schedule[0].sitting_out
     with pytest.raises(ValueError):
         event.record_match({sitting: 50})
@@ -316,7 +316,7 @@ def test_earlier_rotation_results_cannot_be_altered_after_advancing():
 
 def test_event_accepts_a_sit_out_schedule_and_matches_exclude_sitting_archers():
     """A sit-out schedule builds an Event whose matches never include the sitting-out archer."""
-    event = Event(make_archers(3), 12, RoundMode.INDOOR_PORTSMOUTH, build_sit_out_schedule(3, 2))
+    event = Event(make_archers(3), 12, PORTSMOUTH, build_sit_out_schedule(3, 2))
     for i, rotation in enumerate(event.schedule):
         in_matches = {p for m in event.matches(i) for p in m if p is not None}
         assert in_matches.isdisjoint(rotation.sitting_out)
@@ -327,7 +327,7 @@ def test_schedule_sitting_out_index_out_of_range_rejected():
     """A sitting_out index beyond len(archers) must raise, like any other schedule index."""
     schedule = [Rotation(pairs=[(0, 1)], sitting_out=(5,))]
     with pytest.raises(ValueError):
-        Event(make_archers(2), 12, RoundMode.INDOOR_PORTSMOUTH, schedule)
+        Event(make_archers(2), 12, PORTSMOUTH, schedule)
 
 
 def test_pair_results_lists_every_shared_pass_in_order():
@@ -357,3 +357,27 @@ def test_pair_results_excludes_other_pairs_and_bye_matches():
     assert {r.archer_index for r in shared} == {a, b}
     assert all(r.opponent_index is not None for r in shared)
     assert event.pair_results(a, bye) == []
+
+
+def test_event_resolves_targets_from_a_non_default_target_setup():
+    """The Event stores its TargetSetup and gives every archer that distance and face."""
+    setup = TargetSetup(distance=40, unit=YARD, face_cm=80)
+    event = make_event(2, target_setup=setup)
+    assert event.target_setup == setup
+    for i in (0, 1):
+        target = event.target_for(i)
+        assert target.diameter == pytest.approx(0.8)
+        assert target.distance == pytest.approx(setup.distance_m)
+        assert target.indoor is False
+
+
+def test_outdoor_compound_and_recurve_share_a_distribution_but_indoor_ones_differ():
+    """Compound's reduced 10 only matters at an indoor distance (Assumption 23)."""
+    pair = [
+        Archer(name="R", handicap=20, bowstyle=Bowstyle.RECURVE),
+        Archer(name="C", handicap=20, bowstyle=Bowstyle.COMPOUND),
+    ]
+    schedule = build_schedule(2, 1)
+    for setup, identical in ((TargetSetup(50, METRE, 80), True), (TargetSetup(25, METRE, 60), False)):
+        event = Event(pair, 12, setup, schedule)
+        assert (event.distribution_for(0) == event.distribution_for(1)) is identical

@@ -1041,4 +1041,47 @@ wiped every typed row (up to a dozen archers). It now refills the names,
 bowstyles and handicaps that were submitted (`stage2(error, values=request.form)`),
 so only the offending value needs fixing. A test checks the refill. Along the way
 the refill template briefly added a stray space inside the `<option>` tags, which
-the existing Longbow-dropdown test caught; fixed in the template. Suite: 437+ passed.
+the existing Longbow-dropdown test caught; fixed in the template. Suite: 453 passed.
+
+### Task 41: Target setup model: shared distance and face replace the round mode (complete)
+`models.RoundMode` (indoor Portsmouth / indoor WA 18 / outdoor) and the fixed
+WA720 70 m outdoor target are gone, replaced by a frozen `TargetSetup(distance,
+unit, face_cm)` carrying the shared distance (metres or yards) and face size.
+Derived properties: `distance_m` (yards x 0.9144), `indoor` (**distance <= 25 m**,
+Assumption 22), and the form-value/label forms ("20yd" / "20 yd"). The standard
+options live beside it (`STANDARD_DISTANCES_M/_YD`, `STANDARD_FACE_SIZES_CM`,
+`distance_option_groups()` for the Metric/Imperial dropdown groups) with the
+default `DEFAULT_TARGET_SETUP` = 20 yd / 60 cm (Portsmouth), and
+`TargetSetup.parse(distance_key, face)` validates form values against them.
+
+`resolve_target(setup, bowstyle)` now builds an `archeryutils` `Target` directly
+instead of picking a ready-made round: the chosen diameter and distance, the
+inferred `indoor` flag (so the existing `per_arrow_pmf` picks the 9.3 mm indoor or
+5.5 mm outdoor arrow with no change to the stats engine), and the scoring system
+`10_zone_compound` only for Compound at an indoor distance, `10_zone` otherwise
+(Assumption 23). `Event` takes a `TargetSetup` where it took a `RoundMode`
+(`event.target_setup`), and `SessionState` stores `target_setup` (reset restores
+the default). The calculator keeps its Portsmouth/WA 18 choice through a tiny
+`IndoorRound` enum feeding `resolve_indoor_round`; its behaviour is unchanged.
+
+Why this is safe: before writing it I built every combination of the offered
+distances x faces x (Recurve, Compound) as a `Target`, ran it through
+`per_arrow_pmf`, the 12-arrow convolution and `equivalent_handicap` at handicaps
+0, 40, 100 and 150 - 512 combinations, zero failures (now a test) - and confirmed
+a hand-built 20 yd/60 cm Target is *equal* to archeryutils's own Portsmouth target
+(and the compound, WA 18, WA 18 compound and WA720 70 m ones), so the new path
+reproduces the old targets exactly (also tests).
+
+Temporary bridge: the Stage 1 form is not rebuilt until task 42, so `app.py` maps
+the old Indoor/Outdoor + Portsmouth/WA 18 fields onto a `TargetSetup`
+(Portsmouth -> 20 yd/60 cm, WA 18 -> 18 m/40 cm, outdoor -> 70 m/122 cm) and back,
+in two clearly marked helpers that task 42 deletes. The prd criterion about grep
+was narrowed accordingly (no `RoundMode`; the lowercase form-field name survives
+only in the bridge). Tests: `test_target_resolution.py` was rewritten (indoor
+inference incl. the 25 m/30 m boundary and yards, unit conversion, option lists,
+parse validation, resolution rules, equality with archeryutils's rounds, the
+512-combination sweep); `RoundMode` uses in the event, state, chart-data and
+integration tests were migrated to shared setups in `tests/helpers.py`, and new
+tests cover the stored/default/reset setup and an Event using a non-default one
+(including that Compound and Recurve share a distribution outdoors but not
+indoors). Suite: 505 passed.
