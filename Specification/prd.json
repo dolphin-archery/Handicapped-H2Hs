@@ -300,5 +300,129 @@
       "Restarting the app (fresh SessionState) clears all event state, consistent with Assumption 7."
     ],
     "completed": true
+  },
+  {
+    "id": 26,
+    "name": "Add Longbow to the bowstyle dropdown",
+    "description": "Per Specification/feedback.md 'Feedback 3' and Specification/AISpec.md section 5.2/5.2a (Assumption 18): add Longbow as a fourth Bowstyle. It resolves to the same targets as Recurve/Barebow (plain indoor scoring, the single fixed outdoor target) and never affects sigma_r. Stage 2's bowstyle dropdown offers it, and the Bowstyle docstring no longer claims there are only three.",
+    "tests": [
+      "Bowstyle has a Longbow member with value 'Longbow', alongside Recurve, Compound and Barebow.",
+      "resolve_target gives Longbow the plain target (scoring system '10_zone', identical to Recurve's) for both indoor Portsmouth and indoor WA18.",
+      "Outdoor mode resolves Longbow to the same fixed target as every other bowstyle.",
+      "Two archers with the same handicap, one Recurve and one Longbow, get identical score distributions in an indoor event.",
+      "The Stage 2 page offers 'Longbow' in every row's bowstyle dropdown, and submitting a Longbow archer starts the event."
+    ],
+    "completed": false
+  },
+  {
+    "id": 27,
+    "name": "Compound option in the handicap calculator",
+    "description": "Per Specification/feedback.md 'Feedback 3' and Specification/AISpec.md section 5.5 (Assumption 19): the standalone score-to-handicap calculator gains a Yes/No 'compound bow' checkbox (default No). Compound uses archeryutils's portsmouth_compound / wa18_compound round (same face and distance, only the X-ring scores 10), non-compound the plain round. Reuse the round-selection logic that resolve_target already uses for indoor compound rounds rather than duplicating it. The result is still never stored against an archer.",
+    "tests": [
+      "A Portsmouth score with compound ticked returns the handicap archeryutils computes on portsmouth_compound, to 1 decimal place, and this differs from the non-compound result for the same score.",
+      "A WA 18 score with compound ticked returns the handicap archeryutils computes on wa18_compound, to 1 decimal place.",
+      "Submitting without the compound field behaves exactly as before (plain rounds), so existing calculator behaviour is unchanged.",
+      "An invalid or non-numeric score with compound ticked still shows a friendly error, not a 500.",
+      "The calculator page renders a compound control.",
+      "resolve_target's indoor round selection and the calculator share one code path (no duplicated compound/non-compound round lookup)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 28,
+    "name": "Scheduler: sitting-out rotations and the no-bye-shot schedule",
+    "description": "Extend h2h/rotation.py per Specification/AISpec.md section 5.3 (Assumption 15). Add a `sitting_out: tuple[int, ...] = ()` field and a `matches` property (pairs, then the bye archer's solo match as (archer, None)) to Rotation; existing build_schedule behaviour is unchanged. Add build_sit_out_schedule(n_archers, passes_per_archer) for an odd n_archers whose bye archers do not shoot: run the cycling round-robin for the largest number of rotations in which no archer would exceed passes_per_archer passes (each rotation's bye archer sits out), then, if any archers are exactly one pass short, add one catch-up rotation pairing those archers with each other (preferring opponents not yet faced; if their number is odd, add one already-complete archer as a partner) with everyone else sitting out. For an even n_archers it simply returns build_schedule(n_archers, passes_per_archer).",
+    "tests": [
+      "Rotation.matches lists the pairs followed by (bye, None) when there is a bye, and just the pairs otherwise; existing build_schedule tests still pass unchanged.",
+      "For odd n_archers in 3..9 and passes_per_archer in 1..12, every archer shoots at least passes_per_archer passes, at most one archer shoots passes_per_archer + 1, and nobody shoots more than that.",
+      "Known cases: 5 archers needing 4 passes -> 5 rotations, everyone exactly 4; 5 archers needing 5 -> 7 rotations; 3 archers needing 5 -> 8 rotations; 3 archers needing 1 -> 2 rotations; 7 archers needing 5 -> 6 rotations.",
+      "Every rotation lists each non-shooting archer in sitting_out, has no `bye`, never schedules an archer twice or against themselves, and sitting_out plus matched archers cover every archer exactly once.",
+      "The catch-up rotation (when present) contains only archers who were exactly one pass short, plus at most one already-complete partner.",
+      "When the catch-up rotation can avoid repeating an earlier opponent it does (checked on a case where that is possible).",
+      "An even n_archers returns exactly build_schedule(n_archers, passes_per_archer).",
+      "n_archers < 2 or passes_per_archer < 1 raises ValueError.",
+      "An Event can be constructed from a sit-out schedule, and rejects one that references an out-of-range archer index in sitting_out."
+    ],
+    "completed": false
+  },
+  {
+    "id": 29,
+    "name": "'Shoot byes?' option at event setup",
+    "description": "Per Specification/feedback.md 'Feedback 3' and Specification/AISpec.md section 5.1 (Assumptions 15, 16): Stage 1 shows a 'Shoot byes?' Yes/No control (default Yes) only when n_archers is odd. SessionState gains a shoot_byes field (default True, cleared by reset) and start_stage1 takes it: for an odd n_archers with shoot_byes False it builds the schedule with build_sit_out_schedule (task 28), otherwise exactly as before. The control's visibility follows the parity of the n_archers input live, via JS, and is hidden/ignored for even counts. Explanatory text notes that choosing No adds passes.",
+    "tests": [
+      "start_stage1 with an odd n_archers and shoot_byes False stores a sit-out schedule (sitting_out populated, no bye shoots alone) with more rotations than total_arrows // n_pass where the rule requires it; shoot_byes True or an even n_archers is unchanged from before.",
+      "SessionState stores shoot_byes (default True) and reset() restores the default.",
+      "POSTing Stage 1 with shoot_byes=no and an odd n_archers stores False; with an even n_archers the field is ignored and the schedule is the ordinary one.",
+      "The Stage 1 page renders the Shoot byes? control and its explanatory text, and re-renders the previously chosen value.",
+      "Verified in a real browser: the control is hidden for an even n_archers, shown for an odd one, and updates live as the n_archers input changes, with no JS console errors."
+    ],
+    "completed": false
+  },
+  {
+    "id": 30,
+    "name": "Event: per-match score recording and explicit pass advance",
+    "description": "Per Specification/AISpec.md sections 5.3/6 (Assumption 17): add to h2h.models.Event, alongside the existing record_rotation (which the web layer stops using in task 31, where it is then removed), the primitives the new page flow needs. `current_rotation_index` (starts 0, the pass being shot); matches(rotation_index) (delegating to Rotation.matches); record_match(scores) which records one match of the current rotation from a {archer_index: score} dict covering exactly one pair or the solo bye archer, validating scores via the existing _validate_score, computing percentile/equivalent handicap/winner exactly as record_rotation does (factor the shared logic out rather than copying it), and replacing earlier results for those archers in that rotation in place if the match was already scored; is_match_scored / is_rotation_complete; and advance(), which moves to the next rotation only once the current one is complete. Event construction should also bounds-check archer indices in sitting_out.",
+    "tests": [
+      "A new Event starts at current_rotation_index 0.",
+      "record_match on one pair records percentile, equivalent handicap and winner using each archer's OWN distribution, without any other match of the rotation being scored.",
+      "record_match on the bye archer's solo match records a result with no opponent and no winner, and it never appears in any pairwise result.",
+      "record_match rejects a scores dict that is not exactly one match of the current rotation (an archer from a different match, a mismatched pair, an extra archer, a sitting-out archer) with ValueError, recording nothing.",
+      "An invalid score (non-integer, negative, above n_pass * 10) is rejected with the existing messages and records nothing.",
+      "Re-recording an already-scored match replaces its results (no duplicates), recomputes the winner, keeps results in a stable order, and the pairwise result reflects the replacement.",
+      "is_rotation_complete is False until every match of the rotation has results and True afterwards.",
+      "advance() raises ValueError while the current rotation is incomplete, and on the final rotation; otherwise it increments current_rotation_index and subsequent record_match calls apply to the new rotation.",
+      "After advancing, the earlier rotation's results cannot be altered via record_match.",
+      "record_rotation still behaves as before (existing test_event.py tests pass unchanged)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 31,
+    "name": "Overview page, per-match pages and advance button (replace all-at-once scoring)",
+    "description": "Per Specification/feedback.md 'Feedback 3' and Specification/AISpec.md section 5.3 (Assumptions 17, 20, 21): replace the single page that scored a whole rotation at once. /event/rotation becomes a read-only overview of the current pass ('Pass k of N'): every match (each pair, and the bye archer's solo match if byes are shot) with its status and a link into its page, the archers sitting out, a link to results, and an 'Advance to next pass' button that is disabled until every match has scores (also enforced server-side by a POST /event/advance route that shows an error rather than advancing). Add /event/match/<idx> (idx = position in the current rotation's matches): GET shows a score box per archer in that match only, POST saves via Event.record_match then redirects back to the same match page, with friendly errors for non-numeric/invalid scores; each has a link back to the overview. On the final pass there is no advance button; once every match is scored the overview says the event is complete and links to results (it is not redirected away). Remove Event.record_rotation and Event.next_rotation_index (and any route/template using them), migrate their tests to the per-match API (a small test helper may score a whole rotation), and update results.html's 'Continue scoring' link. No leftover references to the removed API.",
+    "tests": [
+      "GET /event/rotation shows 'Pass 1 of N', lists every match of the current pass with a link to its page, shows no score input boxes, and lists sitting-out archers when there are any.",
+      "No endpoint accepts a whole rotation's scores at once: POST /event/rotation is no longer allowed.",
+      "GET /event/match/<idx> shows score boxes only for that match's archers (two for a pair, one for a bye match); an out-of-range idx redirects to the overview instead of erroring.",
+      "POSTing valid scores to a match page records just that match and redirects to the same page; other matches in the pass remain unscored and shown as awaiting on the overview.",
+      "Invalid input on a match page (non-numeric, negative, above n_pass * 10, non-integer) shows a specific error and records nothing.",
+      "Re-saving a match page replaces its earlier scores.",
+      "The Advance button is disabled on the overview until every match has scores; POST /event/advance with an incomplete pass shows an error and does not advance; with a complete pass it advances and the overview then shows the next pass's pairings and accepts that pass's scores on the match pages.",
+      "On the final pass the overview shows no advance button; once every match is scored it says the event is complete and links to results.",
+      "Event.record_rotation and Event.next_rotation_index no longer exist; grep finds no references to them in h2h/ or tests/.",
+      "The full test suite passes after migrating the old rotation-based route, event and integration tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 32,
+    "name": "Per-match results and advanced-mode charts on the match pages",
+    "description": "Per Specification/feedback.md 'Feedback 3' (match pages 'show graphs/results so far per match') and Specification/AISpec.md sections 5.3/5.6: each match page shows that pair's results so far (every pass the pair has shared, including the current one, with score/percentile/equivalent handicap/winner) and, in advanced mode only, the pair's interactive distribution chart and the maths explanation. The chart shows both distributions even before the pair's first scored pass (no markers yet). A bye match shows its own pass result and no chart. Extract the chart/maths block (currently in pair_chart.html) and the per-pass results table (currently in results.html) into shared partials used by the match page, the pair-history page and the results page, rather than copying the markup.",
+    "tests": [
+      "After scoring a pair's match, its match page shows both archers' score, percentile and equivalent handicap and the pass winner.",
+      "For a pair that has met in an earlier pass (e.g. a schedule that repeats), the match page lists every shared pass.",
+      "A bye match's page shows that archer's own result for the pass and renders no chart, in either mode.",
+      "In advanced mode a pair's match page renders canvas#match-chart, the show-previous-passes checkbox and embeds window.MATCH_CHART_DATA, including before any pass is scored (empty passes list); in basic mode none of these nor the maths explanation are rendered.",
+      "The pair-history page and results page still render and show the same table/chart content as before.",
+      "No duplicated chart/maths/results-table markup remains across the three templates (shared partials in use).",
+      "Verified in a real browser: the match-page chart shows two curves before scoring, gains a marker pair after scoring, and the previous-passes checkbox adds the earlier pass's markers on a pair that has shared two passes; no JS console errors."
+    ],
+    "completed": false
+  },
+  {
+    "id": 33,
+    "name": "End-to-end integration check, browser walkthrough and docs for Feedback 3",
+    "description": "Rewrite/extend tests/test_integration.py for the new flow (overview -> match pages -> advance -> results) and cover each new behaviour: even n_archers; odd n_archers with byes shot (exactly one solo bye match per pass, no winner); odd n_archers with byes NOT shot (bye archers sit out and enter no scores, the pass count follows the rule in Assumption 15, and every archer ends with at least total_arrows // n_pass passes shot, at most one with one extra); mixed bowstyles including Longbow indoors; outdoor; fresh app state clears the event. Then run a real-browser walkthrough (headless Edge via an ephemeral Selenium install, per the method already recorded in Specification/logbook.md) of the full flow with no JS console errors. Update README.md (repo structure/flow description) and Specification/logbook.md with a Feedback 3 section (summary, assumptions, verification notes).",
+    "tests": [
+      "Even n_archers: a full event completes through the overview/match/advance flow, with every pair of the round-robin appearing in the pairwise results.",
+      "Odd n_archers, byes shot: every pass has exactly one bye match whose result has no winner, and the number of passes equals total_arrows // n_pass.",
+      "Odd n_archers, byes not shot: no sitting-out archer is offered a score box that pass; the event has the number of passes the Assumption 15 rule gives; each archer's shot-pass count is at least total_arrows // n_pass, with at most one archer one higher.",
+      "Indoor mode with Recurve, Compound, Barebow and Longbow archers: Compound uses the compound target, Longbow and Recurve/Barebow the plain one.",
+      "Advance is refused until every match of a pass is scored, at every pass of a full event.",
+      "A fresh app/SessionState sees no prior event.",
+      "A real-browser walkthrough (Stage 1 with the byes control, Stage 2, overview, match pages incl. advanced-mode chart, advance, results) completes with no JS console errors.",
+      "The full suite passes, README.md describes the new flow, and Specification/logbook.md has a Feedback 3 section."
+    ],
+    "completed": false
   }
 ]
