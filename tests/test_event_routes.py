@@ -2181,3 +2181,39 @@ def test_results_page_headings_say_pass_and_there_is_no_opponent_or_won_column()
     assert "<h3>Pass 1</h3>" in page and "<h3>Pass 2</h3>" in page and "<h3>Pass 3</h3>" not in page
     assert "Rotation" not in page and "Opponent" not in page and "Won?" not in page
     assert len(pass_tables(page)) == 2
+
+
+# --- Stage 2 button (Feedback 6) --------------------------------------------------------
+
+
+def submit_button_texts(html):
+    """The text of every submit button on a page."""
+    return [re.sub(r"<[^>]+>", "", b).strip() for b in re.findall(r'<button type="submit"[^>]*>(.*?)</button>', html, re.S)]
+
+
+def test_stage_2_button_says_continue_to_stage_3_in_simple_and_advanced_setup():
+    """An extra step (Stage 3) follows, so the button no longer says Start event."""
+    client = make_client()
+    complete_stage1(client, n_archers=2)
+    simple = client.get("/event/stage2").data.decode()
+    assert submit_button_texts(simple) == ["Continue to Stage 3"]
+    assert "Start event" not in simple
+
+    advanced_client = make_client()
+    start_advanced_stage2(advanced_client, n_archers=2, total_arrows=24)
+    advanced = advanced_client.get("/event/stage2").data.decode()
+    assert submit_button_texts(advanced) == ["Continue to Stage 3"]
+    assert "Start event" not in advanced
+
+
+def test_only_stage_3_has_a_button_that_starts_the_event():
+    """No setup page other than Stage 3's confirm button says 'start event'."""
+    client = make_client()
+    start_advanced_stage2(client, n_archers=2, total_arrows=24)
+    stage1 = client.get("/event/stage1").data.decode()
+    stage2 = client.get("/event/stage2").data.decode()
+    assert "start event" not in (stage1 + stage2).lower()
+    client.post("/event/stage2", data=advanced_form([("Ann", "Recurve", 20, "10_zone", 60, "20yd"), ("Ben", "Recurve", 30, "10_zone", 60, "20yd")]))
+    assert submit_button_texts(client.get("/event/stage3").data.decode()) == [
+        "Redraw pairings", "Confirm pairings and start event",
+    ]

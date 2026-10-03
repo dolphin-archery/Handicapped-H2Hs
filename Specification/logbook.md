@@ -1812,3 +1812,9 @@ under the display rule, a bye group and unscored matches left out, "Pass N" head
 Opponent/Won? columns) and two migrated ones (the page now has "Pass 2" not "Rotation 2"; the
 five-bye integration test now counts the single-row groups, five of them, one per archer). Suite:
 825 passed. Browser check below with task 59.
+
+### Task 61: Stage 2 submit button renamed (complete)
+The Stage 2 button (simple and advanced setup) now reads "Continue to Stage 3" instead of "Start
+event", since Stage 3 (pairings) now sits between it and the start of the event; the only button that
+starts the event is Stage 3's "Confirm pairings and start event". Two tests (button text in both
+modes, and that no setup page other than Stage 3 says "start event"). Suite: 827 passed.

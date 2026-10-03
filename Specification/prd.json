@@ -852,7 +852,7 @@
       "The Stage 2 page (simple and advanced setup) has a submit button reading 'Continue to Stage 3' and the text 'Start event' appears on no setup page except Stage 3's 'Confirm pairings and start event'.",
       "The full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 62,
