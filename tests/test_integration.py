@@ -1,14 +1,17 @@
 """End-to-end integration checks for the rotation-based event flow.
 
-Exercises the full HTTP flow (Stage 1 -> Stage 2 -> score every rotation ->
-results) against the real Flask app, covering the scenarios prd.json task 25
-calls out: even/odd n_archers (bye handling), indoor mode with mixed
-bowstyles, outdoor mode, and that a fresh app/state sees no prior event.
+Exercises the full HTTP flow (Stage 1 -> Stage 2 -> overview / per-match
+pages / advance for every pass -> results) against the real Flask app,
+covering the scenarios prd.json task 25 calls out: even/odd n_archers (bye
+handling), indoor mode with mixed bowstyles, outdoor mode, and that a fresh
+app/state sees no prior event.
 """
 
 from h2h.app import create_app
 from h2h.models import Bowstyle, RoundMode, resolve_target
 from h2h.state import SessionState
+
+from .helpers import pass_position, play_whole_event, save_match, score_current_pass
 
 
 def make_client():
@@ -36,11 +39,11 @@ def stage2_form(archers):
 
 
 def run_full_event(client, archers, n_pass=12, total_arrows=None, round_mode="indoor", indoor_round="portsmouth", score_fn=None):
-    """Complete Stage 1 + Stage 2, then score every rotation to completion.
+    """Complete Stage 1 + Stage 2, then score every pass to completion.
 
     Parameters
     ----------
-    score_fn : callable(rotation_index, archer_index) -> int, optional
+    score_fn : callable(archer_index) -> int, optional
         Score generator; defaults to a fixed 60 for everyone.
     """
     n_archers = len(archers)
@@ -53,21 +56,10 @@ def run_full_event(client, archers, n_pass=12, total_arrows=None, round_mode="in
     )
     client.post("/event/stage2", data=stage2_form(archers))
 
-    score_fn = score_fn or (lambda rotation_index, archer_index: 60)
-
-    n_rotations = total_arrows // n_pass
-    for idx in range(n_rotations):
-        # Discover this rotation's participants by reading the scoring page.
-        resp = client.get("/event/rotation")
-        # Extract participant indices from the rendered `score_<i>` inputs.
-        participants = sorted(
-            {
-                int(part.split('"')[0])
-                for part in resp.data.decode().split('name="score_')[1:]
-            }
-        )
-        data = {f"score_{a}": str(score_fn(idx, a)) for a in participants}
-        client.post("/event/rotation", data=data)
+    if score_fn is None:
+        play_whole_event(client)
+    else:
+        play_whole_event(client, score_fn)
 
     return client.get("/event/results")
 
@@ -83,25 +75,20 @@ def test_even_n_archers_full_round_robin_coverage():
 
 
 def test_odd_n_archers_each_rotation_has_exactly_one_bye():
-    """Odd n_archers: every rotation's scoring page shows exactly one bye box,
-    and that archer's pass is recorded with no winner (no opponent).
-    """
+    """Odd n_archers: every pass has two pairs and one solo bye match, scored with no winner."""
     client = make_client()
     archers = [(f"A{i}", "Recurve", 20 + i) for i in range(5)]
     client.post("/event/stage1", data=stage1_form(5, total_arrows=60, n_pass=12))
     client.post("/event/stage2", data=stage2_form(archers))
 
-    for _ in range(5):  # 5 rotations for 5 archers, one full round-robin
-        resp = client.get("/event/rotation")
-        assert b"bye" in resp.data.lower()
-        page = resp.data.decode()
-        participants = sorted(
-            {int(part.split('"')[0]) for part in page.split('name="score_')[1:]}
-        )
-        assert len(participants) == 5  # 2 pairs + 1 bye archer, every rotation
-        client.post(
-            "/event/rotation", data={f"score_{a}": "60" for a in participants}
-        )
+    for pass_number in range(1, 6):  # 5 passes for 5 archers, one full round-robin
+        assert pass_position(client) == (pass_number, 5)
+        assert b"bye" in client.get("/event/rotation").data.lower()
+        matches = score_current_pass(client)
+        assert sorted(len(m) for m in matches) == [1, 2, 2]  # 2 pairs + 1 bye archer
+        assert len({a for m in matches for a in m}) == 5  # everyone shoots
+        if pass_number < 5:
+            client.post("/event/advance")
 
     results = client.get("/event/results")
     # Every archer must appear at least once as a bye-labelled opponent.
@@ -119,7 +106,7 @@ def test_indoor_mode_compound_archer_uses_compound_target():
     archers = [("Rec", "Recurve", 20), ("Comp", "Compound", 20)]
     client.post("/event/stage1", data=stage1_form(2, total_arrows=12, n_pass=12))
     client.post("/event/stage2", data=stage2_form(archers))
-    resp = client.post("/event/rotation", data={"score_0": "100", "score_1": "100"})
+    save_match(client, 0, {0: 100, 1: 100})
     results_resp = client.get("/event/results", follow_redirects=True)
     # Same raw score, different bowstyle/target -> different equivalent handicaps.
     assert results_resp.status_code == 200

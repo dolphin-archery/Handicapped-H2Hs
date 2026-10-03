@@ -3,7 +3,7 @@
 <h1>Event results</h1>
 
 {% if not event.is_complete %}
-<p><a href="{{ url_for('event_rotation') }}">Continue scoring (rotation {{ event.next_rotation_index() + 1 }} of {{ event.schedule|length }})</a></p>
+<p><a href="{{ url_for('event_rotation') }}">Continue scoring (pass {{ event.current_rotation_index + 1 }} of {{ event.schedule|length }})</a></p>
 {% else %}
 <p>Event complete.</p>
 {% endif %}

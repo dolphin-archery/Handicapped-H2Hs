@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+{% set max_score = event.n_pass * 10 %}
+<h1>
+  {% if b is none %}
+  {{ event.archers[a].name }} (bye - no opponent)
+  {% else %}
+  {{ event.archers[a].name }} vs {{ event.archers[b].name }}
+  {% endif %}
+</h1>
+<p>Pass {{ rotation_index + 1 }} of {{ event.schedule|length }} &middot;
+  <a href="{{ url_for('event_rotation') }}">Back to overview</a></p>
+
+{% if error %}
+<p class="warning">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="{{ url_for('event_match_submit', match_index=match_index) }}">
+  <div class="row">
+    <label>{{ event.archers[a].name }} score (0-{{ max_score }}):
+      <input type="number" step="1" min="0" max="{{ max_score }}" name="score_{{ a }}"
+             value="{{ form_scores.get(a, '') }}" required>
+    </label>
+  </div>
+  {% if b is not none %}
+  <div class="row">
+    <label>{{ event.archers[b].name }} score (0-{{ max_score }}):
+      <input type="number" step="1" min="0" max="{{ max_score }}" name="score_{{ b }}"
+             value="{{ form_scores.get(b, '') }}" required>
+    </label>
+  </div>
+  {% endif %}
+  <button type="submit">{{ 'Save changed scores' if results else 'Save scores' }}</button>
+  {% if results %}
+  <small>Saving again replaces the scores below, until the event advances to the next pass.</small>
+  {% endif %}
+</form>
+
+{% if results %}
+<h2>Result this pass</h2>
+<table>
+  <thead>
+    <tr><th>Archer</th><th>Score</th><th>Percentile</th><th>Equiv. handicap</th><th>Won?</th></tr>
+  </thead>
+  <tbody>
+    {% for r in results %}
+    <tr>
+      <td>{{ event.archers[r.archer_index].name }}</td>
+      <td>{{ r.score }}</td>
+      <td>{{ '%.1f%%'|format(r.percentile * 100) }}</td>
+      <td>{{ '%.1f'|format(r.handicap) if r.handicap is not none else '-' }}</td>
+      <td>{{ 'Yes' if r.won else ('No' if r.won is not none else '-') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

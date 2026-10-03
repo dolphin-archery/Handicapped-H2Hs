@@ -115,48 +115,155 @@ def create_app(state: SessionState | None = None) -> Flask:
 
     @app.get("/event/rotation")
     def event_rotation(error: str | None = None):
+        """Overview of the current pass: every match, its status, and the advance button.
+
+        Parameters
+        ----------
+        error : str | None, default=None
+            Message to show above the matches (e.g. a refused advance).
+
+        Returns
+        -------
+        flask.Response | str
+            The rendered overview page, or a redirect to Stage 1 if no event
+            has been set up yet.
+        """
         if session.event is None:
             return redirect(url_for("stage1"))
         event = session.event
-        idx = event.next_rotation_index()
-        if idx is None:
-            return redirect(url_for("event_results"))
+        idx = event.current_rotation_index
         rotation = event.schedule[idx]
+
+        matches_view = []
+        for i, match in enumerate(event.matches(idx)):
+            results = event.match_results(idx, match)
+            matches_view.append(
+                {
+                    "index": i,
+                    "a": match[0],
+                    "b": match[1],
+                    "scored": bool(results),
+                    "results": {r.archer_index: r for r in results},
+                }
+            )
         return render_template(
             "rotation.html",
             event=event,
             rotation_index=idx,
             rotation=rotation,
+            matches=matches_view,
+            sitting_out=[event.archers[i].name for i in rotation.sitting_out],
+            complete=event.is_rotation_complete(idx),
+            is_last=idx == len(event.schedule) - 1,
             error=error,
         )
 
-    @app.post("/event/rotation")
-    def event_rotation_submit():
+    @app.post("/event/advance")
+    def event_advance():
+        """Advance the event to the next pass once every match in this one is scored.
+
+        Returns
+        -------
+        flask.Response | str
+            A redirect to the overview on success; the overview re-rendered
+            with an error if the pass is not fully scored (or is the last);
+            or a redirect to Stage 1 if no event exists.
+        """
         if session.event is None:
             return redirect(url_for("stage1"))
-        event = session.event
-        idx = event.next_rotation_index()
-        if idx is None:
-            return redirect(url_for("event_results"))
-        rotation = event.schedule[idx]
-        participants = [p for pair in rotation.pairs for p in pair]
-        if rotation.bye is not None:
-            participants.append(rotation.bye)
-
         try:
-            scores = {}
-            for archer_idx in participants:
-                raw = request.form.get(f"score_{archer_idx}", "")
-                try:
-                    scores[archer_idx] = float(raw)
-                except ValueError:
-                    name = event.archers[archer_idx].name
-                    msg = f"{name}'s score must be a number."
-                    raise ValueError(msg) from None
-            event.record_rotation(idx, scores)
+            session.event.advance()
         except ValueError as exc:
             return event_rotation(error=str(exc))
         return redirect(url_for("event_rotation"))
+
+    @app.get("/event/match/<int:match_index>")
+    def event_match(
+        match_index: int,
+        error: str | None = None,
+        form_scores: dict[int, str] | None = None,
+    ):
+        """One match of the current pass: score entry plus that match's results.
+
+        Parameters
+        ----------
+        match_index : int
+            Position of the match in the current pass's matches (pairs first,
+            then the bye archer's solo match if byes are shot).
+        error : str | None, default=None
+            Message to show above the form (a rejected submission).
+        form_scores : dict[int, str] | None, default=None
+            Raw text to refill the score boxes with after a rejected
+            submission, keyed by archer index; defaults to the match's
+            already-saved scores, if any.
+
+        Returns
+        -------
+        flask.Response | str
+            The rendered match page, or a redirect to the overview if
+            `match_index` is not a match of the current pass (or to Stage 1 if
+            no event exists).
+        """
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        event = session.event
+        idx = event.current_rotation_index
+        matches = event.matches(idx)
+        if not 0 <= match_index < len(matches):
+            return redirect(url_for("event_rotation"))
+        a, b = matches[match_index]
+        results = event.match_results(idx, (a, b))
+        if form_scores is None:
+            form_scores = {r.archer_index: r.score for r in results}
+        return render_template(
+            "match.html",
+            event=event,
+            rotation_index=idx,
+            match_index=match_index,
+            a=a,
+            b=b,
+            results=results,
+            form_scores=form_scores,
+            error=error,
+        )
+
+    @app.post("/event/match/<int:match_index>")
+    def event_match_submit(match_index: int):
+        """Save one match's scores (replacing earlier ones) and show its page again.
+
+        Parameters
+        ----------
+        match_index : int
+            Position of the match in the current pass's matches.
+
+        Returns
+        -------
+        flask.Response | str
+            A redirect back to the match page on success; the match page
+            re-rendered with an error (nothing recorded) if a score is
+            non-numeric or invalid.
+        """
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        event = session.event
+        matches = event.matches(event.current_rotation_index)
+        if not 0 <= match_index < len(matches):
+            return redirect(url_for("event_rotation"))
+        archers = [p for p in matches[match_index] if p is not None]
+
+        form_scores = {i: request.form.get(f"score_{i}", "") for i in archers}
+        try:
+            scores = {}
+            for archer_idx, raw in form_scores.items():
+                try:
+                    scores[archer_idx] = float(raw)
+                except ValueError:
+                    msg = f"{event.archers[archer_idx].name}'s score must be a number."
+                    raise ValueError(msg) from None
+            event.record_match(scores)
+        except ValueError as exc:
+            return event_match(match_index, error=str(exc), form_scores=form_scores)
+        return redirect(url_for("event_match", match_index=match_index))
 
     @app.get("/event/results")
     def event_results():

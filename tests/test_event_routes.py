@@ -1,11 +1,15 @@
-"""Tests for the new rotation-based event Flask routes (h2h.app).
+"""Tests for the rotation-based event Flask routes (h2h.app).
 
-Kept separate from tests/test_app.py (the old fixed-pair flow's tests),
-since that file is replaced wholesale when prd task 24 retires the old flow.
+Covers Stage 1/2 setup, the overview / per-match / advance page flow, and the
+results and chart pages.
 """
+
+import pytest
 
 from h2h.app import create_app
 from h2h.state import SessionState
+
+from .helpers import save_match, score_current_pass
 
 
 def make_client():
@@ -240,7 +244,8 @@ def test_stage2_missing_bowstyle_rejected():
     assert b"required" in resp.data or b"bowstyle" in resp.data.lower()
 
 
-# --- Task 20: rotation scoring UI ----------------------------------------
+# --- Overview, per-match pages and advance (Feedback 3) --------------------
+# Replaces task 20's single page that scored a whole rotation at once.
 
 
 def complete_stage2(client, archers):
@@ -249,65 +254,229 @@ def complete_stage2(client, archers):
 
 
 def start_two_archer_event(client, n_pass=12):
-    """Set up a minimal 2-archer event, ready for rotation scoring."""
+    """Set up a minimal 2-archer event, ready for scoring."""
     complete_stage1(client, n_archers=2, total_arrows=n_pass, n_pass=n_pass)
     complete_stage2(client, [("Alice", "Recurve", 15), ("Bob", "Compound", 45)])
 
 
-def test_rotation_page_shows_correct_boxes_for_a_pair():
-    """A rotation with one pair (no bye) shows exactly two score boxes."""
-    client = make_client()
-    start_two_archer_event(client)
-    resp = client.get("/event/rotation")
-    assert resp.status_code == 200
-    assert b'name="score_0"' in resp.data
-    assert b'name="score_1"' in resp.data
+FOUR_ARCHERS = [
+    ("A1", "Recurve", 15),
+    ("A2", "Compound", 25),
+    ("A3", "Barebow", 35),
+    ("A4", "Longbow", 45),
+]
+THREE_ARCHERS = [("Alice", "Recurve", 15), ("Bob", "Compound", 45), ("Carol", "Barebow", 30)]
 
 
-def test_rotation_page_shows_bye_box_for_odd_archers():
-    """An odd-archer event's bye rotation shows a single box for the bye archer."""
-    client = make_client()
-    complete_stage1(client, n_archers=3, total_arrows=36, n_pass=12)
-    complete_stage2(
-        client,
-        [("Alice", "Recurve", 15), ("Bob", "Compound", 45), ("Carol", "Barebow", 30)],
+def start_four_archer_event(client, total_arrows=36):
+    """Set up a 4-archer event (3 passes by default: no byes, two matches per pass)."""
+    complete_stage1(client, n_archers=4, total_arrows=total_arrows, n_pass=12)
+    complete_stage2(client, FOUR_ARCHERS)
+
+
+def start_three_archer_event(client, shoot_byes=True, total_arrows=24):
+    """Set up a 3-archer event (one bye per pass)."""
+    client.post(
+        "/event/stage1",
+        data={
+            **stage1_form(n_archers=3, total_arrows=total_arrows, n_pass=12),
+            "shoot_byes": "yes" if shoot_byes else "no",
+        },
     )
+    complete_stage2(client, THREE_ARCHERS)
+
+
+def test_overview_shows_pass_heading_matches_and_links_but_no_score_boxes():
+    """The overview lists every match with a link, and has no score-entry inputs."""
+    client = make_client()
+    start_four_archer_event(client)
     resp = client.get("/event/rotation")
     assert resp.status_code == 200
+    assert b"Pass 1 of 3" in resp.data
+    assert b'href="/event/match/0"' in resp.data
+    assert b'href="/event/match/1"' in resp.data
+    assert b'href="/event/match/2"' not in resp.data
+    assert b" vs " in resp.data
+    assert b'name="score_' not in resp.data
+
+
+def test_overview_lists_the_bye_match_when_byes_are_shot():
+    """With an odd archer count and byes shot, the bye archer has a solo match."""
+    client = make_client()
+    start_three_archer_event(client, shoot_byes=True)
+    resp = client.get("/event/rotation")
     assert b"bye" in resp.data.lower()
+    assert b'href="/event/match/0"' in resp.data
+    assert b'href="/event/match/1"' in resp.data  # the pair, plus the bye match
 
 
-def test_submitting_a_rotation_advances_to_the_next_one():
-    """Submitting valid scores for the current rotation advances the event."""
+def test_overview_lists_sitting_out_archers_when_byes_are_not_shot():
+    """When byes aren't shot, the bye archer is listed as sitting out and gets no match."""
     client = make_client()
-    start_two_archer_event(client, n_pass=12)  # total_arrows == n_pass -> 1 rotation
-    resp = client.post(
-        "/event/rotation",
-        data={"score_0": "100", "score_1": "60"},
-        follow_redirects=True,
-    )
-    assert resp.status_code == 200
+    start_three_archer_event(client, shoot_byes=False)
+    resp = client.get("/event/rotation")
+    assert b"Sitting out this pass:" in resp.data
+    assert b'href="/event/match/0"' in resp.data
+    assert b'href="/event/match/1"' not in resp.data  # only the one pair shoots
 
 
-def test_invalid_score_in_rotation_rejected_with_clear_error():
-    """An invalid score anywhere in the rotation must be rejected, not partially recorded."""
+def test_posting_a_whole_rotation_is_no_longer_allowed():
+    """No endpoint accepts a whole rotation's scores at once."""
     client = make_client()
     start_two_archer_event(client)
-    resp = client.post(
-        "/event/rotation",
-        data={"score_0": "abc", "score_1": "60"},
-    )
-    assert resp.status_code == 200
-    assert b"must be a number" in resp.data
+    resp = client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    assert resp.status_code == 405
 
 
-def test_event_complete_redirects_to_results():
-    """Once every rotation is scored, /event/rotation redirects to results."""
+def test_match_page_shows_score_boxes_only_for_its_own_archers():
+    """A pair's page has exactly its two boxes; a bye match's page has one."""
     client = make_client()
-    start_two_archer_event(client, n_pass=12)  # single rotation
-    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
-    resp = client.get("/event/rotation", follow_redirects=True)
+    start_four_archer_event(client)
+    page = client.get("/event/match/0").data.decode()
+    assert page.count('name="score_') == 2
+
+    client = make_client()
+    start_three_archer_event(client, shoot_byes=True)
+    pair_page = client.get("/event/match/0").data.decode()
+    bye_page = client.get("/event/match/1").data.decode()
+    assert pair_page.count('name="score_') == 2
+    assert bye_page.count('name="score_') == 1
+    assert "bye" in bye_page.lower()
+
+
+def test_match_index_out_of_range_redirects_to_overview():
+    """An unknown match index goes back to the overview rather than erroring."""
+    client = make_client()
+    start_four_archer_event(client)
+    resp = client.get("/event/match/9", follow_redirects=True)
     assert resp.status_code == 200
+    assert b"Pass 1 of 3" in resp.data
+    resp = client.post("/event/match/9", data={"score_0": "1"}, follow_redirects=True)
+    assert b"Pass 1 of 3" in resp.data
+
+
+def test_event_routes_redirect_to_stage1_without_an_event():
+    """With no event set up, every event page falls back to Stage 1."""
+    client = make_client()
+    for url in ("/event/rotation", "/event/match/0"):
+        resp = client.get(url, follow_redirects=True)
+        assert b"Event setup - Stage 1" in resp.data
+    resp = client.post("/event/advance", follow_redirects=True)
+    assert b"Event setup - Stage 1" in resp.data
+
+
+def test_saving_a_match_records_only_that_match_and_returns_to_its_page():
+    """Saving one match leaves the others awaiting scores and redirects to the same page."""
+    client = make_client()
+    start_four_archer_event(client)
+    resp = save_match(client, 0, {0: 100, 3: 60})
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/event/match/0")
+
+    overview = client.get("/event/rotation").data.decode()
+    assert "A1 100 - 60 A4" in overview
+    assert overview.count("Awaiting scores") == 1  # the other match
+
+
+@pytest.mark.parametrize(
+    ("bad_score", "expected_message"),
+    [
+        ("abc", b"must be a number"),
+        ("-5", b"between 0 and 120"),
+        ("121", b"between 0 and 120"),
+        ("100.5", b"whole number"),
+    ],
+)
+def test_invalid_score_on_a_match_page_shows_an_error_and_records_nothing(
+    bad_score, expected_message
+):
+    """Each kind of invalid score is rejected with a specific message, recording nothing."""
+    client = make_client()
+    start_two_archer_event(client)
+    resp = save_match(client, 0, {0: bad_score, 1: 60})
+    assert resp.status_code == 200
+    assert expected_message in resp.data
+    assert b"Awaiting scores" in client.get("/event/rotation").data
+
+
+def test_resaving_a_match_replaces_its_scores():
+    """Saving a match again replaces the earlier scores, and the form is prefilled."""
+    client = make_client()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 100, 1: 60})
+    save_match(client, 0, {0: 90, 1: 80})
+
+    overview = client.get("/event/rotation").data.decode()
+    assert "Alice 90 - 80 Bob" in overview
+    assert "100" not in overview.split("Alice")[1].split("Bob")[0]
+    page = client.get("/event/match/0").data.decode()
+    assert 'value="90"' in page
+    assert 'value="80"' in page
+
+
+def test_advance_is_disabled_and_refused_until_every_match_is_scored():
+    """The advance button is disabled, and the route refuses, until the pass is fully scored."""
+    client = make_client()
+    start_four_archer_event(client)
+    assert b"disabled" in client.get("/event/rotation").data
+
+    refused = client.post("/event/advance")
+    assert refused.status_code == 200
+    assert b"Every match in the current pass must have scores" in refused.data
+    assert b"Pass 1 of 3" in refused.data
+
+    save_match(client, 0, {0: 100, 3: 60})
+    assert b"disabled" in client.get("/event/rotation").data
+    save_match(client, 1, {1: 90, 2: 80})
+    overview = client.get("/event/rotation").data
+    assert b"disabled" not in overview
+    assert b"Advance to next pass" in overview
+
+
+def test_advancing_shows_the_next_passes_pairings_and_accepts_its_scores():
+    """After advancing, the overview shows the new pairings and match pages take new scores."""
+    state = SessionState()
+    client = create_app(state=state).test_client()
+    start_four_archer_event(client)
+    score_current_pass(client)
+
+    resp = client.post("/event/advance", follow_redirects=True)
+    assert b"Pass 2 of 3" in resp.data
+    names = {i: name for i, (name, _, _) in enumerate(FOUR_ARCHERS)}
+    for a, b in state.event.matches(1):
+        assert f"{names[a]} vs {names[b]}".encode() in resp.data
+    assert resp.data.count(b"Awaiting scores") == 2  # fresh pass, nothing scored yet
+
+    score_current_pass(client)
+    results = client.get("/event/results").data
+    assert b"Rotation 2" in results
+
+
+def test_final_pass_has_no_advance_button_and_links_to_results_when_scored():
+    """On the last pass there is no advance button; once scored, the event is complete."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)  # a single pass
+    before = client.get("/event/rotation")
+    assert b"Pass 1 of 1" in before.data
+    assert b"Advance to next pass" not in before.data
+    assert b"final pass" in before.data
+
+    save_match(client, 0, {0: 100, 1: 60})
+    after = client.get("/event/rotation")  # not redirected away
+    assert after.status_code == 200
+    assert b"Advance to next pass" not in after.data
+    assert b"event is complete" in after.data
+    assert b'href="/event/results"' in after.data
+
+
+def test_advancing_past_the_final_pass_is_refused():
+    """POSTing advance on the final pass shows an error rather than moving on."""
+    client = make_client()
+    start_two_archer_event(client, n_pass=12)
+    save_match(client, 0, {0: 100, 1: 60})
+    resp = client.post("/event/advance")
+    assert resp.status_code == 200
+    assert b"final pass" in resp.data
 
 
 # --- Task 21: per-pass and pairwise results display -----------------------
@@ -317,7 +486,7 @@ def test_results_page_shows_scored_rotation():
     """After scoring a rotation, its per-pass results appear on the results page."""
     client = make_client()
     start_two_archer_event(client, n_pass=12)
-    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    save_match(client, 0, {0: 100, 1: 60})
     resp = client.get("/event/results")
     assert resp.status_code == 200
     assert b"Alice" in resp.data
@@ -330,7 +499,7 @@ def test_results_page_shows_pairwise_result():
     """After a pair shares a pass, their pairwise result appears."""
     client = make_client()
     start_two_archer_event(client, n_pass=12)
-    client.post("/event/rotation", data={"score_0": "120", "score_1": "0"})
+    save_match(client, 0, {0: 120, 1: 0})
     resp = client.get("/event/results")
     assert b"wins" in resp.data.lower()
 
@@ -357,7 +526,7 @@ def test_pair_chart_page_renders_for_a_shared_pair():
     """A pair that has shared a rotation gets a working chart page."""
     client = make_client()
     start_two_archer_event(client, n_pass=12)
-    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    save_match(client, 0, {0: 100, 1: 60})
     resp = client.get("/event/pair/0/1")
     assert resp.status_code == 200
     assert b'id="match-chart"' in resp.data
@@ -385,7 +554,7 @@ def test_results_link_to_chart_only_shown_in_advanced_mode():
     """The 'View chart' link must only appear in advanced mode."""
     client = make_client()
     start_two_archer_event(client, n_pass=12)
-    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    save_match(client, 0, {0: 100, 1: 60})
 
     resp_basic = client.get("/event/results")
     assert b"View chart" not in resp_basic.data
@@ -404,7 +573,7 @@ def test_results_page_does_not_show_a_ranked_leaderboard():
     """
     client = make_client()
     start_two_archer_event(client, n_pass=12)
-    client.post("/event/rotation", data={"score_0": "100", "score_1": "60"})
+    save_match(client, 0, {0: 100, 1: 60})
     resp = client.get("/event/results")
     assert b"<th>Rank</th>" not in resp.data
     assert b"<th>Points</th>" not in resp.data
