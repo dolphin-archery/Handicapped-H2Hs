@@ -550,7 +550,7 @@
       "No leftover reference to the indoor/outdoor round-mode fields remains in h2h/ or tests/ (grep).",
       "Verified in a real browser: toggling Simple/Advanced hides/shows the dropdowns and the TBA message and disables/enables the submit button; choosing a distance and face and continuing works through to Stage 2; no JS console errors."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 43,

@@ -1085,3 +1085,41 @@ integration tests were migrated to shared setups in `tests/helpers.py`, and new
 tests cover the stored/default/reset setup and an Event using a non-default one
 (including that Compound and Recurve share a distribution outdoors but not
 indoors). Suite: 505 passed.
+
+### Task 42: Stage 1: simple/advanced setup toggle with distance and face-size dropdowns (complete)
+Stage 1's Indoor/Outdoor and Portsmouth/WA 18 radios are replaced by a "Setup
+mode" toggle (Simple default, Advanced). Simple shows two dropdowns: Distance
+(optgroups Metric and Imperial, the 16 standard options, 20 yd preselected) and
+Face size (40/60/80/122 cm, 60 cm preselected), plus a one-paragraph note that
+distances up to 25 m / 25 yd count as indoor and what that changes. The route
+validates both against the standard lists via `TargetSetup.parse` (a forged value
+gets "not one of the standard distances/face sizes" and stores nothing) and the
+chosen values are re-selected when Stage 1 is revisited. Advanced shows a "TBA"
+message, hides the dropdowns and disables the submit button; a forced POST is
+refused server-side with the same message and, because that check now runs
+before the numbers are parsed, never reports a different error. The temporary
+bridge from task 41 is deleted. Stage 2's intro now says what everyone shoots
+and whether it counts as indoor (with the reduced-10 note only when indoor),
+replacing the old "round mode" wording.
+
+Verified in a real browser (headless Edge via Selenium, a subagent, against the
+exact commit exported with `git archive`): fresh page has Simple selected,
+dropdowns shown, TBA hidden, submit enabled, and the option lists are exactly the
+standard ones in the right groups; clicking Advanced hides the dropdowns, shows
+the TBA text and disables submit (clicking it or pressing Enter in a field made no
+request); back to Simple restores everything; choosing 50 m / 80 cm reaches Stage
+2 whose intro says outdoor; returning to Stage 1 remembers 50 m / 80 cm; 20 yd /
+60 cm gives an intro saying indoor with the inner-ring note; the Shoot byes control
+and the arrows-per-pass slider still work (total 40 -> label 10); only the usual
+favicon 404 in the console. The check found one cosmetic bug I had missed - the
+intro read "at a 80 cm face" (and "a 122 cm" is wrong too) - fixed by rewording
+to "with a face size of 80 cm", which is correct for every size.
+
+Tests: 15 new route tests (toggle and defaults, the exact distance/face option
+lists and groups, old radios gone, stored and remembered setup, parametrised bad
+distance/face values, Advanced refused with state untouched and the page
+re-rendered with Advanced selected and submit disabled, refusal precedence, TBA
+text present but hidden under Simple, the Stage 2 intro for an indoor and an
+outdoor setup, and a scan that no `round_mode`/`RoundMode`/bridge names remain
+in `h2h/`). The shared test form helpers were switched to the new fields.
+Suite: 520 passed.
