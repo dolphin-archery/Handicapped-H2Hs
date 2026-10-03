@@ -28,12 +28,19 @@ the middle, with no coin flip), the "advanced" setup mode is built (every archer
 shoot a different target face type, face size and distance), results include a live
 leaderboard, a per-archer results page and PDF/CSV exports, the graph marks every
 score each archer has shot so far, and the standalone calculator covers every
-standard indoor and outdoor round.
+standard indoor and outdoor round. As of `Specification/feedback.md` "Feedback 6", handicaps
+are no longer shown beside archers' names while scoring (the pass's own handicap appears in
+the results table instead), displayed percentiles are made distinguishable, the tie-break
+tick boxes only appear when there is a tie, the per-pass results are shown grouped by match,
+exports carry a date and time and both starting and to-date handicaps, and advanced setup can
+update each archer's handicap as the event goes on (a weighted moving average).
 
 ## 2. Statistical model (summary — see `Testing/idea_evaluation.md` for full derivation)
 
 - Each archer supplies their current AGB handicap `h` before the round starts. This is
-  the only per-archer skill input.
+  the only per-archer skill input. (In advanced setup the scorer may choose to update each
+  archer's handicap as the event goes on, §5.2c; the handicap used for a pass is then
+  the updated one, and everything below applies to it.)
 - The AGB 2023 handicap scheme (as implemented in `archeryutils`) defines an angular
   aiming-error standard deviation `sigma_r(h, distance)` for that archer. This
   determines, for a given target face, the probability an arrow lands in each scoring
@@ -103,9 +110,8 @@ standard indoor and outdoor round.
 Out of scope for this version (may be revisited later):
 - Bowstyle-specific *variance* correction (`γ_B`) — see §2's exclusion note (distinct
   from the in-scope indoor Compound scoring-system difference).
-- Day-to-day / within-event handicap drift modelling (Bayesian filtering), including
-  the weighted moving average of the starting handicap and the handicaps shot so
-  far listed under `Specification/feedback.md` "Future Plans - DO NOT IMPLEMENT YET".
+- Day-to-day / within-event handicap drift modelling by Bayesian filtering. (The simpler
+  weighted moving average of Feedback 6 *is* in scope for advanced setup, §5.2c.)
 - Handicap estimation uncertainty from a single observed score.
 - Arrow-by-arrow live data entry.
 - Free entry of distances in metres or yards, and of face sizes: advanced setup (§5.2)
@@ -157,8 +163,10 @@ Out of scope for this version (may be revisited later):
   scoring rings, since it differs between face types.
 - **Outputs and exports** (new, `h2h/outputs.py` and `h2h/exports.py`): Flask-free
   functions that turn an `Event` into the leaderboard and per-archer results (only
-  from passes in which every match is scored, §5.4a) and render them as CSV text and
-  a PDF document.
+  from passes in which every match is scored, §5.4a), including each archer's
+  starting and to-date handicap, and render them as CSV text and a PDF document that
+  carry the time they were exported. `h2h/outputs.py` also holds the display rule that
+  chooses how many decimal places a pair of percentiles is shown to (§5.3).
 - **Frontend:** server-rendered HTML pages (Flask templates) with plain forms/inputs
   and a small amount of JS for sliders, the setup-mode toggle and the graph view
   toggle. No SPA framework required. Setup runs over three pages (§5.1, §5.2,
@@ -243,10 +251,13 @@ event-wide settings (no archer identities yet):
 - A standalone score-to-handicap conversion utility is also reachable from this
   stage (§5.5) — for working out a starting handicap, not tied to any archer's
   stored data.
+- In **advanced** setup mode the page also has an event-wide **"Update handicaps during
+  matches"** Yes/No choice (default No), with its two parameters when Yes (§5.2c).
 - Submitting this stage stores the archers (in entry order, each with their own
   target setup in advanced mode) and proceeds to Stage 3 (§5.2b), where they are
   assigned to the schedule's positions; the event itself starts only when Stage 3
-  is confirmed.
+  is confirmed. Since an extra step now follows, the submit button reads **"Continue
+  to Stage 3"** (like Stage 1's "Continue to Stage 2"), not "Start event".
 
 #### 5.2a Per-archer target resolution (target setup x bowstyle)
 
@@ -287,6 +298,36 @@ faces, 1 for Beiter hit/miss, and so on), so the score an archer may enter for a
 pass is limited to `n_pass` times *their own* target's maximum (replacing the earlier
 fixed 10, Assumption 10). Percentiles are always taken from each archer's own score
 distribution, so archers on different targets are still compared fairly.
+
+#### 5.2c Updating handicaps during the event (advanced setup only)
+
+Per `Specification/feedback.md` "Feedback 6" (Assumptions 49-50). On Stage 2, in advanced
+setup mode only (simple setup always keeps each archer's handicap constant), there is an
+event-wide Yes/No choice **"Update handicaps during matches"**, default No.
+
+- **No:** every archer's score distribution (§2) is built from their entered handicap
+  `H0` for every pass, as before.
+- **Yes:** two more inputs appear, both whole numbers of at least 1:
+  - **`n_lookback`** — how many of an archer's most recent passes (each `n_pass` arrows)
+    are used to work out their handicap at the start of a pass. `n_lookback = 1` uses only
+    the previous pass. Default: the number of passes each archer shoots, `P =
+    total_arrows / n_pass`, i.e. use everything shot so far (Assumption 49).
+  - **Start weight** — how many passes' worth of arrows the starting handicap counts for.
+    Default `P` (5 for a 60-arrow event of 12-arrow passes).
+- Before an archer's pass, let `j` be the number of passes they have scored in earlier
+  rotations (sitting a pass out adds nothing) and `m = min(n_lookback, j)`. If `m = 0` the
+  handicap for the pass is `H0`. Otherwise let `H_recent` be the handicap implied by the
+  total of their last `m` scores over those `m * n_pass` arrows on their own target (the
+  "equivalent handicap" of §5.4a, taken as 150 if the total is 0, which has none), and the
+  handicap used for the pass is the weighted average
+  `(start_weight * H0 + m * H_recent) / (start_weight + m)`, kept within 0 to 150.
+- This handicap sets the archer's per-arrow and pass score distributions for that pass,
+  and so their percentile, the winner and the chart's curves. It depends only on passes
+  before the current one, so correcting the current pass's scores never changes it, and a
+  pass that has been advanced past keeps the handicap it was scored with.
+- The updated handicap is not displayed (Feedback 6 removes handicaps from the scoring
+  pages); it shows only through the percentiles and the curves. It is a different quantity
+  from the to-date handicap of §5.4a, which weights nothing and uses every arrow shot.
 
 #### 5.2b Stage 3: pairing assignment
 
@@ -349,29 +390,41 @@ distribution, so archers on different targets are still compared fairly.
   - *Score* — "A - B", the two integer scores in the same order as the opponents
     in the Match column (a bye match shows just the one score).
   - *Percentiles* — each archer's percentile for that pass **in their own
-    distribution**, as "A% - B%" to one decimal place, in the same order (a bye
-    match shows just the one percentile).
+    distribution**, as "A% - B%" in the same order, to one decimal place or more as
+    the display rule below says (a bye match shows just the one percentile, to one
+    decimal place).
   - *Winner* — the name of the archer who won the pass (none for a bye match).
   - *Actions* — the link into the match's own page ("Enter scores" until the match
     is scored, "View / edit" after).
   - Until a match is scored its Score, Percentiles and Winner cells show "-".
 - Each match has its **own page**, reached from the overview, where the scorer
   enters that match's scores: one score-entry box per archer in the match (a
-  single box for a bye match). The heading is just the archers' names ("A vs B");
-  **each archer's handicap** is shown beside their score box, and also in the
-  graph's legend (§5.6) (Feedback 5 moved it out of the heading, Assumption 32).
-  Score validation is whole numbers in `[0, n_pass * m]` where `m` is the highest
+  single box for a bye match). The heading and the score-box labels are just the
+  archers' names ("A vs B"): **no handicap is shown beside an archer's name while
+  scoring** (Feedback 6, which overrides the earlier requests to show it in the heading,
+  beside the score boxes and in the graph legend; Assumption 41). Score validation is whole numbers in `[0, n_pass * m]` where `m` is the highest
   score one arrow can earn on that archer's own target (§5.2a), with friendly
   errors and integer display. Below the form, once the match has scores, one
   **table of this pass only** with the columns **Archer | Score | Percentile |
-  Winner**, one row per archer in the match: Percentile as in the overview (one
-  decimal place) and Winner "Yes" or "No" (a bye match, having no opponent, shows
-  "-"). Earlier passes and earlier opponents are not shown here; they are in the
-  per-archer results (§5.4a). Below that, in graph view, the pair's distribution chart
-  (§5.6), plus a link back to the overview. Scores for all matches are **not**
-  entered on one page at once.
-- A paired match's form also has a **tie-break** control (see "Tie-break" below): a
-  pair of tick boxes, one per archer, labelled as "closest to the middle".
+  Handicap | Winner**, one row per archer in the match: Percentile as in the overview
+  (display rule below), Handicap the handicap implied by the score shot in this pass
+  (the "equivalent handicap" of §5.4a, to one decimal place, "-" for a score of 0),
+  and Winner "Yes" or "No" (a bye match, having no opponent, shows "-"). Earlier passes
+  and earlier opponents are not shown here; they are in the per-archer results (§5.4a).
+  Below that, in graph view, the pair's distribution chart (§5.6), plus a link back to
+  the overview. Scores for all matches are **not** entered on one page at once.
+- A paired match's page has a **tie-break** control (see "Tie-break" below) of two tick
+  boxes, one per archer, labelled "closest to the middle" — but only when it is needed,
+  not on every match page.
+- **Displaying percentiles.** Wherever two archers' percentiles are shown side by side
+  (the overview, the This pass table, and the per-pass results on the Results page), they
+  are shown to one decimal place unless that makes them look the same: if the two
+  percentages are identical at that precision, one more decimal place is shown for both,
+  and so on, until they differ, up to 20 places. The exception is a genuine tie (the two
+  percentiles are equal within the tie-break tolerance below, for example both 100%), or
+  two that still look the same at 20 places: those stay at one decimal place. A bye match,
+  and the per-archer tables (which have no pair), always use one decimal place
+  (Assumption 42).
 - On saving a match's scores, the system computes and displays, per archer: their
   percentile for that pass and (for paired archers) the pass winner. (The
   full-round-equivalent handicap implied by the score, formerly shown here, is now
@@ -387,16 +440,18 @@ distribution, so archers on different targets are still compared fairly.
   archers. This replaces the earlier coin flip, so a paired pass always has a winner.
 - The closest-to-the-middle result is entered with two **mutually exclusive tick
   boxes**, one per archer ("closest to the middle"): ticking one clears the other, and
-  the server rejects a form with both ticked. Ticking neither is allowed. Both boxes
-  are always shown on a paired match's form, with a note that they are used only when
-  the percentile and score are exactly tied.
-- If the percentiles and scores are tied and neither box is ticked, the scores are
-  **not saved**: the page is shown again with a message asking for the tick, and the
-  entered scores kept in the form. If a box is ticked but the tie does not occur,
-  the tick is ignored and not stored.
+  the server rejects a form with both ticked. Ticking neither is allowed.
+- The boxes are **shown only when the percentile and score tie** (Feedback 6; Assumption
+  43). The percentile is not known until the scores are saved, so a tie is found on
+  saving: the scores are **not saved**, and the page is shown again with a message asking
+  which archer's arrow was closest to the middle, the boxes now visible, and the entered
+  scores kept in the form. The boxes are also shown when a saved match was decided by the
+  tick (with that archer's box ticked), so it can be corrected. At any other time they are
+  not on the page. If a box is ticked (by a forced request) when there is no tie, the tick
+  is ignored and not stored.
 - A saved match decided by the tick shows a note under its table ("percentile and
-  score were tied; decided by closest to the middle"), the tick is shown ticked when
-  the match is reopened, and the overview names that winner as for any other pass.
+  score were tied; decided by closest to the middle") and the overview names that winner
+  as for any other pass.
 - Percentiles are compared with a relative tolerance of 1e-9, so two mathematically
   equal percentiles (for example both 100%) are tied even if floating-point rounding
   separates them, while two very small ones (1e-18 and 1e-20) are not (Assumption 33).
@@ -432,16 +487,23 @@ pass"; Assumption 36). The pass currently being scored is left out until its las
 match is saved, and the outputs update when it is. With no completed pass yet they
 show an empty state (every archer on 0 points, no result rows).
 
+- **Handicaps in the outputs** (Feedback 6; Assumption 47). Each archer has a **starting
+  handicap** (the one entered at Stage 2) and a **to-date handicap**: the handicap implied
+  by their total score over all the arrows they have shot in the completed passes (`n_pass`
+  times the number of passes they shot), on their own target. It is calculated the same
+  way as a pass's handicap but over every arrow so far, so after the last pass it equals the
+  handicap a full-round calculation of their whole score would give. It is "-" (empty in a
+  CSV) until the archer has a completed pass or if their total is 0, which has none.
 - **Leaderboard** (on the Results page, above the pairwise results): a table with
-  **Rank | Archer | Points | Passes decided**, ordered by points, highest first.
-  Points are passes won; "Passes decided" is the number of the archer's completed
-  passes that had an opponent (bye passes have no winner and score nothing).
-  Archers on equal points share a rank (1, 2, 2, 4) and are listed in event order
-  (Assumption 37).
+  **Rank | Archer | Points | Passes decided | Starting handicap | To-date handicap**,
+  ordered by points, highest first. Points are passes won; "Passes decided" is the number
+  of the archer's completed passes that had an opponent (bye passes have no winner and
+  score nothing). Archers on equal points share a rank (1, 2, 2, 4) and are listed in event
+  order (Assumption 37).
 - **Archer results page** (a page of its own, linked from the nav bar and the
-  Results page): for every archer, in event order, a heading of **name, total score
-  and handicap** (the total of their scores over the completed passes, and the
-  handicap they entered at Stage 2), then a table with the columns
+  Results page): for every archer, in event order, a heading of **name, total score,
+  starting handicap and to-date handicap** (the total of their scores over the completed
+  passes; the handicaps as above), then a table with the columns
   - **Pass** — the pass number, an integer;
   - **Opponent** — the opponent's name for that pass ("bye" when they shot alone);
   - **Score** — the score they shot in that pass;
@@ -457,17 +519,31 @@ show an empty state (every archer on 0 points, no result rows).
   an average of pass numbers or of names means nothing (Assumption 38).
 - **Exports** (links on the Results page and the Archer results page), each built from
   the same data as the pages and so equally live:
-  - the **leaderboard as CSV** (`Rank,Archer,Points,Passes decided`);
+  - the **leaderboard as CSV** (`Rank,Archer,Points,Passes decided,Starting handicap,
+    To-date handicap,Exported`);
   - the **archer results as CSV**, one tidy table with a row per archer per completed
-    pass (`Archer,Handicap,Pass,Opponent,Score,Percentile (%),Handicap of score`),
-    without the Average rows, which a spreadsheet can compute;
-  - one **PDF report** of everything: a title, the leaderboard and then each archer's
-    heading and table including its Average row.
+    pass (`Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),
+    Handicap of score,Exported`; the two handicap columns repeat the archer's values on each
+    of their rows), without the Average rows, which a spreadsheet can compute;
+  - one **PDF report** of everything: a title and the time of export, the leaderboard
+    (with both handicaps) and then each archer's heading (with both handicaps) and table
+    including its Average row.
   CSV is UTF-8 without a byte-order mark, comma-separated, with a header row (and
   numbers written plainly, not as text, e.g. `18.6`). The PDF is A4 with plain tables
   and uses a built-in font, so characters outside Latin-1 in a name are replaced by
-  `?` (Assumption 39). Files are named after what they contain
-  (`leaderboard.csv`, `archer-results.csv`, `results.pdf`).
+  `?` (Assumption 39).
+  **Date-time stamp** (Feedback 6; Assumption 46): every export carries the date and
+  time (local time of the machine running the app) at which it was made: in the file name
+  (`leaderboard_20261004-153012.csv`, `archer-results_20261004-153012.csv`,
+  `results_20261004-153012.pdf`), in the CSV's final `Exported` column (`2026-10-04
+  15:30:12` on every row) and as a line near the top of the PDF.
+- **Per-pass results on the Results page** (Feedback 6; Assumption 45): for every pass with
+  results, a heading "Pass N" and one table in the same format as the This pass table of §5.3
+  (**Archer | Score | Percentile | Handicap | Winner**), with each match's rows together
+  and a thick double horizontal line between one match and the next, so it is clear who
+  was paired with whom (a bye match is a group of one row; matches not yet scored are
+  left out). Percentiles follow the display rule of §5.3. This section, like the pairwise
+  results, shows a saved match straight away rather than waiting for the whole pass.
 
 ### 5.5 Static handicap conversion tool
 
@@ -509,9 +585,9 @@ built by Feedback 5) exists.
   distributions as smoothed, shaded curves on one shared graph (not discretised
   bars, and not two separate charts), trimmed to a sensible x-range rather than the
   full achievable score range.
-  - **Legend:** each curve is listed with its archer's name and handicap, e.g.
-    "Alice (handicap 30)". (This is where the handicap now appears instead of in the
-    page heading, §5.3.) The marker lines below are not listed in the legend.
+  - **Legend:** each curve is listed with its archer's name only. (Feedback 5 put
+    the handicap in the legend; Feedback 6 removed handicaps from the scoring pages, so
+    it is gone again, Assumption 41.) The marker lines below are not listed in the legend.
   - **Score markers:** the scores the archers have shot are marked as vertical dashed
     lines in the archer's colour, **each labelled on the chart with its pass number**
     (e.g. "P3" beside the line, kept inside the plot and, where two lines are close, on
@@ -592,6 +668,10 @@ built by Feedback 5) exists.
   (handicap + resolved target), independent of opponent. Scores are recorded one
   match at a time, and the event moves to the next rotation only on an explicit
   advance once the current rotation's matches are all scored.
+- `Event` also takes the handicap-updating settings of §5.2c (`update_handicaps: bool`,
+  `n_lookback`, `start_weight`; off by default), and can say which handicap an archer
+  has for a given pass and the score distribution that gives, rather than one fixed
+  distribution per archer.
 - `PassResult`: per archer per rotation: `score`, `percentile`, `handicap`
   (equivalent), and (if paired) `winner` plus `decided_by` (`percentile` | `score` |
   `closest to the middle`, saying which step of the tie-break chain, §5.3, decided
@@ -803,12 +883,13 @@ built by Feedback 5) exists.
     stacked if they would still overlap (found necessary in browser testing: a one-unit
     margin is under 8 px on a wide axis). The pair-history page and the match page share the
     one chart and payload.
-32. **Handicap moved out of the match heading only.** Feedback 5 says to remove the base
+32. ~~**Handicap moved out of the match heading only.** Feedback 5 says to remove the base
     handicap "from title of score input pages and instead add it to legend", which
     could mean removing it from the page entirely. It is removed from the heading, and
     shown in the legend when graph view is on, but kept beside each archer's score
     box, because with graph view off (the default) the legend does not exist and
-    Feedback 4 asked for handicaps to be visible on the match page.
+    Feedback 4 asked for handicaps to be visible on the match page.~~ Superseded by
+    Feedback 6 (Assumption 41): no handicap beside archers' names while scoring at all.
 33. **Tie-break details.** (a) Two percentiles are tied if they differ by a relative amount
     below 1e-9: a percentile is a sum of probabilities, so (for example) the percentile of
     a score at or above an archer's maximum is 1 only to within rounding, and exact
@@ -886,3 +967,73 @@ built by Feedback 5) exists.
     miscellaneous set. The compound variants are not listed separately: the compound
     checkbox, shown only for indoor rounds, switches the chosen round to its compound
     variant where `archeryutils` defines one.
+41. **No handicap beside an archer's name while scoring (Feedback 6).** The feedback says
+    "Do not display handicap next to archer names during score input. Ignore previous
+    instructions saying to". Three earlier requests asked for the handicap on the match page:
+    Feedback 4 (in the heading and beside the score boxes), Feedback 5 (out of the heading,
+    into the chart legend) and Assumption 32's compromise. All are read as withdrawn: the
+    match page's heading, score-box labels and the chart's legend show the archers' names only.
+    This leaves the match page without any display of the starting handicap, which is the
+    intent as read; if the legend should keep it, restore the `legend` label in
+    `h2h/chart_data.py`. The handicap implied by the pass's score (a result, not an input) is
+    shown in the This pass table instead (Assumption 44). Handicaps still appear on the
+    results pages (Assumption 47).
+42. **Percentile display precision.** "Increment decimal places displayed until they are
+    different, unless they are both 100%" is implemented on the percentage values (percentile
+    times 100) for a pair, adding a decimal place at a time from one up to a limit of 20.
+    "Both 100%" is read as the case where no number of decimals could tell them apart, i.e. the
+    two are tied within the tie-break tolerance (Assumption 33), so a pair that rounds the same
+    at one place only because both are near 100% but really differ (99.97 and 99.98) is shown
+    as 99.97 and 99.98. A pair that is still identical at 20 places (for instance two
+    probabilities far below 1e-18) stays at one place. The rule applies only where two
+    percentiles sit side by side; a bye match and the per-archer tables use one decimal place.
+    The CSV and PDF exports keep one decimal place (they have no pair).
+43. **Tie-break boxes are driven by the server.** A tie can only be known after saving (the
+    percentile needs the saved score), so the boxes appear on the page that asks for them
+    after a tie is refused, and on a match page whose saved result was decided by the tick. A
+    scorer cannot pre-tick them before a first save; it is one extra click only in the rare
+    tie. The page needs no script to reveal them.
+44. **The This pass table's Handicap column** is the handicap implied by the score shot in
+    that pass (the same "equivalent handicap" as the per-archer results), to one decimal
+    place and "-" for 0; it sits between Percentile and Winner. "Per pass handicap" is read
+    this way rather than as the handicap the archer was given for the pass (which, with
+    handicap updating, differs from the entered one and is not displayed, §5.2c).
+45. **Per-pass results on the Results page.** The shared table partial is used for this
+    page and the match page, so the format is identical. Passes are titled "Pass N" (they
+    were "Rotation N"), matches are separated by a 3 px double rule, and the "Opponent" and
+    "Won?" columns of the old table are replaced by the grouping and the Winner column.
+    Matches that are not yet scored are omitted, and archers sitting a pass out are not
+    listed (as before).
+46. **Export date-time stamp.** The time is the local time of the machine running the app,
+    to the second, taken when the file is requested. It is in the file name, in a final
+    `Exported` column of each CSV (a repeated value, kept so the file still carries its time
+    if renamed and so the CSV stays a plain table with one header row, rather than a comment
+    line that spreadsheets and `pandas.read_csv` would treat as data), and in the PDF.
+47. **Starting and to-date handicap.** "To date handicap is calculated from total score over
+    number of arrows shot so far": the total of the archer's scores in the completed passes
+    over `n_pass` times the number of those passes (every pass they shot, byes included), as
+    an equivalent handicap on their own target (the machinery that gives a pass its
+    handicap). It is a single value per archer, repeated on each of the archer's rows in the
+    archer-results CSV, rather than a running value per pass. The feedback asks for it in the
+    exports; it is also shown on the Archer results page (heading) and the leaderboard so
+    the pages and exports keep matching (§5.4a). The old CSV column "Handicap" (the entered
+    one) is renamed "Starting handicap".
+48. **Stage 2's submit button** reads "Continue to Stage 3".
+49. **Handicap updating: formula, defaults, limits.** Feedback 6 describes the weighted average
+    in words; the formula of section 5.2c is this reading: the starting handicap counts as
+    `start_weight` passes' worth of arrows and the recent shooting as `m` passes' worth,
+    averaged by those weights; `m` is capped by the passes actually shot. The feedback gives
+    the default of the start weight (`n_arrows / n_pass`) but none for `n_lookback`, so it
+    defaults to the same number of passes, which uses every arrow shot so far (what the
+    earlier "Future Plans" wording described); the scorer can lower it. Both must be whole
+    numbers of at least 1 (a start weight of 0 would drop the starting handicap as soon as
+    there is data; not asked for). The recent handicap uses `archeryutils`'s rootfinder, so
+    it inherits its limits: a very high score saturates (a perfect pass gives the highest
+    handicap at which that score rounds to the maximum, not 0) and a pass of `n_pass` arrows
+    is a noisy estimate, which is why the starting weight exists; a total of 0 has no
+    handicap and is treated as 150, and the average is kept within 0 to 150. The updating is
+    self-referential by design: an archer who improves has a higher bar the next pass, so
+    their percentiles for good scores fall; the scorer should expect that.
+50. **Where the choice lives.** It is an event-wide setting on Stage 2 shown only in advanced
+    mode (as the feedback says); simple mode never updates handicaps. It is stored with the
+    archers when Stage 2 is submitted, and the Stage 2 form refills it after an error.

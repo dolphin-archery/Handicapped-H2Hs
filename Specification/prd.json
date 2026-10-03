@@ -782,5 +782,152 @@
       "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 5 section."
     ],
     "completed": true
+  },
+  {
+    "id": 57,
+    "name": "Percentile display rule and shared pass-table rows (outputs model)",
+    "description": "Per Specification/feedback.md 'Feedback 6' (percentiles) and Specification/AISpec.md section 5.3 'Displaying percentiles' (Assumption 42): add to the Flask-free h2h/outputs.py a function percentile_pair_text(a, b) taking two percentiles as 0-1 fractions and returning their two percentage strings with a % sign. They are shown to one decimal place unless the two strings are identical at that precision, in which case a decimal place is added to both, repeatedly, until they differ, up to 20 places; if the two are tied within the tie-break tolerance (stats.PERCENTILE_REL_TOLERANCE, e.g. both exactly 100%) or are still identical at 20 places, both stay at one decimal place. Also add a dataclass PassTableRow (archer name, score text, percentile text, handicap text, winner text) and pass_table_rows(event, results) that turns one match's PassResults (one for a bye, two for a pair) into rows in match order: percentile text from percentile_pair_text for a pair and one decimal place for a bye, handicap one decimal place or '-' for a score of 0, winner 'Yes'/'No' (or '-' for a bye). The overview page's Percentiles column uses percentile_pair_text for each scored pair (a bye shows its one percentile to one decimal place).",
+    "tests": [
+      "percentile_pair_text(0.598, 0.123) == ('59.8%', '12.3%'): pairs that already differ at one decimal place are unchanged.",
+      "Two percentiles that agree at one place but differ later are shown with the fewest extra places that separate them (e.g. 0.50003 and 0.50004 -> '50.003%' and '50.004%'; 0.5004 and 0.5001 -> '50.04%' and '50.01%').",
+      "Rounding (not truncation) decides, by comparing the formatted strings: 0.99996 and 0.99991 (both '100.0%' at one place) are shown as '100.00%' and '99.99%', the first place count at which the two strings differ.",
+      "Both exactly 100% (1.0 and 1.0), 1.0 and 1.0 - 1e-12 (tied within the tolerance), both exactly 0, and equal mid-range values are all shown at one decimal place ('100.0%', '100.0%'); two different tiny percentiles such as 1e-20 and 1e-18 (neither tied) are shown at the first decimal count that separates them within 20 places or, if none does, at one place.",
+      "The loop never exceeds 20 decimal places and the function never raises for any pair of values in [0, 1].",
+      "pass_table_rows for a scored pair returns two rows in match order with name, integer score text, the pair percentile texts, handicap to one decimal place ('-' for a score of 0) and Yes/No; for a bye it returns one row with percentile at one decimal place and winner '-'; for a tie decided by closest the winner texts follow the saved winner.",
+      "The overview's Percentiles cell for a scored pair uses the display rule (a pair whose percentiles both round to 0.0% shows enough places to tell them apart), still 'A% - B%' in match order, and an unscored match still shows '-'.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 58,
+    "name": "Match page: names only, a Handicap column in the This pass table, shared pass table",
+    "description": "Per Specification/feedback.md 'Feedback 6' and AISpec.md section 5.3 (Assumptions 41, 44): on the score-input (match) page (1) remove the handicap beside the archers' names - the score-box labels become '<name> score (0-<max>):' with no handicap - and remove it from the chart legend (the chart payload's `legend` label is dropped and the chart uses the archer's name); the heading stays names only. (2) The This pass table gains a Handicap column between Percentile and Winner (the handicap implied by the pass score, one decimal place, '-' for 0), so its columns are Archer | Score | Percentile | Handicap | Winner. The table is rendered by a new shared partial _pass_table.html that takes groups of PassTableRow (task 57) so that the Results page can reuse it (task 60); the match page passes a single group built with pass_table_rows. Percentile texts follow the display rule. Remove anything that only the old match-page handicap display used (the handicap macro, the payload legend key and its tests) once nothing else uses it.",
+    "tests": [
+      "On a match page (before and after saving) no archer's name is followed by 'handicap' anywhere in the page text outside the chart payload, and the score labels read exactly '<name> score (0-<max>):'; the heading is '<A> vs <B>' (or '<A> - bye, no opponent').",
+      "The chart payload's archer entries have no 'legend' key; the chart script's legend text for each curve is the archer's name; no page or payload contains the string '(handicap '.",
+      "The This pass table's headings are exactly Archer, Score, Percentile, Handicap, Winner; each row's Handicap equals the Event's recorded equivalent handicap to one decimal place ('-' for a score of 0).",
+      "A paired match whose percentiles both show 0.0% at one decimal place shows more places in the table (display rule), and the same two texts appear in the overview row.",
+      "A bye match shows one row with percentile to one decimal place, a handicap and Winner '-'.",
+      "The table is produced by a partial shared with the Results page (the string '<th>Winner</th>' appears in exactly one template file).",
+      "The existing handicap-on-the-match-page tests are replaced by the opposite checks and the full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 59,
+    "name": "Tie-break tick boxes only when percentile and score tie",
+    "description": "Per Specification/feedback.md 'Feedback 6' and AISpec.md section 5.3 'Tie-break' (Assumption 43): the two 'closest to the middle' tick boxes (and their explanatory text and the exclusivity script) are no longer on every paired match page. They are rendered only (a) when a save was refused because the percentiles and scores tie - the page re-rendered with the tie message, the typed scores kept and the boxes visible - and (b) when the match's saved result was decided by 'closest' (the winner's box ticked), so it can be corrected. Otherwise the boxes, fieldset and script are absent from the page. A forced POST that ticks a box without a tie is still accepted and ignored, and one with both ticked or a foreign archer is still rejected (with the boxes shown again). No script is needed to reveal them.",
+    "tests": [
+      "A fresh paired match page, and one whose saved result was decided by percentile or score, contains no checkbox named `closest`, no 'closest to the middle' text and no exclusivity script.",
+      "Saving an exact tie with nothing ticked re-renders the page with the message, the typed scores kept, and two unticked `closest` boxes plus the exclusivity script.",
+      "After saving the tie with a box ticked the reopened page shows the two boxes with the winner's ticked and the 'decided by closest to the middle' note; after editing the scores to untied ones the boxes are gone again.",
+      "Editing a saved tie-break match to a new tie without a tick is refused with the boxes visible and the earlier result kept.",
+      "Ticking both boxes (forced POST) is rejected with the one-archer message and the boxes visible; a forced tick when there is no tie is accepted and ignored, and the next GET shows no boxes.",
+      "A bye match never shows the boxes.",
+      "The existing tie-break route tests are migrated and the full suite passes; verified in a real browser (headless Edge via an ephemeral Selenium install on an exact `git archive` of the commit): a normal match page has no tick boxes, an exact tie shows them with the message, ticking one then the other leaves only the last ticked, and the saved result is correct, with no JS console errors."
+    ],
+    "completed": false
+  },
+  {
+    "id": 60,
+    "name": "Results page: per-pass results as grouped match tables with double rules",
+    "description": "Per Specification/feedback.md 'Feedback 6' and AISpec.md section 5.4a 'Per-pass results on the Results page' (Assumption 45): the per-pass results on /event/results use the same table as the match pages (shared _pass_table.html, task 58): for each pass that has results a heading 'Pass N' (was 'Rotation N') and one table Archer | Score | Percentile | Handicap | Winner whose rows are grouped by match in match order, with a thick double horizontal line (CSS 3px double) between one match and the next so the pairings are clear; a bye match is a group of one row; matches that are not yet scored are omitted. Percentile texts follow the display rule. The old _results_table.html (Opponent and 'Won?' columns) is removed if nothing else uses it. The pairwise results and leaderboard sections are unchanged.",
+    "tests": [
+      "After scoring both matches of pass 1 the Results page has a 'Pass 1' table with headings Archer, Score, Percentile, Handicap, Winner and four rows, the first two being one match's archers and the last two the other's, in the same order as the overview.",
+      "Each match's rows are in a group of their own (a <tbody> per match) and the stylesheet gives every group after the first a 3px double top border; a bye match is one group of one row.",
+      "The table's values equal the Event's recorded results (names, scores, percentile texts under the display rule, handicaps, Yes/No).",
+      "A match that has not been scored is absent from its pass's table; a pass with no results has no table; the heading text is 'Pass N' for every pass and no 'Rotation' heading remains.",
+      "The page no longer has 'Opponent' or 'Won?' column headings in the per-pass section.",
+      "Verified in a real browser: the double rules are drawn between matches of a pass (screenshot read and described).",
+      "The full suite passes with the migrated results-page tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 61,
+    "name": "Stage 2 submit button renamed",
+    "description": "Per Specification/feedback.md 'Feedback 6' and AISpec.md section 5.2 (Assumption 48): the Stage 2 submit button no longer reads 'Start event' (an extra Stage 3 step now follows); it reads 'Continue to Stage 3'.",
+    "tests": [
+      "The Stage 2 page (simple and advanced setup) has a submit button reading 'Continue to Stage 3' and the text 'Start event' appears on no setup page except Stage 3's 'Confirm pairings and start event'.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 62,
+    "name": "Starting and to-date handicap in the outputs model, leaderboard and archer results pages",
+    "description": "Per Specification/feedback.md 'Feedback 6' and AISpec.md section 5.4a (Assumption 47): h2h.outputs gains each archer's starting handicap (the one entered) and to-date handicap - stats.equivalent_handicap of their total score over the arrows shot in the completed passes (n_pass times the passes they shot, byes included) on their own target; None if they have no completed pass or their total is 0. LeaderboardRow gains starting_handicap and to_date_handicap; ArcherResults gains to_date_handicap and arrows_shot (its existing handicap field is the starting handicap). The Results page's leaderboard table becomes Rank | Archer | Points | Passes decided | Starting handicap | To-date handicap, and the Archer results page's section headings become '<name> - total score <N> - starting handicap <H> - to-date handicap <D>' (D is '-' when None; handicaps shown to one decimal place, the starting one as entered, 15.0 as 15).",
+    "tests": [
+      "to_date_handicap equals stats.equivalent_handicap(total, n_pass x passes shot, the archer's target) after one, two and all three passes of a 4-archer event; arrows_shot is n_pass times the completed passes the archer shot.",
+      "After every arrow is shot (a full event) the to-date handicap equals archeryutils's handicap_from_score for the archer's whole total on a one-pass round of all their arrows at their target (the 'matches final handicap' claim), checked for two archers on different targets (advanced setup).",
+      "An archer with no completed pass, with a sat-out pass only, or with a total of 0 has to_date_handicap None; a bye pass counts as arrows shot.",
+      "A half-scored pass does not change any archer's to-date handicap or arrows shot.",
+      "The leaderboard page's headings are exactly Rank, Archer, Points, Passes decided, Starting handicap, To-date handicap, with values equal to the outputs model; the Archer results headings read '<name> - total score N - starting handicap H - to-date handicap D' with '-' before any completed pass.",
+      "The full suite passes with the migrated leaderboard and archer-results tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 63,
+    "name": "Exports: date-time stamp and starting/to-date handicap",
+    "description": "Per Specification/feedback.md 'Feedback 6' and AISpec.md section 5.4a (Assumptions 46, 47): the CSV and PDF exports carry the time they were made and both handicaps. h2h.exports functions take an optional `now` (datetime) so tests control it, defaulting to datetime.now(). Leaderboard CSV header: Rank,Archer,Points,Passes decided,Starting handicap,To-date handicap,Exported. Archer-results CSV header: Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),Handicap of score,Exported (the two handicap columns repeat the archer's values on each of their rows; the to-date handicap cell is empty when None). 'Exported' is 'YYYY-MM-DD HH:MM:SS' on every row. The PDF shows a line 'Exported YYYY-MM-DD HH:MM:SS (local time)' under its title, both handicaps in the leaderboard table and in each archer's heading. The download routes name the files with the stamp: leaderboard_YYYYMMDD-HHMMSS.csv, archer-results_YYYYMMDD-HHMMSS.csv, results_YYYYMMDD-HHMMSS.pdf (Content-Disposition attachment).",
+    "tests": [
+      "With a fixed `now` of 2026-10-04 15:30:12 the leaderboard CSV has the agreed header and every data row ends in '2026-10-04 15:30:12'; the starting and to-date handicap cells equal the outputs model (starting as entered, to-date to one decimal place, empty when None).",
+      "The archer-results CSV has the agreed header, one row per archer per completed pass, the same two handicap values repeated on each of an archer's rows, no Average rows, and the stamp on every row; a name with a comma and a quote still round-trips.",
+      "The PDF text (pypdf) contains 'Exported 2026-10-04 15:30:12', the leaderboard column headings 'Starting handicap' and 'To-date handicap', and each archer's heading with both handicaps.",
+      "The export routes' Content-Disposition filenames match the patterns leaderboard_<8 digits>-<6 digits>.csv, archer-results_..csv and results_..pdf, and the stamp in the name equals the stamp inside the file (same request, controlled through an injectable clock on the app/state).",
+      "Exports still cover only completed passes, redirect to Stage 1 without an event, and the Results and Archer results pages still link to all three.",
+      "The full suite passes with the migrated export tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 64,
+    "name": "Handicap moving average: event model",
+    "description": "Per Specification/feedback.md 'Feedback 6' (Handicap Moving Average) and AISpec.md section 5.2c (Assumptions 49, 50): Event gains optional settings update_handicaps (default False), n_lookback and start_weight (positive integers, validated when update_handicaps is true; ValueError otherwise). Event.handicap_for(archer_index, rotation_index=None) returns the handicap the archer has for that rotation (default the current one): the entered handicap when updating is off or the archer has no earlier scored pass; otherwise, with j = their scored passes in earlier rotations and m = min(n_lookback, j), H = (start_weight*H0 + m*H_recent) / (start_weight + m), where H_recent = stats.equivalent_handicap(total of their last m scores, m*n_pass, their target) (150 if that total is 0), clamped to [0, 150]. Event.distribution_for(archer_index, rotation_index=None) returns the score distribution for that handicap (cached per archer and handicap); with updating off it is identical to today's. record_match computes percentiles and the winner with the distribution for the match's rotation, so a pass keeps the handicap it was scored with and re-saving a match in the current pass does not change its handicap. The chart payload uses the distributions for the current pass. Sat-out passes are not counted; bye passes are.",
+    "tests": [
+      "With update_handicaps False handicap_for equals the entered handicap for every archer and rotation, and distribution_for is identical to the previous behaviour (all existing event, chart and route tests pass unchanged).",
+      "With updating on and n_lookback 1, start_weight 5: before pass 1 the handicap is the entered one; before pass 2 it is (5*H0 + 1*H1)/6 where H1 is the equivalent handicap of the pass-1 score over n_pass arrows (checked numerically against stats.equivalent_handicap).",
+      "With n_lookback 2, start_weight 3 and three scored passes the handicap before pass 4 uses only the last two scores (their total over 2*n_pass arrows, weight 2), not the first; with n_lookback 5 and only two passes shot it uses both (m = 2).",
+      "The default settings (n_lookback = start_weight = total passes) use every arrow shot so far with the starting handicap weighted as that many passes.",
+      "A scored total of 0 gives H_recent 150; the result is clamped to [0, 150] (a start weight of 1 with a 150 recent handicap and an entered 140 stays <= 150; a recent handicap far below 0 saturates at the library's value and the average stays >= 0).",
+      "A sat-out pass adds nothing to an archer's j (an archer who sat out pass 2 has j = 1 before pass 3) while a bye pass counts; two archers on different targets are each averaged with their own target's equivalent handicap.",
+      "The handicap for a rotation depends only on earlier rotations: re-saving the current pass's match with different scores does not change handicap_for for the current rotation, and a percentile recorded in pass 1 is not changed by later passes.",
+      "The percentile and winner recorded for a pass use that pass's updated distribution: for the same score, an archer whose handicap rose after a poor pass has a different (higher) percentile in pass 2 than with updating off.",
+      "Invalid settings (n_lookback or start_weight below 1, or not an integer) raise ValueError when updating is on and are ignored when it is off.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 65,
+    "name": "Stage 2: 'Update handicaps during matches' toggle and parameters (advanced setup)",
+    "description": "Per Specification/feedback.md 'Feedback 6' and AISpec.md sections 5.2 and 5.2c (Assumptions 49, 50): on Stage 2 in advanced setup mode only, above the archers table, an event-wide Yes/No choice 'Update handicaps during matches' (default No) with, when Yes, two integer inputs 'n<sub>lookback</sub>' (default total_arrows // n_pass) and 'Start weight' (default total_arrows // n_pass), each min 1, and a short explanation. A small script shows the inputs only while Yes is selected. The values are validated on submit (whole numbers >= 1; a clear message and nothing stored otherwise), stored by SessionState.start_stage2 with the archers (and cleared by reset and by a Stage 1 resubmission), refilled after a rejected submission, and passed to the Event by start_event. Simple setup shows nothing and never updates handicaps. The scoring pages do not display the updated handicap.",
+    "tests": [
+      "Advanced Stage 2 shows the Yes/No radios with No selected, the two number inputs (defaults total_arrows // n_pass, e.g. 5 and 5 for 60 arrows in 12-arrow passes, 3 and 3 for 36) hidden while No; simple Stage 2 has none of these fields.",
+      "Posting Yes with n_lookback 2 and start weight 4 stores them, the Event built after Stage 3 has update_handicaps True, n_lookback 2, start_weight 4, and its handicap_for(0, 1) differs from the entered handicap after pass 1 is scored; posting No (or omitting the field) builds an Event with updating off.",
+      "Invalid values (0, -1, 2.5, abc, empty) with Yes are rejected with a message and nothing is stored; the form is refilled with the typed values and the Yes choice; with No the parameter fields are ignored.",
+      "Reset and a new Stage 1 submission clear the settings back to off; the defaults follow a changed total_arrows or n_pass.",
+      "A forced Stage 2 POST of the fields in simple setup is ignored (the Event never updates handicaps in simple mode).",
+      "No scoring page (match, overview, results) displays an updated handicap or the settings' values.",
+      "An advanced event with updating on plays through over HTTP from Stage 1 to the end with percentiles that use the updated handicaps (checked against Event.distribution_for).",
+      "Verified in a real browser: the Yes/No toggle shows and hides the two inputs, the defaults are right, and submitting Yes with custom values reaches Stage 3 with no JS console errors.",
+      "The full suite passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 66,
+    "name": "End-to-end integration, browser walkthrough and docs for Feedback 6",
+    "description": "Extend tests/test_integration.py for the full Feedback 6 flow over HTTP and run a real-browser walkthrough (headless Edge via an ephemeral Selenium install against an exact `git archive` of the commit). Update README.md (no handicaps beside names while scoring, the Handicap column, percentile precision, tie-break boxes only on a tie, grouped per-pass results, export stamps and handicaps, the Stage 2 button, handicap updating) and Specification/logbook.md with a Feedback 6 section (summary, assumptions and open points, verification notes).",
+    "tests": [
+      "A full advanced-mode event over HTTP with 'Update handicaps' on: percentiles and winners follow the moving handicap, the leaderboard, archer results, CSVs and PDF agree with the Event, the to-date handicap of each archer after the last pass equals archeryutils's whole-round handicap for their total, and every export carries the same stamp in its name and contents.",
+      "A normal match page never shows the tie boxes and an exact tie shows them (end to end), and the match pages never contain a handicap beside an archer's name.",
+      "The Results page's per-pass tables are grouped by match in the overview's order, with percentile texts that differ for every scored pair unless the pair is tied.",
+      "A real-browser walkthrough (Stage 2 toggle and button, a tied match, the match page's Handicap column and names-only labels and legend, the double rules on the Results page, downloading each export and checking the name, first lines and stamp) completes with no JS console errors.",
+      "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 6 section."
+    ],
+    "completed": false
   }
 ]
