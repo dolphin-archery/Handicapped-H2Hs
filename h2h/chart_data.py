@@ -1,4 +1,4 @@
-"""Chart data for the pair-chart page's interactive distribution graph.
+"""Chart data for the interactive distribution graph on match and pair pages.
 
 Builds a JSON-serialisable payload consumed by the client-side Chart.js
 rendering in `h2h/static/match_chart.js`: each archer's score-distribution
@@ -78,8 +78,9 @@ def build_pair_chart_data(event: Event, a: int, b: int) -> dict:
     event : h2h.models.Event
         The event both archers belong to.
     a, b : int
-        The two archers' indices. Must have shared at least one rotation
-        (see `Event.pairwise_result`); this function does not check that.
+        The two archers' indices. They need not have shared a rotation yet:
+        a match page charts the pair before their first scored pass, in which
+        case `passes` is empty and only the two distributions are drawn.
 
     Returns
     -------

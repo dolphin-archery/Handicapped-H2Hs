@@ -793,3 +793,55 @@ deliberate POST to the removed endpoint (caught by that very test failing), and
 my page-peek script posted the wrong archer indices (the app correctly rejected
 them). Neither affected shipped code. The match page currently shows only this
 pass's result; history and the chart arrive in task 32.
+
+### Task 32: Per-match results and advanced-mode charts on the match pages (complete)
+Each match page now shows, below its score form, a "Results so far" table for
+the pair: every pass the two archers have shared (a `Pass` column, plus score,
+percentile, equivalent handicap, opponent and winner), including the current
+one once saved. This uses a new `Event.pair_results(a, b)` (results where the
+two are each other's opponent, ordered by pass, so a schedule that repeats a
+pair lists every meeting). A bye match shows only its own pass result.
+
+In advanced mode the page also embeds the pair's interactive distribution chart
+and the maths explanation. The chart is built by the existing
+`build_pair_chart_data`, which already worked for a pair with no scored pass
+(empty `passes` list), so a match page charts the two distributions before the
+first score is entered and gains markers once it is saved. A bye match has no
+chart (nothing to compare) and says so in advanced mode; basic mode renders
+none of the chart, payload or maths on any match page.
+
+Markup de-duplication, per the task: the chart + maths block moved from
+`pair_chart.html` into the `_pair_chart.html` partial (used by the match page
+and the pair-history page), and the per-pass results table moved from
+`results.html` into `_results_table.html` (used by the results page and the
+match page, with an optional `show_pass` column). A test reads the template
+sources and asserts each shared block's marker text lives in exactly one file.
+Two docstrings that had gone stale (the `Event` schedule parameter, and
+`build_pair_chart_data` claiming a pair must already have shared a rotation)
+were corrected.
+
+Verification: route tests (results after scoring, repeated pair lists every
+pass, bye page in both modes, advanced chart present before scoring and with
+the pass in the payload afterwards, basic mode has none, results/pair pages
+unchanged). Real browser (headless Edge, a subagent, against the exact commit
+exported with `git archive`): two archers meeting in two passes in advanced
+mode. Chart datasets were 2 before scoring (Alice, Bob), 4 after saving
+(`+ Alice pass 1: 100`, `+ Bob pass 1: 60`), 4 on the next pass after saving
+(latest pass only), 6 with "Show previous passes' scores too" ticked and 4
+again unticked; the results table listed both passes; the overview disabled
+Advance until scored, then showed "Pass 2 of 2" with no Advance button on the
+final pass and an "event is complete" link to results. A 3-archer event
+confirmed the pair page has no chart in basic mode, the bye page has none in
+either mode, and the bye result shows opponent "bye". The only console error
+on any page was the favicon 404 (plus benign Edge tracking-prevention warnings
+about the CDN).
+
+**Pre-existing limitation noticed, not changed (out of scope):** the chart's
+x-axis is trimmed to about the two distributions' mean +/- 4 standard
+deviations (Feedback 1: "sensible axis limits") and the pass-score markers are
+drawn at the raw score, so a score far outside that window (the verification
+used deliberately unrealistic 60-vs-100 scores at handicaps 45/15, which is
+~0.0% percentile) has its marker clipped off the chart even though it is in the
+dataset list and legend. With realistic scores (e.g. 118 and 105) both markers
+show. A simple fix, if wanted, is to widen the axis to include any scored
+values; raised for the user rather than changed here.

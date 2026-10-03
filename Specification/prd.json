@@ -407,7 +407,7 @@
       "No duplicated chart/maths/results-table markup remains across the three templates (shared partials in use).",
       "Verified in a real browser: the match-page chart shows two curves before scoring, gains a marker pair after scoring, and the previous-passes checkbox adds the earlier pass's markers on a pair that has shared two passes; no JS console errors."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 33,

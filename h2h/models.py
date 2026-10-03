@@ -258,8 +258,9 @@ class Event:
         The event's round mode; combined with each archer's bowstyle to
         resolve their target (AISpec.md section 5.2a).
     schedule : list[h2h.rotation.Rotation]
-        The rotation schedule (built by `h2h.rotation.build_schedule` before
-        archers were known -- see AISpec.md section 5.1).
+        The rotation schedule (built by `h2h.rotation.build_schedule` or, when
+        bye archers sit out, `build_sit_out_schedule`, before archers were
+        known -- see AISpec.md sections 5.1 and 5.3).
 
     Attributes
     ----------
