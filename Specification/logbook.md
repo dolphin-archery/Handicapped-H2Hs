@@ -1879,3 +1879,42 @@ the defaults reading every arrow so far; a zero total taken as 150 and the 0-150
 two archers on different targets; the current pass's handicap unchanged by re-saving and a recorded
 percentile unchanged by later passes; the percentile and the curves for a later pass using the updated
 handicap; and validation. Suite: 864 passed.
+
+Browser check of tasks 59 and 60 (subagent, headless Edge via Selenium, commit 9176374, port 5076):
+- **Task 59: PASS.** A normal match page (six loaded, every pass) has 0 `closest` checkboxes and no
+  "closest to the middle" or "Tie-break" text. Entering 90 and 90 for Ann and Ben (same handicap and
+  bowstyle) returns the same page with "Percentile and score are tied. Tick which archer's arrow was
+  closest to the middle, then save again.", both scores kept and now exactly two unticked boxes with
+  the explanation; ticking Ann, then Ben, then Ann leaves only the last ticked; saving with Ann ticked
+  gives the This pass table (Ann Yes, Ben No) and the "decided by closest to the middle" note with the two
+  boxes visible and Ann's ticked; changing the scores to 92 and 90 removes the boxes and the note.
+  Labels read "<name> score (0-120):" with no handicap, h1 names only, and the This pass table has the five
+  headings with distinct percentile texts. Task 59 is complete.
+- **Task 60: one real bug found, fixed.** Pass tables had the right headings and 2 `tbody.match` groups of 2
+  rows, "Pass N" headings, no Opponent/Won? columns and no "Rotation"; a bye match is its own group with
+  Winner "-". But the computed `border-top` showed my rule `tbody.match + tbody.match td` puts the 3px double
+  line on EVERY cell of a later match, so a second double line cut between the two archers of the
+  second match (Pass 1 read as {Cat/Dan} | {Ben} | {Ann}). It is now `tbody.match + tbody.match tr:first-child
+  td` (only the first row of each later match), with a test that the stylesheet has that selector and not the
+  old one. The corrected rule is re-verified in the browser in the final walkthrough (task 66).
+- The agent also noted the Stage 2 button still read "Start event" at that commit (task 61 came after it).
+
+### Task 65: Stage 2 toggle and parameters for updating handicaps (complete apart from the browser check)
+In advanced setup only, Stage 2 has an event-wide "Update handicaps during matches" Yes/No choice (No by
+default) with, while Yes is selected (a small script shows them), two number inputs "n<sub>lookback</sub>
+(passes)" and "Start weight (passes)", both min 1 and defaulting to `total_arrows // n_pass` (3 for 36 arrows,
+5 for 60), each with a one-line explanation; simple setup shows none of it. `SessionState` gained
+`update_handicaps`, `n_lookback` and `start_weight`, set by `start_stage2(archers, update_handicaps,
+n_lookback, start_weight)` (which validates them as whole numbers >= 1 only when updating applies and the
+setup is advanced), cleared by `start_stage1` and `reset`, and passed to the Event by `start_event`. The route
+rejects anything else with "Lookback must be a whole number of at least 1." / "Start weight must be a whole
+number of at least 1." (no raw identifiers in the messages), stores nothing, and refills the form with the
+typed values and the Yes choice. Posting No or omitting the field leaves updating off and ignores any
+parameter text; a forced request in simple setup is ignored. Nothing on the scoring pages shows the
+settings or an updated handicap (a test checks the match, overview, results and archer pages, and that the
+leaderboard's starting handicaps are still the entered ones). Tests (19): the toggle and defaults for 36 and
+60 arrows, simple Stage 2 without it, Yes stored and the Event's `handicap_for` moving after pass 1, No/omitted,
+ten invalid-value cases with refill, reset and a new Stage 1 clearing and the defaults following the event
+size, the forced simple-mode request, page visibility, and an advanced event played over HTTP whose pass-2
+percentile equals the one from the updated distribution and differs from the entered-handicap one. Suite:
+883 passed.

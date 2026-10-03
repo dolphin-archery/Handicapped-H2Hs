@@ -129,8 +129,8 @@ def create_app(state: SessionState | None = None) -> Flask:
         values : dict[str, str] | None, default=None
             The previously submitted form fields (`name_i`, `bowstyle_i`,
             `handicap_i`, and in advanced setup `face_type_i`, `face_cm_i`,
-            `distance_i`), used to refill the form after a rejected
-            submission so nothing has to be retyped.
+            `distance_i`, `update_handicaps`, `n_lookback`, `start_weight`), used to
+            refill the form after a rejected submission so nothing has to be retyped.
 
         Returns
         -------
@@ -148,6 +148,7 @@ def create_app(state: SessionState | None = None) -> Flask:
             face_types=FACE_TYPES,
             face_sizes=ADVANCED_FACE_SIZES_CM,
             distance_groups=distance_option_groups(),
+            default_passes=session.total_arrows // session.n_pass,
             default_face_type=DEFAULT_FACE_TYPE,
             default_face_cm=DEFAULT_TARGET_SETUP.face_cm,
             default_distance=DEFAULT_TARGET_SETUP.distance_key,
@@ -201,7 +202,12 @@ def create_app(state: SessionState | None = None) -> Flask:
                 archers.append(
                     Archer(name=name, handicap=handicap, bowstyle=bowstyle, target_setup=target_setup)
                 )
-            session.start_stage2(archers)
+            update_handicaps = request.form.get("update_handicaps", "no") == "yes"
+            n_lookback = start_weight = None
+            if update_handicaps and session.setup_mode == ADVANCED:
+                n_lookback = _whole_number(request.form.get("n_lookback", ""), "Lookback")
+                start_weight = _whole_number(request.form.get("start_weight", ""), "Start weight")
+            session.start_stage2(archers, update_handicaps, n_lookback, start_weight)
         except ValueError as exc:
             return stage2(error=str(exc), values=request.form)
         return redirect(url_for("stage3"))
@@ -237,6 +243,35 @@ def create_app(state: SessionState | None = None) -> Flask:
             msg = "The archer closest to the middle must be one of the two in this match."
             raise ValueError(msg)
         return int(ticked[0])
+
+    def _whole_number(raw: str, label: str) -> int:
+        """A submitted whole number of at least 1.
+
+        Parameters
+        ----------
+        raw : str
+            The text from the form.
+        label : str
+            What the number is, for the error message (e.g. "Lookback").
+
+        Returns
+        -------
+        int
+            The number.
+
+        Raises
+        ------
+        ValueError
+            If `raw` is not a whole number of at least 1.
+        """
+        try:
+            value = int(raw.strip())
+        except ValueError:
+            value = 0
+        if value < 1:
+            msg = f"{label} must be a whole number of at least 1."
+            raise ValueError(msg)
+        return value
 
     def _stage3_redirect():
         """The redirect a Stage 3 page needs instead of acting, or None if it may proceed.

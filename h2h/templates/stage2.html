@@ -17,6 +17,36 @@
 {% endif %}
 
 <form method="post" action="{{ url_for('stage2_submit') }}">
+  {% if advanced %}
+  {% set updating = values.get('update_handicaps', 'no') == 'yes' %}
+  <div class="row">
+    <span>Update handicaps during matches:</span>
+    <label style="margin-left: 0.5rem;"><input type="radio" name="update_handicaps" value="no" id="update_handicaps_no"
+        {% if not updating %}checked{% endif %}> No</label>
+    <label style="margin-left: 1rem;"><input type="radio" name="update_handicaps" value="yes" id="update_handicaps_yes"
+        {% if updating %}checked{% endif %}> Yes</label>
+    <br>
+    <small>No: every archer's handicap stays as entered below for every pass. Yes: before each pass an archer's
+      handicap is a weighted average of the one entered below and the handicap their recent shooting implies.</small>
+  </div>
+  <div id="update_handicaps_options" {% if not updating %}hidden{% endif %}>
+    <div class="row">
+      <label>n<sub>lookback</sub> (passes):
+        <input type="number" name="n_lookback" id="n_lookback" min="1" step="1"
+               value="{{ values.get('n_lookback', default_passes) }}">
+      </label>
+      <small>How many of an archer's latest passes (n<sub>pass</sub> arrows each) their recent shooting is taken
+        from; 1 uses only the previous pass.</small>
+    </div>
+    <div class="row">
+      <label>Start weight (passes):
+        <input type="number" name="start_weight" id="start_weight" min="1" step="1"
+               value="{{ values.get('start_weight', default_passes) }}">
+      </label>
+      <small>How many passes' worth of arrows the entered handicap counts for.</small>
+    </div>
+  </div>
+  {% endif %}
   <table>
     <thead>
       <tr>
@@ -63,4 +93,16 @@
 
   <button type="submit">Continue to Stage 3</button>
 </form>
+{% if advanced %}
+<script>
+  // The two updating parameters only matter while "Update handicaps during matches" is Yes.
+  function updateHandicapOptions() {
+    document.getElementById("update_handicaps_options").hidden =
+      !document.getElementById("update_handicaps_yes").checked;
+  }
+  document.getElementById("update_handicaps_yes").addEventListener("change", updateHandicapOptions);
+  document.getElementById("update_handicaps_no").addEventListener("change", updateHandicapOptions);
+  updateHandicapOptions();
+</script>
+{% endif %}
 {% endblock %}

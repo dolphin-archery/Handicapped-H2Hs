@@ -827,7 +827,7 @@
       "A bye match never shows the boxes.",
       "The existing tie-break route tests are migrated and the full suite passes; verified in a real browser (headless Edge via an ephemeral Selenium install on an exact `git archive` of the commit): a normal match page has no tick boxes, an exact tie shows them with the message, ticking one then the other leaves only the last ticked, and the saved result is correct, with no JS console errors."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 60,

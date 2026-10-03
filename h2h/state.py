@@ -53,6 +53,9 @@ class SessionState:
         *positions* -- set before archer identities are known.
     pending_archers : list[Archer] | None
         The archers entered at Stage 2, in entry order, awaiting Stage 3.
+    update_handicaps, n_lookback, start_weight : bool | int | None | int | None
+        The event-wide handicap-updating choice made at Stage 2 in advanced setup (AISpec.md
+        section 5.2c): whether to update, and its two parameters (None while off).
     assignment : list[int] | None
         The Stage 3 draw: `assignment[position]` is the index into
         `pending_archers` of the archer filling that schedule position.
@@ -75,6 +78,9 @@ class SessionState:
     shoot_byes: bool = True
     schedule: list[Rotation] | None = None
     pending_archers: list[Archer] | None = None
+    update_handicaps: bool = False
+    n_lookback: int | None = None
+    start_weight: int | None = None
     assignment: list[int] | None = None
     event: Event | None = None
     rng: random.Random = field(default_factory=random.Random, repr=False, compare=False)
@@ -145,10 +151,19 @@ class SessionState:
         self.shoot_byes = shoot_byes
         self.schedule = new_schedule
         self.pending_archers = None  # discard any previous archers, draw and event
+        self.update_handicaps = False
+        self.n_lookback = None
+        self.start_weight = None
         self.assignment = None
         self.event = None
 
-    def start_stage2(self, archers: list[Archer]) -> None:
+    def start_stage2(
+        self,
+        archers: list[Archer],
+        update_handicaps: bool = False,
+        n_lookback: int | None = None,
+        start_weight: int | None = None,
+    ) -> None:
         """Store the entered archers and draw their random assignment (Stage 3 follows).
 
         No event is built yet: that happens when the draw is confirmed
@@ -159,14 +174,21 @@ class SessionState:
         archers : list[Archer]
             Exactly `self.n_archers` archers, in entry order (each with their
             own `target_setup` in advanced mode).
+        update_handicaps : bool, default=False
+            Whether handicaps are updated during the event (advanced setup only; simple
+            setup never updates them, whatever is passed).
+        n_lookback, start_weight : int | None, default=None
+            The updating parameters, whole numbers >= 1 (needed, and checked, only when
+            updating applies).
 
         Raises
         ------
         RuntimeError
             If Stage 1 has not been completed yet.
         ValueError
-            If the number of archers doesn't match `self.n_archers`, or an
-            archer has no `target_setup` in advanced mode.
+            If the number of archers doesn't match `self.n_archers`, an
+            archer has no `target_setup` in advanced mode, or updating applies and a
+            parameter is not a whole number >= 1.
         """
         if self.schedule is None or self.n_archers is None:
             msg = "Stage 1 must be completed before Stage 2."
@@ -180,7 +202,17 @@ class SessionState:
                 msg = f"Advanced setup needs a target setup for every archer; missing for {missing}."
                 raise ValueError(msg)
 
+        updating = update_handicaps and self.setup_mode == ADVANCED
+        if updating:
+            for name, value in (("Lookback", n_lookback), ("Start weight", start_weight)):
+                if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                    msg = f"{name} must be a whole number of at least 1."
+                    raise ValueError(msg)
+
         self.pending_archers = list(archers)
+        self.update_handicaps = updating
+        self.n_lookback = n_lookback if updating else None
+        self.start_weight = start_weight if updating else None
         self.assignment = None
         self.event = None
         self.redraw_pairings()
@@ -261,7 +293,15 @@ class SessionState:
             msg = "Stage 1 must be completed before the event can start."
             raise RuntimeError(msg)
         shared_setup = None if self.setup_mode == ADVANCED else self.target_setup
-        self.event = Event(self.assigned_archers(), self.n_pass, shared_setup, self.schedule)
+        self.event = Event(
+            self.assigned_archers(),
+            self.n_pass,
+            shared_setup,
+            self.schedule,
+            update_handicaps=self.update_handicaps,
+            n_lookback=self.n_lookback,
+            start_weight=self.start_weight,
+        )
 
     def toggle_graph_view(self) -> None:
         """Switch graph view (charts and explanation) on or off."""
@@ -278,6 +318,9 @@ class SessionState:
         self.shoot_byes = True
         self.schedule = None
         self.pending_archers = None
+        self.update_handicaps = False
+        self.n_lookback = None
+        self.start_weight = None
         self.assignment = None
         self.event = None
 

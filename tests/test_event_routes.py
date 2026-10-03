@@ -2147,7 +2147,10 @@ def test_each_matchs_rows_are_a_group_with_a_double_rule_between_groups():
     pass_block = page[page.index("<h3>Pass 1</h3>") :]
     groups = re.findall(r'<tbody class="match">(.*?)</tbody>', pass_block, re.S)
     assert len(groups) == 2 and all(group.count("<tr>") == 2 for group in groups)
-    assert "tbody.match + tbody.match td" in page and "3px double" in page
+    # Only the FIRST row of each later match gets the line (a rule on every cell cut through a
+    # match's own rows; found in the browser check), so it must select tr:first-child.
+    assert "tbody.match + tbody.match tr:first-child td" in page and "3px double" in page
+    assert "tbody.match + tbody.match td" not in page
 
 
 def test_the_pass_table_values_are_the_events_own_under_the_display_rules():
@@ -2233,3 +2236,176 @@ def test_only_stage_3_has_a_button_that_starts_the_event():
     assert submit_button_texts(client.get("/event/stage3").data.decode()) == [
         "Redraw pairings", "Confirm pairings and start event",
     ]
+
+
+# --- Update handicaps during matches: Stage 2 toggle (Feedback 6) ----------------------------
+
+TWO_ADVANCED = [
+    ("Ann", "Recurve", 30, "10_zone", 60, "20yd"),
+    ("Ben", "Recurve", 40, "10_zone", 60, "20yd"),
+]
+
+
+def updating_form(update="yes", n_lookback="2", start_weight="4", rows=TWO_ADVANCED):
+    """An advanced Stage 2 payload with the handicap-updating fields."""
+    form = advanced_form(rows)
+    if update is not None:
+        form["update_handicaps"] = update
+    if n_lookback is not None:
+        form["n_lookback"] = n_lookback
+    if start_weight is not None:
+        form["start_weight"] = start_weight
+    return form
+
+
+def tag_after(page, needle):
+    """The opening tag that starts at `needle` in a page (up to its closing '>')."""
+    return page[page.index(needle) :].split(">")[0]
+
+
+def test_advanced_stage_2_has_the_update_choice_defaulting_to_no_with_the_two_inputs_hidden():
+    """No selected; n_lookback and start weight default to the passes per archer; hidden while No."""
+    for total_arrows, passes in ((36, 3), (60, 5)):
+        client = make_client()
+        start_advanced_stage2(client, n_archers=2, total_arrows=total_arrows)
+        page = client.get("/event/stage2").data.decode()
+        no = tag_after(page, 'name="update_handicaps" value="no"')
+        yes = tag_after(page, 'name="update_handicaps" value="yes"')
+        assert "checked" in no and "checked" not in yes
+        assert "hidden" in tag_after(page, 'id="update_handicaps_options"')
+        n_lookback = tag_after(page, 'name="n_lookback"')
+        start_weight = tag_after(page, 'name="start_weight"')
+        assert f'value="{passes}"' in n_lookback or f'value="{passes}"' in page.split('name="n_lookback"')[1][:120]
+        assert f'value="{passes}"' in page.split('name="start_weight"')[1][:120]
+        assert 'min="1"' in n_lookback and 'min="1"' in start_weight
+        assert "Update handicaps during matches" in page and "lookback" in page
+
+
+def test_simple_stage_2_has_none_of_the_updating_fields():
+    """The choice is advanced-setup only."""
+    client = make_client()
+    complete_stage1(client, n_archers=2)
+    page = client.get("/event/stage2").data.decode()
+    assert "update_handicaps" not in page and "n_lookback" not in page and "start_weight" not in page
+
+
+def test_posting_yes_stores_the_settings_and_the_event_updates_handicaps():
+    """The Event gets update_handicaps, n_lookback and start_weight; the handicap moves after pass 1."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=36)
+    assert client.post("/event/stage2", data=updating_form()).status_code == 302
+    assert (state.update_handicaps, state.n_lookback, state.start_weight) == (True, 2, 4)
+    client.post("/event/stage3")
+    event = state.event
+    assert (event.update_handicaps, event.n_lookback, event.start_weight) == (True, 2, 4)
+    assert event.handicap_for(0) == 30  # nothing shot yet
+    save_match(client, 0, {0: 80, 1: 100})
+    client.post("/event/advance")
+    assert event.handicap_for(0) != 30 and event.handicap_for(1) != 40
+
+
+@pytest.mark.parametrize("update", ["no", None])
+def test_posting_no_or_omitting_the_field_leaves_updating_off(update):
+    """No (or nothing) means constant handicaps, and any parameter values are ignored."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=36)
+    client.post("/event/stage2", data=updating_form(update=update, n_lookback="abc", start_weight="0"))
+    assert (state.update_handicaps, state.n_lookback, state.start_weight) == (False, None, None)
+    client.post("/event/stage3")
+    assert state.event.update_handicaps is False
+    save_match(client, 0, {0: 80, 1: 100})
+    client.post("/event/advance")
+    assert (state.event.handicap_for(0), state.event.handicap_for(1)) == (30, 40)
+
+
+@pytest.mark.parametrize("bad", ["0", "-1", "2.5", "abc", ""])
+@pytest.mark.parametrize("field", ["n_lookback", "start_weight"])
+def test_invalid_parameters_are_rejected_with_a_message_and_the_form_is_refilled(field, bad):
+    """Nothing is stored; the typed values and the Yes choice come back."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=36)
+    form = updating_form(n_lookback="2", start_weight="4")
+    form[field] = bad
+    resp = client.post("/event/stage2", data=form)
+    page = resp.data.decode()
+    label = "Lookback" if field == "n_lookback" else "Start weight"
+    assert resp.status_code == 200 and f"{label} must be a whole number of at least 1." in page
+    assert state.pending_archers is None and state.update_handicaps is False
+    assert "checked" in tag_after(page, 'name="update_handicaps" value="yes"')
+    assert "hidden" not in tag_after(page, 'id="update_handicaps_options"')
+    other = "start_weight" if field == "n_lookback" else "n_lookback"
+    assert f'value="{form[other]}"' in page.split(f'name="{other}"')[1][:120]
+    assert 'value="Ann"' in page
+
+
+def test_reset_and_a_new_stage_1_clear_the_settings_and_the_defaults_follow_the_event_size():
+    """The state is cleared, and the defaults come from the current total arrows and n_pass."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=36)
+    client.post("/event/stage2", data=updating_form())
+    assert state.update_handicaps is True
+    start_advanced_stage2(client, n_archers=2, total_arrows=60)  # Stage 1 again
+    assert (state.update_handicaps, state.n_lookback, state.start_weight) == (False, None, None)
+    assert 'value="5"' in client.get("/event/stage2").data.decode().split('name="n_lookback"')[1][:120]
+    client.post("/event/stage2", data=updating_form())
+    client.post("/reset")
+    assert (state.update_handicaps, state.n_lookback, state.start_weight) == (False, None, None)
+
+
+def test_a_forced_updating_request_in_simple_setup_is_ignored():
+    """Simple setup never updates handicaps, whatever is posted."""
+    client, state = make_client_and_state()
+    complete_stage1(client, n_archers=2, total_arrows=24)
+    form = stage2_form([("Ann", "Recurve", 30), ("Ben", "Recurve", 40)])
+    form.update({"update_handicaps": "yes", "n_lookback": "2", "start_weight": "4"})
+    assert client.post("/event/stage2", data=form).status_code == 302
+    assert state.update_handicaps is False
+    client.post("/event/stage3")
+    save_match(client, 0, {0: 80, 1: 100})
+    client.post("/event/advance")
+    assert (state.event.handicap_for(0), state.event.handicap_for(1)) == (30, 40)
+
+
+def test_no_scoring_page_shows_an_updated_handicap_or_the_updating_settings():
+    """The updating is invisible: no settings anywhere, no handicap on the scoring pages, and the
+    results pages still show the starting handicaps as entered."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=36)
+    client.post("/event/stage2", data=updating_form(n_lookback="2", start_weight="4"))
+    client.post("/event/stage3")
+    save_match(client, 0, {0: 80, 1: 100})
+    client.post("/event/advance")
+    assert state.event.handicap_for(0) != 30  # the handicap really has moved
+    for path in ("/event/match/0", "/event/rotation", "/event/results", "/event/archers"):
+        page = client.get(path).data.decode().lower()
+        assert "lookback" not in page and "start weight" not in page, path
+    for path in ("/event/match/0", "/event/rotation"):
+        body = client.get(path).data.decode().split("</nav>")[1].lower()
+        assert "handicap" not in body, path
+    rows = table_with_headings(client.get("/event/results").data.decode(), LEADERBOARD_COLUMNS)
+    assert sorted(row[4] for row in rows) == ["30", "40"]  # starting handicaps as entered
+
+
+def test_an_advanced_event_with_updating_plays_through_with_percentiles_from_the_updated_handicaps():
+    """Pass 2's recorded percentile equals the one from the updated distribution, not the entered one."""
+    from h2h import stats as h2h_stats
+
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=36)
+    client.post("/event/stage2", data=updating_form(n_lookback="1", start_weight="2"))
+    client.post("/event/stage3")
+    event = state.event
+    for scores in ({0: 80, 1: 100}, {0: 100, 1: 99}, {0: 105, 1: 104}):
+        assert save_match(client, 0, scores).status_code == 302
+        if event.current_rotation_index < 2:
+            client.post("/event/advance")
+    assert event.is_complete
+    pass_2 = {r.archer_index: r for r in event.results if r.rotation_index == 1}
+    updated = h2h_stats.percentile(event.distribution_for(0, 1), 100)
+    entered = h2h_stats.percentile(
+        h2h_stats.n_pass_score_distribution(h2h_stats.per_arrow_pmf(30, event.target_for(0)), 12), 100
+    )
+    assert pass_2[0].percentile == pytest.approx(updated)
+    assert pass_2[0].percentile != pytest.approx(entered)
+    for path in ("/event/rotation", "/event/results", "/event/archers"):
+        assert client.get(path).status_code == 200
