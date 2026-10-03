@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Reset everything?</h1>
+<p>This clears the event setup, every archer and every score entered so far. It cannot be undone.</p>
+
+<form method="post" action="{{ url_for('reset_confirmed') }}">
+  <button type="submit">Reset everything</button>
+  <a href="{{ cancel_url }}" style="margin-left: 1rem;">Cancel</a>
+</form>
+{% endblock %}

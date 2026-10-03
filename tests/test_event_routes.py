@@ -998,3 +998,61 @@ def test_resaving_a_match_updates_its_row_and_awaiting_scores_text_is_gone():
     _, rows = overview_table(page)
     assert rows[0][1] == "0 - 120" and rows[0][3] == "Bob"
     assert "Awaiting scores" not in page
+
+
+# --- Reset confirmation (Feedback 4) ----------------------------------------
+
+
+def test_get_reset_shows_a_confirmation_page_and_changes_nothing():
+    """GET /reset asks first: it has a POST button and a cancel link, and loses nothing."""
+    client, state = started_pair_with_a_shared_pass()
+    results_before = list(state.event.results)
+    event_before = state.event
+
+    resp = client.get("/reset")
+    page = resp.data.decode()
+    assert resp.status_code == 200
+    assert "Reset everything" in page
+    assert '<form method="post" action="/reset">' in page
+    assert 'href="/event/rotation"' in page  # cancel goes back to the current pass
+
+    assert state.event is event_before
+    assert state.event.results == results_before
+    assert state.n_archers == 2 and state.schedule is not None
+
+
+def test_post_reset_clears_everything_and_goes_to_stage1():
+    """Only the confirming POST resets, back to a fresh session at Stage 1."""
+    client, state = started_pair_with_a_shared_pass()
+    client.post("/graph-view", data={"next": "/"})
+    resp = client.post("/reset")
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/event/stage1")
+    assert state.event is None
+    assert state.schedule is None and state.n_archers is None
+    assert state.graph_view is False
+    assert state.shoot_byes is True
+
+
+def test_cancel_link_goes_to_stage1_when_there_is_no_event():
+    """With nothing to lose yet, the cancel link points at Stage 1."""
+    client = make_client()
+    page = client.get("/reset").data.decode()
+    assert 'href="/event/stage1"' in page
+    assert "Cancel" in page
+
+
+def test_nav_reset_link_points_at_the_confirmation_page():
+    """The nav's Reset link is a plain link to /reset (the confirmation page)."""
+    client = make_client()
+    assert b'<a href="/reset">Reset</a>' in client.get("/event/stage1").data
+
+
+def test_following_the_reset_link_without_confirming_never_loses_scores():
+    """Opening the confirmation page and then going elsewhere keeps the scores."""
+    client, state = started_pair_with_a_shared_pass()
+    client.get("/reset")
+    client.get("/event/rotation")
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert rows[0][1] == "100 - 60"
+    assert state.event is not None

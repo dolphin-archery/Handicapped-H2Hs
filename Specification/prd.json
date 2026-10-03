@@ -491,7 +491,7 @@
       "The nav 'Reset' link points at the confirmation page.",
       "Following the nav link and then not confirming (e.g. just fetching the next page) never loses scores."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 39,

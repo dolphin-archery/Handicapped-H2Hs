@@ -1005,3 +1005,20 @@ listed higher-index first, and its Score and Percentiles cells are checked to ke
 that order (a swapped orientation would be caught); another re-saves a match with
 the result reversed and checks the Winner cell follows. The existing tests that
 matched the old status text were rewritten against cells. Suite: 432 passed.
+
+### Task 38: Confirmation before resetting (complete)
+`GET /reset` used to wipe the session immediately, so one stray click on the nav
+link lost the whole event. It now renders a confirmation page (`reset.html`) that
+says it clears the setup, every archer and every score and cannot be undone, with
+a "Reset everything" button (a form POST to `/reset`) and a Cancel link that goes
+back to the current pass if an event is running, otherwise to Stage 1. The reset
+itself moved to `POST /reset` (`reset_confirmed`), which clears the state and
+redirects to Stage 1. GET is now free of side effects, which also means link
+prefetching or a browser reload can no longer reset the event. It is a separate
+page rather than a JavaScript `confirm()` pop-up so it works without scripting
+and is testable (Assumption 27). The nav link is unchanged. Tests: GET leaves the
+event, results, archers and schedule untouched; POST resets everything (including
+graph view and the byes option) and redirects to Stage 1; the cancel link target
+for both cases; the nav link; and that opening the page and navigating away loses
+no scores. Suite: 437 passed. Not changed (not asked): resubmitting Stage 1 or 2
+still replaces an event in progress without a prompt.

@@ -338,6 +338,26 @@ def create_app(state: SessionState | None = None) -> Flask:
 
     @app.get("/reset")
     def reset():
+        """Ask for confirmation before clearing the event; changes nothing itself.
+
+        Returns
+        -------
+        str
+            The confirmation page, whose cancel link goes back to the current
+            pass if an event is running, otherwise to Stage 1.
+        """
+        cancel_url = url_for("event_rotation" if session.event else "stage1")
+        return render_template("reset.html", cancel_url=cancel_url)
+
+    @app.post("/reset")
+    def reset_confirmed():
+        """Clear all setup and scores (the confirmed reset).
+
+        Returns
+        -------
+        flask.Response
+            A redirect to Stage 1.
+        """
         session.reset()
         return redirect(url_for("stage1"))
 
