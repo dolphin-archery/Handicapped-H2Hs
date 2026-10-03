@@ -506,3 +506,93 @@ def test_with_updating_off_the_start_handicap_is_the_entered_one():
     event.record_match({0: 100, 1: 90})
     rows = pass_table_rows(event, event.match_results(0, (0, 1)))
     assert [r.start_handicap for r in rows] == ["20.0", "30.0"]
+
+
+# --- Feedback 7: Pass starting handicap in the Archer results page ---------------------------
+
+from .helpers import NoShuffle  # noqa: E402
+
+
+def updating_event(update=True, rotations=3, n_lookback=1, start_weight=2):
+    """Four archers (handicaps 20, 27, 34, 41) over a round robin, with handicap updating as given."""
+    archers = [Archer(n, 20 + 7 * i, Bowstyle.RECURVE) for i, n in enumerate(["Ann", "Ben", "Cat", "Dan"])]
+    return Event(
+        archers, 12, PORTSMOUTH, build_schedule(4, rotations), update_handicaps=update,
+        n_lookback=n_lookback if update else None, start_weight=start_weight if update else None,
+    )
+
+
+def play_updating(event):
+    """Score every pass with scores that make the handicaps move (low first pass, then better)."""
+    for i in range(len(event.schedule)):
+        for match in event.matches(i):
+            event.record_match({p: 80 + 8 * i + 3 * p for p in match})
+        if i < len(event.schedule) - 1:
+            event.advance()
+
+
+def test_archer_results_rows_carry_the_handicap_each_pass_started_from_and_its_mean():
+    """start_handicap is Event.handicap_for for that pass; the averages hold their mean."""
+    event = updating_event()
+    play_updating(event)
+    for section in outputs.archer_results(event):
+        for row in section.rows:
+            assert row.start_handicap == pytest.approx(event.handicap_for(section.archer_index, row.pass_number - 1))
+        assert section.averages.start_handicap == pytest.approx(
+            sum(r.start_handicap for r in section.rows) / len(section.rows)
+        )
+        assert section.rows[0].start_handicap == event.archers[section.archer_index].handicap  # pass 1
+        assert section.rows[1].start_handicap != section.rows[0].start_handicap  # the handicap moved
+
+
+def test_with_updating_off_the_rows_carry_the_entered_handicap():
+    """Always filled; the pages and exports just do not show it."""
+    event = updating_event(update=False)
+    play_updating(event)
+    for section in outputs.archer_results(event):
+        assert {r.start_handicap for r in section.rows} == {event.archers[section.archer_index].handicap}
+
+
+def test_the_archer_results_page_has_the_extra_column_and_average_only_when_updating():
+    """Six headings with an Average cell for it; the five of before when updating is off."""
+    from h2h.app import create_app
+    from h2h.state import SessionState
+
+    for update, headings in ((True, UPDATING_RESULT_HEADINGS), (False, RESULT_HEADINGS_PLAIN)):
+        event = updating_event(update=update)
+        play_updating(event)
+        state = SessionState(rng=NoShuffle())
+        state.event = event
+        state.schedule = event.schedule
+        page = create_app(state=state).test_client().get("/event/archers").data.decode()
+        tables = [rows for h, rows in all_tables_of(page) if h == headings]
+        assert len(tables) == 4
+        for rows, section in zip(tables, outputs.archer_results(event), strict=True):
+            assert len(rows) == 3 + 1  # three passes and the Average row
+            if update:
+                assert [r[4] for r in rows[:-1]] == [f"{x.start_handicap:.1f}" for x in section.rows]
+                assert rows[-1][3] == f"{section.averages.start_handicap:.1f}"  # the label spans two columns
+        assert ("Pass starting handicap" in page) is update
+
+
+UPDATING_RESULT_HEADINGS = ["Pass", "Opponent", "Score", "Percentile", "Pass starting handicap", "Handicap"]
+RESULT_HEADINGS_PLAIN = ["Pass", "Opponent", "Score", "Percentile", "Handicap"]
+
+
+def all_tables_of(html):
+    """Every <table> in a page as (headings, body rows of cell text)."""
+    import re
+
+    def text(fragment):
+        return " ".join(re.sub(r"<[^>]+>", " ", fragment).split())
+
+    tables = []
+    for block in re.findall(r"<table>(.*?)</table>", html, re.S):
+        headings = [text(h) for h in re.findall(r"<th>(.*?)</th>", block, re.S)]
+        rows = [
+            [text(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", block, re.S)
+            if "<td" in row
+        ]
+        tables.append((headings, rows))
+    return tables

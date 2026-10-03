@@ -2053,3 +2053,19 @@ anywhere when updating is off; the shown value never changing after later passes
 pass; each row's recorded percentile equal to the one from the distribution of the shown handicap; and three
 `pass_table_rows` unit tests (value filled for pairs, a bye row, and the entered handicap when updating is off).
 Suite: 903 passed.
+
+### Task 69: Pass starting handicap in the Archer results page, archer-results CSV and PDF (complete apart from the browser check)
+`outputs.ArcherResultRow` gained `start_handicap` (`Event.handicap_for` for that pass) and `ArcherAverages`
+gained its mean. When the event updates handicaps: the Archer results page's per-archer tables get a "Pass
+starting handicap" column between Percentile and Handicap (one decimal place) and their Average row averages it;
+the archer-results CSV gets a `Pass starting handicap` column between `Percentile (%)` and `Handicap of score`
+(ten columns, each row's value the model's one-decimal text, the stamp unchanged in the last column); and the
+PDF's per-archer tables and Average rows get the same column. With updating off all three are exactly as before
+(five table columns, the previous nine CSV columns, no such text in the PDF), so the CSV's schema depends on the
+event setting (Assumption 53). The leaderboard and its CSV, the to-date handicap and the stamp are unchanged.
+Tests (9): the rows' values equal `handicap_for` for each pass with pass 1 equal to the entered handicap and pass
+2 different, and the mean; the entered handicap with updating off; the page's headings and cells (six columns
+with the label-spanning Average row showing the mean, five when off); the CSV header and values with updating on
+(and exactly nine columns off, and the unchanged leaderboard CSV); the PDF text (the heading once per archer
+table on, absent off) and its Average row ending with the mean start handicap then the mean handicap; and an
+end-to-end route test over HTTP for an advanced updating event. Suite: 912 passed.

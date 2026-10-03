@@ -47,6 +47,7 @@ LEADERBOARD_PDF_HEADER = [
     "To-date handicap",
 ]
 RESULT_COLUMNS = ["Pass", "Opponent", "Score", "Percentile", "Handicap"]
+PASS_START = "Pass starting handicap"  # the extra column shown only when handicaps are updated
 
 
 def timestamp_text(now: datetime) -> str:
@@ -135,7 +136,9 @@ def archer_results_csv(event: Event, now: datetime | None = None) -> str:
     """Every archer's results as one tidy CSV table (no Average rows).
 
     Columns: `Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),
-    Handicap of score,Exported`, one row per archer per completed pass. The two handicap
+    [Pass starting handicap,]Handicap of score,Exported`, one row per archer per completed
+    pass; `Pass starting handicap` (the handicap that pass's distribution was built from, one
+    decimal place) is present only when the event updates handicaps. The two handicap
     columns repeat the archer's values on each of their rows (the to-date one is empty if they
     have none); the percentile is a plain number such as 59.8; a score of 0, which has no
     implied handicap, leaves `Handicap of score` empty; `Exported` is the export time.
@@ -153,23 +156,27 @@ def archer_results_csv(event: Event, now: datetime | None = None) -> str:
         CSV text; just the header if no pass is completed yet.
     """
     stamp = timestamp_text(now or datetime.now())
+    updating = event.update_handicaps
+    header = list(ARCHER_RESULTS_HEADER)
+    if updating:
+        header.insert(header.index("Handicap of score"), PASS_START)
     rows = []
     for section in archer_results(event):
         for row in section.rows:
-            rows.append(
-                [
-                    section.name,
-                    f"{section.handicap:g}",
-                    _csv_to_date(section.to_date_handicap),
-                    row.pass_number,
-                    row.opponent,
-                    row.score,
-                    _percent(row.percentile),
-                    "" if row.handicap is None else f"{row.handicap:.1f}",
-                    stamp,
-                ]
-            )
-    return _csv_text(ARCHER_RESULTS_HEADER, rows)
+            cells = [
+                section.name,
+                f"{section.handicap:g}",
+                _csv_to_date(section.to_date_handicap),
+                row.pass_number,
+                row.opponent,
+                row.score,
+                _percent(row.percentile),
+            ]
+            if updating:
+                cells.append(f"{row.start_handicap:.1f}")
+            cells.extend(["" if row.handicap is None else f"{row.handicap:.1f}", stamp])
+            rows.append(cells)
+    return _csv_text(header, rows)
 
 
 def _latin1(text: str) -> str:
@@ -288,24 +295,19 @@ def results_pdf(event: Event, now: datetime | None = None) -> bytes:
             pdf.cell(0, 6, "No completed pass yet.", new_x="LMARGIN", new_y="NEXT")
             continue
         average = section.averages
-        _add_table(
-            pdf,
-            RESULT_COLUMNS,
-            [
-                [
-                    str(row.pass_number),
-                    row.opponent,
-                    str(row.score),
-                    f"{_percent(row.percentile)}%",
-                    _handicap_text(row.handicap),
-                ]
-                for row in section.rows
-            ],
-            average=[
-                "Average",
-                f"{average.score:.1f}",
-                f"{_percent(average.percentile)}%",
-                _handicap_text(average.handicap),
-            ],
-        )
+        updating = event.update_handicaps
+        columns = list(RESULT_COLUMNS)
+        body = []
+        for row in section.rows:
+            cells = [str(row.pass_number), row.opponent, str(row.score), f"{_percent(row.percentile)}%"]
+            if updating:
+                cells.append(f"{row.start_handicap:.1f}")
+            cells.append(_handicap_text(row.handicap))
+            body.append(cells)
+        average_cells = ["Average", f"{average.score:.1f}", f"{_percent(average.percentile)}%"]
+        if updating:
+            columns.insert(columns.index("Handicap"), PASS_START)
+            average_cells.append(f"{average.start_handicap:.1f}")
+        average_cells.append(_handicap_text(average.handicap))
+        _add_table(pdf, columns, body, average=average_cells)
     return bytes(pdf.output())

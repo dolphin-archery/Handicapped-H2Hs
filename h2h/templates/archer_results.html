@@ -15,7 +15,7 @@
 {% if s.rows %}
 <table>
   <thead>
-    <tr><th>Pass</th><th>Opponent</th><th>Score</th><th>Percentile</th><th>Handicap</th></tr>
+    <tr><th>Pass</th><th>Opponent</th><th>Score</th><th>Percentile</th>{% if event.update_handicaps %}<th>Pass starting handicap</th>{% endif %}<th>Handicap</th></tr>
   </thead>
   <tbody>
     {% for row in s.rows %}
@@ -24,6 +24,7 @@
       <td>{{ row.opponent }}</td>
       <td>{{ row.score }}</td>
       <td>{{ '%.1f%%'|format(row.percentile * 100) }}</td>
+      {% if event.update_handicaps %}<td>{{ '%.1f'|format(row.start_handicap) }}</td>{% endif %}
       <td>{{ '%.1f'|format(row.handicap) if row.handicap is not none else '-' }}</td>
     </tr>
     {% endfor %}
@@ -31,6 +32,7 @@
       <td colspan="2"><strong>Average</strong></td>
       <td>{{ '%.1f'|format(s.averages.score) }}</td>
       <td>{{ '%.1f%%'|format(s.averages.percentile * 100) }}</td>
+      {% if event.update_handicaps %}<td>{{ '%.1f'|format(s.averages.start_handicap) }}</td>{% endif %}
       <td>{{ '%.1f'|format(s.averages.handicap) if s.averages.handicap is not none else '-' }}</td>
     </tr>
   </tbody>

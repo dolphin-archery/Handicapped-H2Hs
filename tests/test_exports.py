@@ -369,3 +369,99 @@ def test_exports_are_live_saving_the_last_match_of_a_pass_changes_them():
     after = client.get("/event/export/archer-results.csv").data.decode()
     assert len(rows_of(after)) == 1 + 4
     assert {row[2] for row in rows_of(after)[1:]} != {""}  # every archer now has a to-date handicap
+
+
+# --- Feedback 7: Pass starting handicap in the archer-results CSV and the PDF ---------------------
+
+
+def make_updating_event(update=True, rotations=3):
+    """Four archers over a round robin, handicap updating on (lookback 1, start weight 2) or off."""
+    archers = [Archer(n, 20 + 7 * i, Bowstyle.RECURVE) for i, n in enumerate(["Ann", "Ben", "Cat", "Dan"])]
+    event = Event(
+        archers, 12, PORTSMOUTH, build_schedule(4, rotations), update_handicaps=update,
+        n_lookback=1 if update else None, start_weight=2 if update else None,
+    )
+    for i in range(rotations):
+        for match in event.matches(i):
+            event.record_match({p: 80 + 8 * i + 3 * p for p in match})
+        if i < rotations - 1:
+            event.advance()
+    return event
+
+
+UPDATING_ARCHER_HEADER = [
+    "Archer", "Starting handicap", "To-date handicap", "Pass", "Opponent", "Score",
+    "Percentile (%)", "Pass starting handicap", "Handicap of score", "Exported",
+]
+
+
+def test_the_archer_results_csv_gains_the_pass_starting_handicap_column_when_updating():
+    """The agreed ten columns, each row's value equal to the model's one-decimal text."""
+    event = make_updating_event()
+    rows = rows_of(exports.archer_results_csv(event, NOW))
+    assert rows[0] == UPDATING_ARCHER_HEADER
+    for section in outputs.archer_results(event):
+        mine = [row for row in rows[1:] if row[0] == section.name]
+        assert [row[7] for row in mine] == [f"{r.start_handicap:.1f}" for r in section.rows]
+        assert mine[0][7] == f"{event.archers[section.archer_index].handicap:.1f}"  # pass 1: as entered
+        assert mine[1][7] != mine[0][7]  # the handicap moved
+        assert {row[-1] for row in mine} == {STAMP}
+        assert [row[8] for row in mine] == [f"{r.handicap:.1f}" for r in section.rows]  # Handicap of score
+
+
+def test_with_updating_off_the_archer_results_csv_is_exactly_the_previous_nine_columns():
+    """Header and rows unchanged."""
+    event = make_updating_event(update=False)
+    rows = rows_of(exports.archer_results_csv(event, NOW))
+    assert rows[0] == ARCHER_RESULTS_HEADER and all(len(row) == 9 for row in rows)
+    assert "Pass starting handicap" not in exports.archer_results_csv(event, NOW)
+
+
+def test_the_leaderboard_csv_is_unchanged_by_updating():
+    """Only the per-pass tables gain the column."""
+    event = make_updating_event()
+    assert rows_of(exports.leaderboard_csv(event, NOW))[0] == LEADERBOARD_HEADER
+
+
+def test_the_pdf_has_the_pass_starting_handicap_in_the_archer_tables_only_when_updating():
+    """Heading and averages with updating on; none of that text with it off."""
+    on = pdf_text(exports.results_pdf(make_updating_event(), NOW))[0]
+    flat = " ".join(on.split())
+    assert flat.count("Pass starting handicap") == 4  # one table per archer
+    off = pdf_text(exports.results_pdf(make_updating_event(update=False), NOW))[0]
+    assert "Pass starting handicap" not in " ".join(off.split())
+
+
+def test_the_pdf_average_row_includes_the_mean_pass_starting_handicap():
+    """Each archer's Average row ends with the mean start handicap, then the mean handicap."""
+    event = make_updating_event()
+    text = pdf_text(exports.results_pdf(event, NOW))[0]
+    for section in outputs.archer_results(event):
+        average = section.averages
+        expected = (
+            f"Average {average.score:.1f} {average.percentile * 100:.1f}% "
+            f"{average.start_handicap:.1f} {average.handicap:.1f}"
+        )
+        assert expected in " ".join(text.split())
+
+
+def test_the_export_route_serves_the_wider_csv_for_an_updating_event():
+    """Over HTTP: an advanced updating event's archer-results CSV has the extra column."""
+    state = SessionState(rng=NoShuffle(), clock=lambda: NOW)
+    client = create_app(state=state).test_client()
+    client.post("/event/stage1", data={"n_archers": "2", "total_arrows": "24", "n_pass": "12",
+                                       "setup_mode": "advanced"})
+    form = {"update_handicaps": "yes", "n_lookback": "1", "start_weight": "2"}
+    for i, (name, handicap) in enumerate((("Ann", "30"), ("Ben", "40"))):
+        form.update({f"name_{i}": name, f"bowstyle_{i}": "Recurve", f"handicap_{i}": handicap,
+                     f"face_type_{i}": "10_zone", f"face_cm_{i}": "60", f"distance_{i}": "20yd"})
+    assert client.post("/event/stage2", data=form).status_code == 302
+    client.post("/event/stage3")
+    for scores in ({0: 80, 1: 100}, {0: 100, 1: 99}):
+        client.post("/event/match/0", data={f"score_{k}": str(v) for k, v in scores.items()})
+        if state.event.current_rotation_index == 0:
+            client.post("/event/advance")
+    rows = rows_of(client.get("/event/export/archer-results.csv").data.decode())
+    assert rows[0] == UPDATING_ARCHER_HEADER and len(rows) == 1 + 4
+    ann = [r for r in rows[1:] if r[0] == "Ann"]
+    assert [r[7] for r in ann][0] == "30.0" and [r[7] for r in ann][1] != "30.0"

@@ -72,6 +72,9 @@ class ArcherResultRow:
     percentile : float
         That score's percentile in the archer's own distribution, as a fraction
         in [0, 1] (shown as a percentage by the pages and exports).
+    start_handicap : float
+        The handicap the archer's distribution for this pass was built from
+        (`Event.handicap_for`); the pages and exports show it only when handicaps are updated.
     handicap : float | None
         The handicap implied by the score, or None for a score of 0.
     """
@@ -80,6 +83,7 @@ class ArcherResultRow:
     opponent: str
     score: int
     percentile: float
+    start_handicap: float
     handicap: float | None
 
 
@@ -91,12 +95,15 @@ class ArcherAverages:
     ----------
     score, percentile : float
         Means over every row (percentile as a fraction).
+    start_handicap : float
+        Mean of the pass starting handicaps.
     handicap : float | None
         Mean over the rows that have a handicap; None if none do.
     """
 
     score: float
     percentile: float
+    start_handicap: float
     handicap: float | None
 
 
@@ -253,6 +260,7 @@ def archer_results(event: Event) -> list[ArcherResults]:
                 opponent=BYE if r.opponent_index is None else event.archers[r.opponent_index].name,
                 score=r.score,
                 percentile=r.percentile,
+                start_handicap=event.handicap_for(i, r.rotation_index),
                 handicap=r.handicap,
             )
             for r in results
@@ -263,6 +271,7 @@ def archer_results(event: Event) -> list[ArcherResults]:
             averages = ArcherAverages(
                 score=_mean([row.score for row in rows]),
                 percentile=_mean([row.percentile for row in rows]),
+                start_handicap=_mean([row.start_handicap for row in rows]),
                 handicap=_mean([row.handicap for row in rows if row.handicap is not None]),
             )
         sections.append(
