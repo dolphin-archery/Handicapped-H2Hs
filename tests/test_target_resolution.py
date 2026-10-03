@@ -1,8 +1,9 @@
 """Tests for h2h.models.resolve_target (round mode x bowstyle -> Target)."""
 
+import pytest
 from archeryutils import load_rounds
 
-from h2h.models import Bowstyle, RoundMode, resolve_target
+from h2h.models import Bowstyle, RoundMode, resolve_indoor_round, resolve_target
 
 
 def test_indoor_portsmouth_compound_uses_compound_variant():
@@ -84,3 +85,38 @@ def test_indoor_targets_are_indoor():
     for round_mode in (RoundMode.INDOOR_PORTSMOUTH, RoundMode.INDOOR_WA18):
         target = resolve_target(round_mode, Bowstyle.RECURVE)
         assert target.indoor is True
+
+
+# --- resolve_indoor_round (shared with the handicap calculator) ----------
+
+
+def test_resolve_indoor_round_returns_the_real_archeryutils_rounds():
+    """Each indoor mode x compound flag maps to the matching archeryutils round."""
+    assert resolve_indoor_round(RoundMode.INDOOR_PORTSMOUTH, compound=False) is (
+        load_rounds.AGB_indoor.portsmouth
+    )
+    assert resolve_indoor_round(RoundMode.INDOOR_PORTSMOUTH, compound=True) is (
+        load_rounds.AGB_indoor.portsmouth_compound
+    )
+    assert resolve_indoor_round(RoundMode.INDOOR_WA18, compound=False) is (
+        load_rounds.WA_indoor.wa18
+    )
+    assert resolve_indoor_round(RoundMode.INDOOR_WA18, compound=True) is (
+        load_rounds.WA_indoor.wa18_compound
+    )
+
+
+def test_resolve_indoor_round_rejects_outdoor_mode():
+    """Outdoor has no indoor round, so asking for one is an error."""
+    with pytest.raises(ValueError):
+        resolve_indoor_round(RoundMode.OUTDOOR, compound=False)
+
+
+def test_resolve_target_uses_resolve_indoor_rounds_target():
+    """resolve_target's indoor result is the shared round's own target (one code path)."""
+    for round_mode in (RoundMode.INDOOR_PORTSMOUTH, RoundMode.INDOOR_WA18):
+        for bowstyle in Bowstyle:
+            expected = resolve_indoor_round(
+                round_mode, compound=bowstyle == Bowstyle.COMPOUND
+            ).passes[0].target
+            assert resolve_target(round_mode, bowstyle) == expected

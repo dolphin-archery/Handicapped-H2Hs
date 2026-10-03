@@ -326,7 +326,7 @@
       "The calculator page renders a compound control.",
       "resolve_target's indoor round selection and the calculator share one code path (no duplicated compound/non-compound round lookup)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 28,

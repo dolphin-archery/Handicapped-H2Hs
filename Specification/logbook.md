@@ -639,3 +639,24 @@ an identical indoor score distribution to a same-handicap Recurve archer, and
 appears in all rows of the Stage 2 dropdown (and can start an event). The
 existing outdoor test already iterates the whole enum, so it covers Longbow
 for free. No issues.
+
+### Task 27: Compound option in the handicap calculator (complete)
+The standalone calculator gained a "Shot with a compound bow" checkbox
+(default unticked), posted as `compound=yes`. To honour "reuse rather than
+duplicate", the indoor-round lookup that `resolve_target` already did inline
+(Portsmouth/WA18 x compound/plain -> the real `archeryutils` round) was
+extracted into `models.resolve_indoor_round(round_mode, compound)`, and both
+`resolve_target` and the calculator route now call it; the calculator's old
+inline Portsmouth/WA18 lookup (and its now-unused `load_rounds` import in
+`app.py`) were removed. `resolve_indoor_round` raises `ValueError` for an
+outdoor mode, since there is no outdoor "indoor round" to return.
+
+Why it matters (and is tested to matter): the same score implies a different
+handicap under the compound scoring system (only the inner ring counts 10),
+so a test asserts the compound and plain 1dp handicaps for a Portsmouth 500 are
+actually different before checking the page shows the compound one. Also
+covered: WA 18 compound, no `compound` field -> plain round (existing
+behaviour unchanged), a bad score with compound ticked -> friendly error, the
+control renders, and `resolve_indoor_round` returns the real archeryutils round
+objects. The checkbox state is not remembered after calculating (the existing
+round radio isn't either); left as is since it wasn't asked for. No issues.

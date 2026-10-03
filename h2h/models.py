@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from archeryutils import load_rounds
+from archeryutils import rounds
 from archeryutils import targets
 
 from . import stats
@@ -90,6 +91,43 @@ def _outdoor_target() -> targets.Target:
     return load_rounds.WA_outdoor.wa720_70.passes[0].target
 
 
+def resolve_indoor_round(round_mode: RoundMode, compound: bool) -> rounds.Round:
+    """Look up the real archeryutils indoor round for a round mode and bow type.
+
+    Shared by `resolve_target` and the standalone handicap calculator so the
+    compound/non-compound round choice (AISpec.md sections 5.2a and 5.5) lives
+    in exactly one place.
+
+    Parameters
+    ----------
+    round_mode : RoundMode
+        `INDOOR_PORTSMOUTH` or `INDOOR_WA18`.
+    compound : bool
+        Whether the round is shot with a compound bow, which selects the
+        `*_compound` variant (same face/distance, only the X-ring scores 10).
+
+    Returns
+    -------
+    archeryutils.rounds.Round
+        The complete indoor round (e.g. `portsmouth` or `portsmouth_compound`).
+
+    Raises
+    ------
+    ValueError
+        If `round_mode` is not an indoor round mode.
+    """
+    if round_mode == RoundMode.INDOOR_PORTSMOUTH:
+        return (
+            load_rounds.AGB_indoor.portsmouth_compound
+            if compound
+            else load_rounds.AGB_indoor.portsmouth
+        )
+    if round_mode == RoundMode.INDOOR_WA18:
+        return load_rounds.WA_indoor.wa18_compound if compound else load_rounds.WA_indoor.wa18
+    msg = f"{round_mode.value!r} is not an indoor round mode."
+    raise ValueError(msg)
+
+
 def resolve_target(round_mode: RoundMode, bowstyle: Bowstyle) -> targets.Target:
     """Resolve an archer's effective target from round mode and bowstyle.
 
@@ -114,17 +152,7 @@ def resolve_target(round_mode: RoundMode, bowstyle: Bowstyle) -> targets.Target:
     if round_mode == RoundMode.OUTDOOR:
         return _outdoor_target()
 
-    is_compound = bowstyle == Bowstyle.COMPOUND
-    if round_mode == RoundMode.INDOOR_PORTSMOUTH:
-        rnd = (
-            load_rounds.AGB_indoor.portsmouth_compound
-            if is_compound
-            else load_rounds.AGB_indoor.portsmouth
-        )
-    else:  # RoundMode.INDOOR_WA18
-        rnd = (
-            load_rounds.WA_indoor.wa18_compound if is_compound else load_rounds.WA_indoor.wa18
-        )
+    rnd = resolve_indoor_round(round_mode, compound=bowstyle == Bowstyle.COMPOUND)
     return rnd.passes[0].target
 
 

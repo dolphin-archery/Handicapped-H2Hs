@@ -9,12 +9,11 @@ single-user local tool, not a multi-tenant service.
 
 from __future__ import annotations
 
-from archeryutils import load_rounds
 from flask import Flask, redirect, render_template, request, url_for
 
 from . import stats
 from .chart_data import build_pair_chart_data
-from .models import Archer, Bowstyle, RoundMode
+from .models import Archer, Bowstyle, RoundMode, resolve_indoor_round
 from .state import SessionState
 
 
@@ -199,12 +198,12 @@ def create_app(state: SessionState | None = None) -> Flask:
 
     @app.post("/event/handicap-calculator")
     def handicap_calculator_submit():
-        round_choice = request.form.get("round", "portsmouth")
-        rnd = (
-            load_rounds.AGB_indoor.portsmouth
-            if round_choice == "portsmouth"
-            else load_rounds.WA_indoor.wa18
+        round_mode = (
+            RoundMode.INDOOR_PORTSMOUTH
+            if request.form.get("round", "portsmouth") == "portsmouth"
+            else RoundMode.INDOOR_WA18
         )
+        rnd = resolve_indoor_round(round_mode, compound=request.form.get("compound") == "yes")
         try:
             score = float(request.form.get("score", ""))
             handicap = stats.handicap_for_round_score(score, rnd)
