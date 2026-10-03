@@ -4,6 +4,9 @@ Covers Stage 1/2 setup, the overview / per-match / advance page flow, and the
 results and chart pages.
 """
 
+import json
+from pathlib import Path
+
 import pytest
 
 from h2h.app import create_app
@@ -578,3 +581,131 @@ def test_results_page_does_not_show_a_ranked_leaderboard():
     assert b"<th>Rank</th>" not in resp.data
     assert b"<th>Points</th>" not in resp.data
     assert b"<th>Total</th>" not in resp.data
+
+
+# --- Per-match results and charts on the match pages (Feedback 3) -----------
+
+
+def go_advanced(client):
+    """Switch the session to advanced mode."""
+    client.post("/mode", data={"next": "/event/rotation"})
+
+
+def embedded_chart_payload(html):
+    """The JSON embedded as window.MATCH_CHART_DATA in a rendered page."""
+    marker = "window.MATCH_CHART_DATA = "
+    start = html.index(marker) + len(marker)
+    return json.loads(html[start : html.index(";\n", start)])
+
+
+def start_repeating_pair_event(client):
+    """Two archers, two passes: the same pair meets in both."""
+    complete_stage1(client, n_archers=2, total_arrows=24, n_pass=12)
+    complete_stage2(client, [("Alice", "Recurve", 15), ("Bob", "Compound", 45)])
+
+
+def test_match_page_shows_the_pairs_result_after_scoring():
+    """After saving, the match page shows both archers' score, percentile, handicap and winner."""
+    client = make_client()
+    start_two_archer_event(client)
+    assert b"Results so far" not in client.get("/event/match/0").data
+
+    save_match(client, 0, {0: 120, 1: 0})
+    page = client.get("/event/match/0").data.decode()
+    assert "Results so far" in page
+    assert "Alice" in page and "Bob" in page
+    assert ">120<" in page and ">0<" in page
+    assert "%" in page  # percentiles
+    assert ">Yes<" in page and ">No<" in page  # winner / loser
+
+
+def test_match_page_lists_every_pass_the_pair_has_shared():
+    """A pair that meets again sees every shared pass on its match page."""
+    client = make_client()
+    start_repeating_pair_event(client)
+    save_match(client, 0, {0: 100, 1: 60})
+    client.post("/event/advance")
+    save_match(client, 0, {0: 90, 1: 80})
+
+    page = client.get("/event/match/0").data.decode()
+    for score in ("100", "60", "90", "80"):
+        assert f">{score}<" in page
+    assert "<th>Pass</th>" in page
+
+
+def test_bye_match_page_shows_own_result_and_no_chart_in_either_mode():
+    """A bye match shows the archer's own result, and never a chart."""
+    client, state = make_client_and_state()
+    start_three_archer_event(client, shoot_byes=True)
+    bye_archer = state.event.schedule[0].bye
+    save_match(client, 1, {bye_archer: 70})  # the bye match is listed after the pair
+
+    basic = client.get("/event/match/1").data.decode()
+    assert ">70<" in basic and "bye" in basic.lower()
+    assert 'id="match-chart"' not in basic
+
+    go_advanced(client)
+    advanced = client.get("/event/match/1").data.decode()
+    assert ">70<" in advanced
+    assert 'id="match-chart"' not in advanced
+    assert "no distribution chart" in advanced
+
+
+def test_advanced_match_page_renders_chart_even_before_any_scoring():
+    """Advanced mode: the chart, checkbox, payload and maths appear before the first pass."""
+    client = make_client()
+    start_two_archer_event(client)
+    go_advanced(client)
+    page = client.get("/event/match/0").data.decode()
+    assert 'id="match-chart"' in page
+    assert 'id="show-previous-passes"' in page
+    assert "How the winner is decided" in page
+    payload = embedded_chart_payload(page)
+    assert payload["passes"] == []
+    assert payload["archer_a"]["name"] == "Alice"
+    assert payload["distribution_a"] and payload["distribution_b"]
+
+
+def test_advanced_match_page_chart_gains_the_scored_pass():
+    """After saving, the embedded payload carries the pass's scores for the markers."""
+    client = make_client()
+    start_two_archer_event(client)
+    go_advanced(client)
+    save_match(client, 0, {0: 100, 1: 60})
+    payload = embedded_chart_payload(client.get("/event/match/0").data.decode())
+    assert [(p["score_a"], p["score_b"]) for p in payload["passes"]] == [(100, 60)]
+
+
+def test_basic_match_page_has_no_chart_or_maths_explanation():
+    """Basic mode shows none of the advanced-only content on a match page."""
+    client = make_client()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 100, 1: 60})
+    page = client.get("/event/match/0").data.decode()
+    assert 'id="match-chart"' not in page
+    assert "MATCH_CHART_DATA" not in page
+    assert "How the winner is decided" not in page
+
+
+def test_pair_history_and_results_pages_still_render_their_content():
+    """The pair-history chart page and the results page keep their tables and chart."""
+    client = make_client()
+    start_two_archer_event(client)
+    save_match(client, 0, {0: 100, 1: 60})
+    pair_page = client.get("/event/pair/0/1").data.decode()
+    assert 'id="match-chart"' in pair_page and "How the winner is decided" in pair_page
+    results_page = client.get("/event/results").data.decode()
+    for header in ("Percentile", "Equiv. handicap", "Opponent", "Won?"):
+        assert header in results_page
+
+
+def test_chart_maths_and_results_table_markup_is_not_duplicated_across_templates():
+    """Each of the shared blocks lives in exactly one template file (a partial)."""
+    templates = Path(__file__).resolve().parent.parent / "h2h" / "templates"
+    sources = {p.name: p.read_text(encoding="utf-8") for p in templates.glob("*.html")}
+    for needle, owner in (
+        ("How the winner is decided", "_pair_chart.html"),
+        ("window.MATCH_CHART_DATA", "_pair_chart.html"),
+        ("<th>Equiv. handicap</th>", "_results_table.html"),
+    ):
+        assert [name for name, src in sources.items() if needle in src] == [owner]

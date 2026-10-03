@@ -1,0 +1,35 @@
+{# Interactive distribution chart and maths explanation for one pair of archers.
+   Expects `event` and `chart_data` (see h2h/chart_data.py). #}
+<h3>Score distributions</h3>
+<div class="row">
+  <label><input type="checkbox" id="show-previous-passes"> Show previous passes' scores too</label>
+</div>
+<canvas id="match-chart" height="120"></canvas>
+
+<div class="maths">
+  <h3>How the winner is decided</h3>
+  <p>
+    Each archer's current AGB handicap gives an angular aiming-error standard
+    deviation (&sigma;<sub>r</sub>), which fixes the probability an arrow lands
+    in each scoring ring. Convolving that per-arrow distribution
+    n<sub>pass</sub> = {{ event.n_pass }} times gives the exact distribution of
+    that archer's score over one pass, shown above. Each archer's actual pass
+    score is converted into a percentile under their <em>own</em> distribution
+    -- the probability of scoring at or below what they actually shot. The
+    archer who over-performed their own model by more (higher percentile)
+    wins the pass, which fairly accounts for archers having different score
+    variability, not just different average scores.
+  </p>
+  <p>
+    <strong>Note:</strong> when the round mode is indoor, a Compound archer's
+    distribution uses the AGB indoor-compound scoring variant (only the
+    X-ring scores 10); no bowstyle-specific statistical variance correction is
+    applied beyond that, per <code>Specification/humanSpec.md</code>.
+  </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  window.MATCH_CHART_DATA = {{ chart_data|tojson }};
+</script>
+<script src="{{ url_for('static', filename='match_chart.js') }}"></script>

@@ -328,3 +328,32 @@ def test_schedule_sitting_out_index_out_of_range_rejected():
     schedule = [Rotation(pairs=[(0, 1)], sitting_out=(5,))]
     with pytest.raises(ValueError):
         Event(make_archers(2), 12, RoundMode.INDOOR_PORTSMOUTH, schedule)
+
+
+def test_pair_results_lists_every_shared_pass_in_order():
+    """pair_results returns both archers' results for each shared pass, oldest pass first."""
+    event = make_event(2, n_rotations=2)  # the same pair meets in both rotations
+    assert event.pair_results(0, 1) == []
+    event.record_match({0: 100, 1: 60})
+    event.advance()
+    event.record_match({0: 90, 1: 80})
+
+    shared = event.pair_results(0, 1)
+    assert [(r.rotation_index, r.archer_index, r.score) for r in shared] == [
+        (0, 0, 100),
+        (0, 1, 60),
+        (1, 0, 90),
+        (1, 1, 80),
+    ]
+    assert event.pair_results(1, 0) == shared  # argument order does not matter
+
+
+def test_pair_results_excludes_other_pairs_and_bye_matches():
+    """Only the requested pair's own head-to-head results are returned."""
+    event = make_event(3, n_rotations=3)
+    record_whole_rotation(event)
+    (a, b), (bye, _) = event.matches(0)
+    shared = event.pair_results(a, b)
+    assert {r.archer_index for r in shared} == {a, b}
+    assert all(r.opponent_index is not None for r in shared)
+    assert event.pair_results(a, bye) == []

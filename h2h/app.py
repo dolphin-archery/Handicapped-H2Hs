@@ -200,7 +200,9 @@ def create_app(state: SessionState | None = None) -> Flask:
         Returns
         -------
         flask.Response | str
-            The rendered match page, or a redirect to the overview if
+            The rendered match page (this pass's score form, the pair's
+            results so far, and in advanced mode the pair's distribution
+            chart), or a redirect to the overview if
             `match_index` is not a match of the current pass (or to Stage 1 if
             no event exists).
         """
@@ -215,6 +217,13 @@ def create_app(state: SessionState | None = None) -> Flask:
         results = event.match_results(idx, (a, b))
         if form_scores is None:
             form_scores = {r.archer_index: r.score for r in results}
+
+        # A pair's history spans every pass the two have shared; a bye match has
+        # only this pass's result and, with no opponent, no chart.
+        history = results if b is None else event.pair_results(a, b)
+        chart_data = None
+        if b is not None and session.mode == "advanced":
+            chart_data = build_pair_chart_data(event, a, b)
         return render_template(
             "match.html",
             event=event,
@@ -223,6 +232,8 @@ def create_app(state: SessionState | None = None) -> Flask:
             a=a,
             b=b,
             results=results,
+            history=history,
+            chart_data=chart_data,
             form_scores=form_scores,
             error=error,
         )

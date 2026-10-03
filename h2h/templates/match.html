@@ -36,23 +36,19 @@
   {% endif %}
 </form>
 
-{% if results %}
-<h2>Result this pass</h2>
-<table>
-  <thead>
-    <tr><th>Archer</th><th>Score</th><th>Percentile</th><th>Equiv. handicap</th><th>Won?</th></tr>
-  </thead>
-  <tbody>
-    {% for r in results %}
-    <tr>
-      <td>{{ event.archers[r.archer_index].name }}</td>
-      <td>{{ r.score }}</td>
-      <td>{{ '%.1f%%'|format(r.percentile * 100) }}</td>
-      <td>{{ '%.1f'|format(r.handicap) if r.handicap is not none else '-' }}</td>
-      <td>{{ 'Yes' if r.won else ('No' if r.won is not none else '-') }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+{% if history %}
+<h2>Results so far</h2>
+{% if b is not none %}
+<p>Every pass {{ event.archers[a].name }} and {{ event.archers[b].name }} have shared, including this one.</p>
+{% endif %}
+{% with results=history, show_pass=true %}{% include "_results_table.html" %}{% endwith %}
+{% endif %}
+
+{% if mode == 'advanced' %}
+  {% if chart_data %}
+  {% include "_pair_chart.html" %}
+  {% else %}
+  <p>A bye match has no opponent to compare against, so there is no distribution chart.</p>
+  {% endif %}
 {% endif %}
 {% endblock %}
