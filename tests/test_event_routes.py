@@ -668,22 +668,6 @@ def test_results_link_to_chart_only_shown_with_graph_view_on():
     assert b"View chart" in resp_on.data
 
 
-def test_results_page_does_not_show_a_ranked_leaderboard():
-    """The results page must not compute/display a single ranked score total.
-
-    The page's own prose may mention "leaderboard" to clarify that this view
-    is deliberately NOT one (see results.html) -- that's fine. What must be
-    absent is an actual ranking: a "Rank"/"Points" column or table.
-    """
-    client = make_client()
-    start_two_archer_event(client, n_pass=12)
-    save_match(client, 0, {0: 100, 1: 60})
-    resp = client.get("/event/results")
-    assert b"<th>Rank</th>" not in resp.data
-    assert b"<th>Points</th>" not in resp.data
-    assert b"<th>Total</th>" not in resp.data
-
-
 # --- Per-match results and charts on the match pages (Feedback 3) -----------
 
 
@@ -1853,3 +1837,160 @@ def test_a_full_advanced_event_with_mixed_targets_plays_through_over_http():
         stats_percentile(event.distribution_for(1), 110)
     )
     assert results[0].percentile != results[1].percentile
+
+
+# --- Leaderboard and archer results pages (Feedback 5) ------------------------------
+
+
+def all_tables(html):
+    """Every <table> in a page as (headings, body rows), each cell as plain text."""
+    tables = []
+    for block in re.findall(r"<table>(.*?)</table>", html, re.S):
+        text = lambda fragment: " ".join(re.sub(r"<[^>]+>", " ", fragment).split())  # noqa: E731
+        headings = [text(h) for h in re.findall(r"<th>(.*?)</th>", block, re.S)]
+        rows = [
+            [text(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", block, re.S)
+            if "<td" in row
+        ]
+        tables.append((headings, rows))
+    return tables
+
+
+def table_with_headings(html, headings):
+    """The rows of the page's table whose headings are exactly `headings`."""
+    (rows,) = [rows for found, rows in all_tables(html) if found == headings]
+    return rows
+
+
+def start_named_four_archer_event(client, total_arrows=36):
+    """4 archers with distinct handicaps, ready for scoring."""
+    complete_stage1(client, n_archers=4, total_arrows=total_arrows, n_pass=12)
+    complete_stage2(client, [(n, "Recurve", 20 + 10 * i) for i, n in enumerate(("Ann", "Ben", "Cat", "Dan"))])
+
+
+def test_results_page_has_a_leaderboard_table_matching_the_outputs_model():
+    """Rank | Archer | Points | Passes decided, one row per archer, equal to outputs.leaderboard."""
+    from h2h import outputs
+
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    score_current_pass(client, lambda archer: 80 + archer)
+    page = client.get("/event/results").data.decode()
+    rows = table_with_headings(page, ["Rank", "Archer", "Points", "Passes decided"])
+    expected = [
+        [str(r.rank), r.name, str(r.points), str(r.passes_decided)]
+        for r in outputs.leaderboard(state.event)
+    ]
+    assert rows == expected and len(rows) == 4
+    assert sum(int(row[2]) for row in rows) == 2  # one winner in each of the two matches
+    assert "not a ranked leaderboard" not in page
+
+
+def test_the_leaderboard_is_live_and_waits_for_the_whole_pass():
+    """After one of two matches nothing counts; once the second is saved the winners have a point."""
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    first, second = state.event.matches(0)
+    save_match(client, 0, {p: 80 + p for p in first})
+    page = client.get("/event/results").data.decode()
+    rows = table_with_headings(page, ["Rank", "Archer", "Points", "Passes decided"])
+    assert [row[2] for row in rows] == ["0", "0", "0", "0"]
+    assert "0 of 3 so far" in " ".join(page.split())
+
+    save_match(client, 1, {p: 80 + p for p in second})
+    page = client.get("/event/results").data.decode()
+    rows = table_with_headings(page, ["Rank", "Archer", "Points", "Passes decided"])
+    assert sorted(int(row[2]) for row in rows) == [0, 0, 1, 1]
+    assert [row[3] for row in rows] == ["1", "1", "1", "1"]
+    assert "1 of 3 so far" in " ".join(page.split())
+
+
+def test_archer_results_page_has_a_section_per_archer_with_the_agreed_columns():
+    """Heading 'name - total score N - handicap H', a Pass..Handicap table and an Average row."""
+    from h2h import outputs
+
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    for pass_number in (1, 2):
+        score_current_pass(client, lambda archer, n=pass_number: 80 + archer + n)
+        client.post("/event/advance")
+    page = client.get("/event/archers").data.decode()
+    sections = outputs.archer_results(state.event)
+    tables = [t for t in all_tables(page) if t[0] == ["Pass", "Opponent", "Score", "Percentile", "Handicap"]]
+    assert len(tables) == 4
+    for (headings, rows), section in zip(tables, sections, strict=True):
+        text = " ".join(re.sub(r"<[^>]+>", " ", page).split())
+        assert f"{section.name} - total score {section.total_score} - handicap {section.handicap:g}" in text
+        assert [row[:3] for row in rows[:-1]] == [
+            [str(r.pass_number), r.opponent, str(r.score)] for r in section.rows
+        ]
+        assert [row[3] for row in rows[:-1]] == [f"{r.percentile * 100:.1f}%" for r in section.rows]
+        assert all(row[0].isdigit() for row in rows[:-1])  # Pass is an integer, no decimals
+        average = rows[-1]
+        assert average[0] == "Average" and len(average) == 4  # label spans Pass and Opponent
+        assert average[1] == f"{section.averages.score:.1f}"
+        assert average[2] == f"{section.averages.percentile * 100:.1f}%"
+        assert average[3] == f"{section.averages.handicap:.1f}"
+
+
+def test_a_zero_score_shows_a_dash_for_its_handicap_and_is_left_out_of_the_average():
+    """No equivalent handicap exists for 0, so the cell is '-' and the mean skips it."""
+    client, state = make_client_and_state()
+    complete_stage1(client, n_archers=2, total_arrows=24, n_pass=12)
+    complete_stage2(client, [("Ann", "Recurve", 20), ("Ben", "Recurve", 30)])
+    save_match(client, 0, {0: 100, 1: 0})
+    client.post("/event/advance")
+    save_match(client, 0, {0: 90, 1: 80})
+    rows = [r for h, r in all_tables(client.get("/event/archers").data.decode()) if h[0] == "Pass"]
+    ben = rows[1]
+    assert [row[4] for row in ben[:-1]] == ["-", f"{state.event.results[3].handicap:.1f}"]
+    assert ben[-1][3] == f"{state.event.results[3].handicap:.1f}"
+
+
+def test_a_bye_pass_reads_bye_and_a_sat_out_pass_has_no_row():
+    """Byes shot: the solo pass is a row against 'bye'; byes not shot: no row for the pass sat out."""
+    client, state = make_client_and_state()
+    start_three_archer_event(client, shoot_byes=True)
+    score_current_pass(client, lambda archer: 80 + archer)
+    page = client.get("/event/archers").data.decode()
+    opponents = [row[1] for h, rows in all_tables(page) if h[0] == "Pass" for row in rows[:-1]]
+    assert opponents.count("bye") == 1
+
+    client, state = make_client_and_state()
+    start_three_archer_event(client, shoot_byes=False)
+    score_current_pass(client, lambda archer: 80 + archer)
+    page = client.get("/event/archers").data.decode()
+    assert page.count("<tr class=\"average\">") == 2  # the sitting-out archer has no table
+    assert page.count("No completed pass for") == 1
+
+
+def test_archer_results_before_any_completed_pass_shows_headings_and_an_empty_state():
+    """No error: each archer's heading, and a message saying nothing is complete."""
+    client, state = make_client_and_state()
+    start_named_four_archer_event(client)
+    page = client.get("/event/archers").data.decode()
+    assert page.count("total score 0 - handicap") == 4
+    assert "No pass has been completed yet" in page
+    assert all_tables(page) == []
+    first, _ = state.event.matches(0)
+    save_match(client, 0, {p: 80 + p for p in first})
+    assert "No pass has been completed yet" in client.get("/event/archers").data.decode()
+
+
+def test_both_output_pages_redirect_to_stage_1_without_an_event():
+    """With no event there is nothing to show."""
+    client = make_client()
+    for path in ("/event/results", "/event/archers"):
+        resp = client.get(path)
+        assert resp.status_code == 302 and resp.headers["Location"].endswith("/event/stage1")
+
+
+def test_every_page_links_to_the_archer_results():
+    """The nav bar has an Archer results link on setup, overview and results pages."""
+    client = make_client()
+    for path in ("/event/stage1", "/event/handicap-calculator"):
+        assert 'href="/event/archers"' in client.get(path).data.decode()
+    start_named_four_archer_event(client)
+    for path in ("/event/rotation", "/event/results", "/event/match/0", "/event/archers"):
+        assert 'href="/event/archers"' in client.get(path).data.decode()

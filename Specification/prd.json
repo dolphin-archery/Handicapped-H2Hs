@@ -719,18 +719,18 @@
   {
     "id": 53,
     "name": "Results page leaderboard and per-archer results page",
-    "description": "Per Specification/feedback.md 'Feedback 5' (Outputs) and AISpec.md section 5.4a (Assumptions 36, 37, 38): show the task-52 outputs. The Results page (/event/results) gains a Leaderboard table above the pairwise results with the columns Rank | Archer | Points | Passes decided, a note that it counts completed passes only (and how many), and a link to the new Archer results page; its pairwise and per-pass sections are unchanged and its wording no longer says there is no leaderboard. The new page /event/archers ('Archer results') renders, for each archer, a heading '<name> - total score <N> - handicap <H>' (H as entered), then a table with the columns Pass | Opponent | Score | Percentile | Handicap (percentile as '%.1f%%', handicap to one decimal or '-') and a final Average row (Pass and Opponent blank; Score to one decimal, Percentile, Handicap). With no completed pass it shows an explanatory empty state. Both pages redirect to Stage 1 if there is no event, and both are live (recomputed on every request). The nav bar gains an 'Archer results' link.",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Outputs) and AISpec.md section 5.4a (Assumptions 36, 37, 38): show the task-52 outputs. The Results page (/event/results) gains a Leaderboard table above the pairwise results with the columns Rank | Archer | Points | Passes decided, a note that it counts completed passes only (and how many), and a link to the new Archer results page; its pairwise and per-pass sections are unchanged and its wording no longer says there is no leaderboard. The new page /event/archers ('Archer results') renders, for each archer, a heading '<name> - total score <N> - handicap <H>' (H as entered), then a table with the columns Pass | Opponent | Score | Percentile | Handicap (percentile as '%.1f%%', handicap to one decimal or '-') and a final Average row (a label 'Average' across the Pass and Opponent columns, no value of their own; Score to one decimal, Percentile, Handicap). With no completed pass it shows an explanatory empty state. Both pages redirect to Stage 1 if there is no event, and both are live (recomputed on every request). The nav bar gains an 'Archer results' link.",
     "tests": [
       "The Results page contains a Leaderboard table with exactly the headings Rank, Archer, Points, Passes decided, with a row per archer in rank order, and its values equal outputs.leaderboard for the event; the old 'not a ranked leaderboard' sentence is gone.",
       "After saving one match of a two-match pass the leaderboard is unchanged (all 0 points); after saving the second the winners have 1 point - the page is live, with no caching.",
       "/event/archers has one section per archer with the heading 'name - total score N - handicap H' and a table whose headings are exactly Pass, Opponent, Score, Percentile, Handicap, plus an Average row as the last row; values equal outputs.archer_results.",
-      "Pass is an integer (no decimals), Percentile shows '%.1f%%', Handicap one decimal, '-' for a score of 0, and the Average row's Pass and Opponent cells are empty.",
+      "Pass is an integer (no decimals), Percentile shows '%.1f%%', Handicap one decimal, '-' for a score of 0, and the Average row has the label 'Average' across the Pass and Opponent columns and no pass number or opponent.",
       "A bye pass row reads 'bye' as the opponent; a sat-out pass has no row.",
       "Before any pass is completed the Archer results page shows each archer's heading and an empty-state message rather than an error; with no event both pages redirect to Stage 1.",
       "The nav bar on every page links to /event/archers.",
       "The full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 54,

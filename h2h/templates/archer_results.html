@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Archer results</h1>
+<p>Each archer's results, counting only completed passes (a pass is completed once every match in it has been
+  scored): {{ completed_passes }} of {{ event.schedule|length }} so far.
+  <a href="{{ url_for('event_results') }}">Back to the results</a></p>
+{% if not completed_passes %}
+<p>No pass has been completed yet, so there are no results to show. They appear here once every match in a pass
+  has been scored.</p>
+{% endif %}
+
+{% for s in sections %}
+<h2>{{ s.name }} - total score {{ s.total_score }} - handicap {{ '%g'|format(s.handicap) }}</h2>
+{% if s.rows %}
+<table>
+  <thead>
+    <tr><th>Pass</th><th>Opponent</th><th>Score</th><th>Percentile</th><th>Handicap</th></tr>
+  </thead>
+  <tbody>
+    {% for row in s.rows %}
+    <tr>
+      <td>{{ row.pass_number }}</td>
+      <td>{{ row.opponent }}</td>
+      <td>{{ row.score }}</td>
+      <td>{{ '%.1f%%'|format(row.percentile * 100) }}</td>
+      <td>{{ '%.1f'|format(row.handicap) if row.handicap is not none else '-' }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="average">
+      <td colspan="2"><strong>Average</strong></td>
+      <td>{{ '%.1f'|format(s.averages.score) }}</td>
+      <td>{{ '%.1f%%'|format(s.averages.percentile * 100) }}</td>
+      <td>{{ '%.1f'|format(s.averages.handicap) if s.averages.handicap is not none else '-' }}</td>
+    </tr>
+  </tbody>
+</table>
+{% else %}
+<p>No completed pass for {{ s.name }} yet.</p>
+{% endif %}
+{% endfor %}
+{% endblock %}

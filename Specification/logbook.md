@@ -1516,3 +1516,26 @@ inserted directly, since the real winner depends on the maths), the bye and sit-
 cases, re-save, row contents and order, totals and averages including the None-handicap
 cases, and a module-hygiene test (no Flask import, a docstring on every function).
 Suite: 743 passed.
+
+### Task 53: Results page leaderboard and per-archer results page (complete)
+The Results page has a Leaderboard table (Rank | Archer | Points | Passes decided) above
+the pairwise results, with a line saying only completed passes count and how many of the
+event's passes that is so far ("1 of 3 so far"), and a link to the new Archer results page;
+the old "not a ranked leaderboard" sentence is gone, and the pairwise and per-pass sections
+are unchanged. New page `/event/archers` ("Archer results", also in the nav bar on every page)
+renders, per archer in event order, the heading "<name> - total score <N> - handicap <H>" (H as
+entered, 15.0 shown as 15), then a table Pass | Opponent | Score | Percentile | Handicap (an
+integer pass number, the opponent's name or "bye", percentile to one decimal with a % sign,
+handicap to one decimal or "-" for a score of 0) and a final Average row; an archer with no
+completed pass (not yet scored, or sat out) shows "No completed pass for <name> yet", and with
+no completed pass at all the page says so. Both pages redirect to Stage 1 with no event and are
+recomputed on every request from `h2h.outputs`. One spec detail settled here: an average row
+cannot have both "blank Pass and Opponent cells" and an "Average" label, so the label "Average"
+spans the Pass and Opponent columns (colspan 2) and AISpec 5.4a, Assumption 38 and the prd 53
+wording were corrected to say so. A test-writing slip worth noting: my new helper
+`start_four_archer_event` had the same name as an existing one and silently replaced it for the
+whole module, which broke three older tests (they saw "Ann vs Dan" for "A1 vs A4"); it was
+renamed. Tests: eight new route tests (leaderboard equals the outputs model, live and waiting for
+the whole pass, the per-archer sections' headings/columns/values/average row, zero-score dash
+and average, bye and sat-out passes, empty state, redirects, nav link) replacing the old
+"no leaderboard" test. Suite: 750 passed.

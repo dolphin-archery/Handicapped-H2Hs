@@ -452,9 +452,9 @@ show an empty state (every archer on 0 points, no result rows).
     "-" for a score of 0, which has none), to one decimal place;
   with one row per completed pass in which they shot (a pass they sat out has no row)
   and a final **Average** row giving the mean Score, Percentile and Handicap (the
-  Handicap mean ignores "-"; it is "-" if there are none). The Pass and Opponent
-  cells of the Average row are blank, since an average of pass numbers or of names
-  means nothing (Assumption 38).
+  Handicap mean ignores "-"; it is "-" if there are none). The row's label "Average"
+  runs across the Pass and Opponent columns, which have no value of their own since
+  an average of pass numbers or of names means nothing (Assumption 38).
 - **Exports** (links on the Results page and the Archer results page), each built from
   the same data as the pages and so equally live:
   - the **leaderboard as CSV** (`Rank,Archer,Points,Passes decided`);
@@ -858,8 +858,9 @@ built by Feedback 5) exists.
     Stage 2 (the "base" handicap), as distinct from the per-pass "Handicap" column,
     which is the handicap implied by that pass's score. The "total score" is the sum of
     the archer's scores in the completed passes. The average row averages the three
-    numeric measures (Score, Percentile, Handicap) and leaves Pass and Opponent blank:
-    Pass is an integer but averaging pass numbers is meaningless.
+    numeric measures (Score, Percentile, Handicap) and has no value for Pass and
+    Opponent (its label "Average" spans those two columns): Pass is an integer but
+    averaging pass numbers is meaningless.
 39. **Exports.** CSV is plain UTF-8 (no byte-order mark, so that `pandas.read_csv` gets
     clean column names; Excel may need the file imported as UTF-8 to show accents). The
     PDF is generated with `fpdf2` (a small, pure-Python library, chosen over

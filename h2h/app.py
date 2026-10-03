@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from flask import Flask, redirect, render_template, request, url_for
 
-from . import stats
+from . import outputs, stats
 from .chart_data import build_pair_chart_data
 from .models import (
     ADVANCED_FACE_SIZES_CM,
@@ -489,6 +489,29 @@ def create_app(state: SessionState | None = None) -> Flask:
             event=event,
             rotations_view=rotations_view,
             pairwise=event.all_pairwise_results(),
+            leaderboard=outputs.leaderboard(event),
+            completed_passes=len(event.completed_passes),
+        )
+
+    @app.get("/event/archers")
+    def archer_results():
+        """Per-archer results (name, total score, handicap, a table of passes and averages).
+
+        Live: recomputed on every request from the completed passes only.
+
+        Returns
+        -------
+        flask.Response | str
+            The rendered page, or a redirect to Stage 1 if no event exists.
+        """
+        if session.event is None:
+            return redirect(url_for("stage1"))
+        event = session.event
+        return render_template(
+            "archer_results.html",
+            event=event,
+            sections=outputs.archer_results(event),
+            completed_passes=len(event.completed_passes),
         )
 
     @app.get("/event/pair/<int:a>/<int:b>")

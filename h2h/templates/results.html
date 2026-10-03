@@ -8,8 +8,28 @@
 <p>Event complete.</p>
 {% endif %}
 
+<h2>Leaderboard</h2>
+<p>1 point for each pass won, 0 for a pass lost. Only completed passes count (a pass is completed once every
+  match in it has been scored): {{ completed_passes }} of {{ event.schedule|length }} so far. Archers on equal
+  points share a rank. <a href="{{ url_for('archer_results') }}">Each archer's results</a></p>
+<table>
+  <thead>
+    <tr><th>Rank</th><th>Archer</th><th>Points</th><th>Passes decided</th></tr>
+  </thead>
+  <tbody>
+    {% for row in leaderboard %}
+    <tr>
+      <td>{{ row.rank }}</td>
+      <td>{{ row.name }}</td>
+      <td>{{ row.points }}</td>
+      <td>{{ row.passes_decided }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
 <h2>Pairwise results</h2>
-<p>Every pair of archers who have shared at least one rotation so far. This is a set of head-to-head results, not a ranked leaderboard.</p>
+<p>Every pair of archers who have shared at least one rotation so far, as head-to-head results.</p>
 {% if not pairwise %}
 <p>No pairs have shared a rotation yet.</p>
 {% else %}
