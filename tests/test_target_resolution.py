@@ -14,10 +14,8 @@ from h2h.models import (
     STANDARD_FACE_SIZES_CM,
     YARD,
     Bowstyle,
-    IndoorRound,
     TargetSetup,
     distance_option_groups,
-    resolve_indoor_round,
     resolve_target,
 )
 
@@ -184,23 +182,6 @@ def test_every_offered_combination_gives_a_valid_pmf_at_any_handicap(handicap):
         pmf = stats.per_arrow_pmf(handicap, target)
         assert math.isclose(sum(pmf.values()), 1.0, abs_tol=1e-9)
         assert all(p >= 0 for p in pmf.values())
-
-
-# --- the calculator's named rounds (unchanged behaviour) ---------------------------
-
-
-def test_resolve_indoor_round_returns_the_real_archeryutils_rounds():
-    """Each named round x compound flag maps to the matching archeryutils round."""
-    assert resolve_indoor_round(IndoorRound.PORTSMOUTH, compound=False) is (
-        load_rounds.AGB_indoor.portsmouth
-    )
-    assert resolve_indoor_round(IndoorRound.PORTSMOUTH, compound=True) is (
-        load_rounds.AGB_indoor.portsmouth_compound
-    )
-    assert resolve_indoor_round(IndoorRound.WA18, compound=False) is load_rounds.WA_indoor.wa18
-    assert resolve_indoor_round(IndoorRound.WA18, compound=True) is (
-        load_rounds.WA_indoor.wa18_compound
-    )
 
 
 # --- Feedback 5: advanced setup - explicit face types, per-target maximum ------------

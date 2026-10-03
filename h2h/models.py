@@ -91,39 +91,102 @@ class Bowstyle(str, Enum):
     LONGBOW = "Longbow"
 
 
-class IndoorRound(str, Enum):
-    """The two named indoor rounds the standalone handicap calculator offers."""
+# --- Standalone handicap calculator rounds (AISpec.md section 5.5, Assumption 40) -----
 
-    PORTSMOUTH = "portsmouth"
-    WA18 = "wa18"
+INDOOR = "indoor"
+OUTDOOR = "outdoor"
+
+# The archeryutils round sets the calculator offers: the rounds the AGB handicap scheme is
+# built for. (Australian, visually-impaired, field, experimental and miscellaneous sets are
+# left out.)
+_CALCULATOR_SETS = {
+    INDOOR: (load_rounds.AGB_indoor, load_rounds.WA_indoor),
+    OUTDOOR: (
+        load_rounds.AGB_outdoor_imperial,
+        load_rounds.AGB_outdoor_metric,
+        load_rounds.WA_outdoor,
+    ),
+}
+# The round selected when the calculator opens, by kind (archeryutils codenames).
+DEFAULT_CALCULATOR_ROUND = {INDOOR: "portsmouth", OUTDOOR: "wa720_70"}
 
 
-def resolve_indoor_round(indoor_round: IndoorRound, compound: bool) -> rounds.Round:
-    """Look up the real archeryutils indoor round for a named round and bow type.
+def _is_compound_variant(codename: str) -> bool:
+    """Whether a round's codename is a compound variant ("portsmouth_compound", "..._compound_triple")."""
+    return codename.endswith(("_compound", "_compound_triple"))
 
-    Used by the standalone handicap calculator (AISpec.md section 5.5), which
-    scores against `archeryutils`'s own complete Portsmouth / WA 18 rounds.
+
+def calculator_rounds(kind: str) -> dict[str, rounds.Round]:
+    """The standard rounds the calculator offers for indoor or outdoor shooting.
+
+    Compound variants are not listed separately: the compound option switches a chosen
+    indoor round to its variant (see `calculator_round`).
 
     Parameters
     ----------
-    indoor_round : IndoorRound
-        `PORTSMOUTH` or `WA18`.
+    kind : str
+        `INDOOR` or `OUTDOOR`.
+
+    Returns
+    -------
+    dict[str, archeryutils.rounds.Round]
+        Codename -> round, each round once, sorted by the round's name.
+
+    Raises
+    ------
+    ValueError
+        If `kind` is neither `INDOOR` nor `OUTDOOR`.
+    """
+    if kind not in _CALCULATOR_SETS:
+        msg = f"Choose indoor or outdoor, got {kind!r}."
+        raise ValueError(msg)
+    found = {
+        codename: rnd
+        for round_set in _CALCULATOR_SETS[kind]
+        for codename, rnd in round_set.items()
+        if not _is_compound_variant(codename)
+    }
+    return dict(sorted(found.items(), key=lambda item: item[1].name.lower()))
+
+
+def calculator_round(kind: str, codename: str, compound: bool) -> rounds.Round:
+    """Look up the real archeryutils round for a calculator choice.
+
+    Parameters
+    ----------
+    kind : str
+        `INDOOR` or `OUTDOOR`.
+    codename : str
+        The archeryutils codename of a round in `calculator_rounds(kind)`.
     compound : bool
-        Whether the round is shot with a compound bow, which selects the
-        `*_compound` variant (same face/distance, only the X-ring scores 10).
+        Whether the round was shot with a compound bow. Only indoor rounds have a
+        compound variant (same face and distance, only the X-ring scoring 10): an indoor
+        round with no variant in archeryutils, and any outdoor round, is used as chosen.
 
     Returns
     -------
     archeryutils.rounds.Round
-        The complete indoor round (e.g. `portsmouth` or `portsmouth_compound`).
+        The complete round whose scoring the handicap is worked out against.
+
+    Raises
+    ------
+    ValueError
+        If `kind` is invalid or `codename` is not one of that kind's rounds.
     """
-    if indoor_round == IndoorRound.PORTSMOUTH:
-        return (
-            load_rounds.AGB_indoor.portsmouth_compound
-            if compound
-            else load_rounds.AGB_indoor.portsmouth
+    available = calculator_rounds(kind)
+    if codename not in available:
+        msg = f"'{codename}' is not one of the standard {kind} rounds."
+        raise ValueError(msg)
+    if compound and kind == INDOOR:
+        variant = (
+            codename.removesuffix("_triple") + "_compound_triple"
+            if codename.endswith("_triple")
+            else codename + "_compound"
         )
-    return load_rounds.WA_indoor.wa18_compound if compound else load_rounds.WA_indoor.wa18
+        for round_set in _CALCULATOR_SETS[INDOOR]:
+            if variant in round_set:
+                return round_set[variant]
+    return available[codename]
 
 
 # --- Shared target setup (AISpec.md sections 5.1 and 5.2a) --------------------

@@ -1565,3 +1565,30 @@ PDF validity and content read back with pypdf (title, headings, every archer onc
 label, multi-page flow with 8 archers, "?ukasz" for a name with a letter outside Latin-1, the
 empty-state PDF), route types, filenames, redirects, links on both pages, and liveness.
 Suite: 769 passed.
+
+### Task 55: Handicap calculator - indoor/outdoor choice and every standard round (complete apart from the browser check)
+The calculator form is rebuilt: Indoor/Outdoor radios (Indoor default), a round dropdown for
+the chosen kind (both lists are rendered and a small script shows the matching one and shows
+the compound checkbox only indoors, so with script off the page opens correctly on indoor
+Portsmouth), the compound checkbox, and the score. The indoor list is every non-compound round
+of `archeryutils`'s `AGB_indoor` and `WA_indoor` sets (16: Bray I and II, Stafford, Portsmouth,
+Vegas, Vegas 300, WA 18m, WA 25m with their triples, Worcester and Worcester 5-Spot) and the
+outdoor list every non-compound round of `AGB_outdoor_imperial`, `AGB_outdoor_metric` and
+`WA_outdoor` (76), sorted by name, defaults Portsmouth and WA 70m. `IndoorRound` and
+`resolve_indoor_round` were replaced in `models.py` by `calculator_rounds(kind)` and
+`calculator_round(kind, codename, compound)`: an indoor round with the compound box ticked maps
+to its `archeryutils` compound variant (`X_compound`, or `X_compound_triple` for a triple) where
+one exists (Portsmouth, WA 18/25, Bray, Stafford, Vegas do; Worcester and Vegas 300 do not and
+are used as chosen), outdoor rounds ignore the flag, and a round outside the chosen kind's list
+is a ValueError. The route validates kind, round and score on the server and re-shows the
+submitted choices after a result or an error. Found and fixed on the way: a score of "nan"
+(which `float()` accepts) went through and would have shown "Handicap: nan"; non-finite scores
+now get the same friendly "valid score" error (this gap predates Feedback 5). The earlier
+leftover-names guard test forbade the string "OUTDOOR" in the app (a check for the removed
+fixed outdoor target); that constant now legitimately means the calculator's outdoor kind, so
+the guard checks "IndoorRound" instead. Tests (30, replacing the 13 old calculator tests): list
+contents and exclusions, defaults, round lookup incl. every compound variant and the no-variant
+rounds, wrong-kind and unknown rounds, page markup, archeryutils-equal results for indoor
+plain/compound and for three outdoor rounds (a forced compound flag ignored), friendly errors
+for bad kind and for five bad scores with and without compound, choices re-shown, and every one
+of the 92 listed rounds giving a finite handicap for a mid-range score. Suite: 792 passed.

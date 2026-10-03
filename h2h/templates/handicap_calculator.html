@@ -12,16 +12,48 @@
 
 <form method="post" action="{{ url_for('handicap_calculator_submit') }}">
   <div class="row">
-    <label><input type="radio" name="round" value="portsmouth" checked> Portsmouth</label>
-    <label style="margin-left: 1rem;"><input type="radio" name="round" value="wa18"> WA 18</label>
+    <span>Round type:</span>
+    <label style="margin-left: 0.5rem;"><input type="radio" name="kind" value="indoor" id="kind_indoor"
+        {% if choice.kind == 'indoor' %}checked{% endif %}> Indoor</label>
+    <label style="margin-left: 1rem;"><input type="radio" name="kind" value="outdoor" id="kind_outdoor"
+        {% if choice.kind == 'outdoor' %}checked{% endif %}> Outdoor</label>
   </div>
-  <div class="row">
-    <label><input type="checkbox" name="compound" value="yes"> Shot with a compound bow</label>
+  <div class="row" id="indoor_rounds" {% if choice.kind != 'indoor' %}hidden{% endif %}>
+    <label for="round_indoor">Round:</label>
+    <select name="round_indoor" id="round_indoor">
+      {% for codename, name in round_options['indoor'] %}
+      <option value="{{ codename }}"{% if codename == choice.round_indoor %} selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="row" id="outdoor_rounds" {% if choice.kind != 'outdoor' %}hidden{% endif %}>
+    <label for="round_outdoor">Round:</label>
+    <select name="round_outdoor" id="round_outdoor">
+      {% for codename, name in round_options['outdoor'] %}
+      <option value="{{ codename }}"{% if codename == choice.round_outdoor %} selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="row" id="compound_choice" {% if choice.kind != 'indoor' %}hidden{% endif %}>
+    <label><input type="checkbox" name="compound" value="yes" {% if choice.compound %}checked{% endif %}> Shot with a compound bow</label>
     <small>(Compound scores differently indoors: only the inner ring counts as 10.)</small>
   </div>
   <div class="row">
-    <label>Full round score: <input type="number" step="1" name="score" required></label>
+    <label>Full round score: <input type="number" step="1" name="score" value="{{ choice.score }}" required></label>
   </div>
   <button type="submit">Calculate</button>
 </form>
+
+<script>
+  // Show the round list for the chosen kind; the compound option only applies indoors.
+  function updateCalculatorKind() {
+    const indoor = document.getElementById("kind_indoor").checked;
+    document.getElementById("indoor_rounds").hidden = !indoor;
+    document.getElementById("outdoor_rounds").hidden = indoor;
+    document.getElementById("compound_choice").hidden = !indoor;
+  }
+  document.getElementById("kind_indoor").addEventListener("change", updateCalculatorKind);
+  document.getElementById("kind_outdoor").addEventListener("change", updateCalculatorKind);
+  updateCalculatorKind();
+</script>
 {% endblock %}

@@ -1303,9 +1303,9 @@ def test_no_leftover_reference_to_the_old_round_mode_form_in_the_app():
     root = Path(__file__).resolve().parent.parent / "h2h"
     sources = [p for p in root.rglob("*") if p.suffix in {".py", ".html", ".js"}]
     assert sources
-    # (`resolve_indoor_round` is the calculator's legitimate function, so only the old
-    # quoted form-field name is forbidden, not the substring.)
-    forbidden = ["round_mode", '"indoor_round"', "RoundMode", "_bridge", "OUTDOOR"]
+    # (The calculator now uses `calculator_round`; the old `IndoorRound` enum and
+    # `resolve_indoor_round` are gone.)
+    forbidden = ["round_mode", '"indoor_round"', "RoundMode", "_bridge", "IndoorRound"]
     for path in sources:
         text = path.read_text(encoding="utf-8")
         for name in forbidden:

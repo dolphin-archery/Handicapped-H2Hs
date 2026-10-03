@@ -9,24 +9,29 @@ single-user local tool, not a multi-tenant service.
 
 from __future__ import annotations
 
+import math
+
 from flask import Flask, Response, redirect, render_template, request, url_for
 
 from . import exports, outputs, stats
 from .chart_data import build_pair_chart_data
 from .models import (
     ADVANCED_FACE_SIZES_CM,
+    DEFAULT_CALCULATOR_ROUND,
     DEFAULT_FACE_TYPE,
     DEFAULT_TARGET_SETUP,
     FACE_TYPES,
+    INDOOR,
     MAX_HANDICAP,
     MIN_HANDICAP,
+    OUTDOOR,
     STANDARD_FACE_SIZES_CM,
     Archer,
     Bowstyle,
-    IndoorRound,
     TargetSetup,
+    calculator_round,
+    calculator_rounds,
     distance_option_groups,
-    resolve_indoor_round,
 )
 from .state import ADVANCED, SIMPLE, SessionState
 
@@ -572,25 +577,75 @@ def create_app(state: SessionState | None = None) -> Flask:
         )
 
     @app.get("/event/handicap-calculator")
-    def handicap_calculator(result: float | None = None, error: str | None = None):
+    def handicap_calculator(
+        result: float | None = None, error: str | None = None, choice: dict | None = None
+    ):
+        """The standalone score-to-handicap calculator form (and its result).
+
+        Parameters
+        ----------
+        result : float | None, default=None
+            The handicap to show, to one decimal place.
+        error : str | None, default=None
+            Message to show above the form (a rejected submission).
+        choice : dict | None, default=None
+            The submitted choices to show again (`kind`, `round_indoor`,
+            `round_outdoor`, `compound`, `score`); defaults to indoor Portsmouth.
+
+        Returns
+        -------
+        str
+            The rendered page.
+        """
+        choice = choice or {
+            "kind": INDOOR,
+            "round_indoor": DEFAULT_CALCULATOR_ROUND[INDOOR],
+            "round_outdoor": DEFAULT_CALCULATOR_ROUND[OUTDOOR],
+            "compound": False,
+            "score": "",
+        }
         return render_template(
-            "handicap_calculator.html", result=result, error=error
+            "handicap_calculator.html",
+            result=result,
+            error=error,
+            choice=choice,
+            round_options={
+                kind: [(codename, rnd.name) for codename, rnd in calculator_rounds(kind).items()]
+                for kind in (INDOOR, OUTDOOR)
+            },
         )
 
     @app.post("/event/handicap-calculator")
     def handicap_calculator_submit():
-        indoor_round = (
-            IndoorRound.PORTSMOUTH
-            if request.form.get("round", "portsmouth") == "portsmouth"
-            else IndoorRound.WA18
-        )
-        rnd = resolve_indoor_round(indoor_round, compound=request.form.get("compound") == "yes")
+        """Work out the handicap for the chosen round and score."""
+        kind = request.form.get("kind", INDOOR)
+        choice = {
+            "kind": kind if kind in (INDOOR, OUTDOOR) else INDOOR,
+            "round_indoor": request.form.get(
+                "round_indoor", DEFAULT_CALCULATOR_ROUND[INDOOR]
+            ),
+            "round_outdoor": request.form.get(
+                "round_outdoor", DEFAULT_CALCULATOR_ROUND[OUTDOOR]
+            ),
+            "compound": request.form.get("compound") == "yes",
+            "score": request.form.get("score", ""),
+        }
         try:
-            score = float(request.form.get("score", ""))
+            rnd = calculator_round(
+                kind, request.form.get(f"round_{kind}", ""), compound=choice["compound"]
+            )
+        except ValueError as exc:
+            return handicap_calculator(error=str(exc), choice=choice)
+        try:
+            score = float(choice["score"])
+            if not math.isfinite(score):  # "nan" and "inf" parse as floats but are not scores
+                raise ValueError(choice["score"])
             handicap = stats.handicap_for_round_score(score, rnd)
         except ValueError:
-            return handicap_calculator(error="Enter a valid score for the chosen round.")
-        return handicap_calculator(result=round(handicap, 1))
+            return handicap_calculator(
+                error="Enter a valid score for the chosen round.", choice=choice
+            )
+        return handicap_calculator(result=round(handicap, 1), choice=choice)
 
     @app.post("/graph-view")
     def toggle_graph_view():
