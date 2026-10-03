@@ -1174,3 +1174,60 @@ displays, stable on reload, redraw changes the pairings, confirm starts the even
 in the shown order with the overview matching Stage 3's first pass, early-access
 redirects, and a started event being immune). Test helpers now run Stage 3's confirm
 after Stage 2. Suite: 543 passed.
+
+### Task 40: Fix hover tooltip over previous-pass vertical lines (complete)
+Delegated to a subagent, which reproduced the bug in a real browser (headless
+Edge via Selenium, ActionChains, against an exported copy of the committed
+code) before changing anything, diagnosed it from the Chart.js 4.4.4 source and
+in the browser, fixed it in `h2h/static/match_chart.js` only, and re-verified.
+I reviewed the diff and the final file before accepting it.
+
+**Reproduction** (Alice Recurve 15 vs Bob Compound 45, 24 arrows, 12 per pass,
+x-range 92-120, pass 1 = 118/108, pass 2 = 115/100): whenever the pointer is
+within half a score unit (about 16 px at 32 px per score) of *any drawn marker
+line* the tooltip is wrong - its title reads "92" and its data points are the
+curves' leftmost points (Alice 0.0, Bob 1e-05) instead of the score under the
+pointer. Every position in that window failed (on the line, +/-1-3 px, +/-0.4
+score, top and bottom of the line); +/-0.6 score and beyond were correct. It
+was not specific to *previous* passes, as the feedback put it: the latest
+pass's markers failed identically (unticked: 30 of 155 positions failed;
+ticked: 60 of 185 - 30 for each pass), but with the checkbox unticked a previous
+pass's line is not drawn, so the bug was only visible there once the box was
+ticked, which is presumably why it was noticed as a previous-pass problem. A
+fresh pair with no markers had 0 of 125 failures.
+
+**Root cause** (my hypothesis, refined): Chart.js "index" interaction mode
+measures the x-distance to every visible dataset's points *including the
+2-point marker datasets*, keeps `items[0]`, then returns every dataset's element
+at that item's data **index**. A marker's integer x lands exactly on a curve
+point's x, so within half a score of the line the marker and the nearest curve
+point are exactly equidistant and ties are all kept; markers have `order: 1` and
+curves `order: 2`, so the marker is evaluated first and `items[0]` is the marker's
+point at data index 0; index mode then returns every dataset's index-0 element.
+`tooltip.filter` only removed the marker rows afterwards. Confirmed by setting the
+markers' `order` to 3 at runtime, which made the hover correct. So it is a tie
+broken by dataset order, not the marker being nearer.
+
+**Fix:** a custom interaction mode, `Chart.Interaction.modes.nearestCurveX`, that
+for each visible non-marker dataset returns the element whose x is nearest the
+pointer (so markers can never be an active element, and never influence which
+score is chosen); `interaction.mode` is now `"nearestCurveX"`. The now-redundant
+`tooltip.filter` was removed. Dataset structure, legend labels, the checkbox
+code and dataset counts are untouched, and a comment explains why the built-in
+mode cannot be used.
+
+**Verification** (real browser, exported HEAD with the fixed JS): for every
+position, the tooltip has exactly two data points (the two curves, no markers)
+whose `raw.x` is the curve x nearest the pointer and `raw.y` equals the
+distribution value there, and the active elements are exactly those two points.
+Default scenario: 155 positions unticked, 185 ticked, 155 unticked again, and 125
+on a fresh pair with no passes - 620 positions, 0 failures (a 7.3 px grid plus
++/-3 px, +/-0.4, +/-0.6 and +/-1 score around each marker line and the top and
+bottom of each line). A wider variant (Alice hc 40 / Bob hc 60, range 72-120,
+other scores) gave 612 more positions, 0 failures. Dataset counts and labels
+unchanged (4 unticked, 6 ticked for two passes, 2 with no passes, back to 4 when
+unticked); hovering 1 px inside the left and right plot edges gives a fully
+visible tooltip in all three states; the console has only the favicon 404 and
+benign Edge tracking-prevention warnings about the CDN. Screenshots of the broken
+and fixed hover are in the scratchpad (`hover_work/shots/`). No Python changes,
+so the Python suite is unaffected.

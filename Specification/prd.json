@@ -518,7 +518,7 @@
       "Dataset counts and labels are unchanged (2 curves + 2 markers per shown pass; 6 with the checkbox ticked for two passes) and there are no console errors.",
       "Any Python-side change is covered by a unit test; the full test suite still passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 41,
