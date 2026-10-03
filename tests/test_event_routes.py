@@ -79,6 +79,84 @@ def test_outdoor_mode_does_not_require_indoor_round_choice():
     assert resp.status_code == 200
 
 
+# --- "Shoot byes?" option (Feedback 3) -----------------------------------
+
+
+def make_client_and_state():
+    """A Flask test client plus the SessionState it uses, for inspecting stored state."""
+    state = SessionState()
+    return create_app(state=state).test_client(), state
+
+
+def test_stage1_page_offers_shoot_byes_control_and_explanation():
+    """Stage 1 renders the Shoot byes? Yes/No control with its explanatory text."""
+    client = make_client()
+    resp = client.get("/event/stage1")
+    assert b"Shoot byes?" in resp.data
+    assert b'name="shoot_byes" value="yes"' in resp.data
+    assert b'name="shoot_byes" value="no"' in resp.data
+    assert b"adds passes" in resp.data
+
+
+def test_shoot_byes_control_defaults_to_yes():
+    """A fresh Stage 1 page has Yes selected."""
+    client = make_client()
+    page = client.get("/event/stage1").data.decode()
+    yes_input = page[page.index('name="shoot_byes" value="yes"') :].split(">")[0]
+    assert "checked" in yes_input
+
+
+def test_shoot_byes_control_is_server_hidden_for_even_and_shown_for_odd():
+    """The control starts hidden for an even archer count and visible for an odd one."""
+    client, state = make_client_and_state()
+
+    def control_tag(html):
+        return html[html.index('id="shoot_byes_choice"') :].split(">")[0]
+
+    assert "hidden" in control_tag(client.get("/event/stage1").data.decode())  # default 4
+    client.post("/event/stage1", data=stage1_form(n_archers=5))
+    assert "hidden" not in control_tag(client.get("/event/stage1").data.decode())
+
+
+def test_posting_shoot_byes_no_with_odd_archers_stores_false_and_longer_schedule():
+    """shoot_byes=no with 5 archers x 5 passes stores False and builds 7 rotations."""
+    client, state = make_client_and_state()
+    form = {**stage1_form(n_archers=5), "shoot_byes": "no"}
+    resp = client.post("/event/stage1", data=form, follow_redirects=True)
+    assert resp.status_code == 200
+    assert state.shoot_byes is False
+    assert len(state.schedule) == 7
+
+
+def test_posting_shoot_byes_yes_keeps_the_ordinary_schedule():
+    """shoot_byes=yes (and an omitted field) keep total_arrows // n_pass rotations."""
+    for form in (
+        {**stage1_form(n_archers=5), "shoot_byes": "yes"},
+        stage1_form(n_archers=5),
+    ):
+        client, state = make_client_and_state()
+        client.post("/event/stage1", data=form)
+        assert state.shoot_byes is True
+        assert len(state.schedule) == 5
+
+
+def test_shoot_byes_field_is_ignored_for_even_archers():
+    """With an even archer count the field changes nothing about the schedule."""
+    client, state = make_client_and_state()
+    client.post("/event/stage1", data={**stage1_form(n_archers=4), "shoot_byes": "no"})
+    assert len(state.schedule) == 5
+    assert all(r.sitting_out == () for r in state.schedule)
+
+
+def test_stage1_page_remembers_a_previous_no_choice():
+    """Returning to Stage 1 after choosing No shows No selected."""
+    client = make_client()
+    client.post("/event/stage1", data={**stage1_form(n_archers=5), "shoot_byes": "no"})
+    page = client.get("/event/stage1").data.decode()
+    no_input = page[page.index('name="shoot_byes" value="no"') :].split(">")[0]
+    assert "checked" in no_input
+
+
 # --- Task 19: Stage 2 setup UI -------------------------------------------
 
 

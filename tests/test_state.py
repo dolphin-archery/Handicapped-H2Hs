@@ -94,3 +94,46 @@ def test_reset_clears_new_event_fields_too():
     assert state.n_archers is None
     assert state.schedule is None
     assert state.event is None
+
+
+# --- "Shoot byes?" (Feedback 3) -------------------------------------------
+
+
+def test_shoot_byes_defaults_to_true():
+    """Byes are shot unless the scorer says otherwise (the earlier behaviour)."""
+    assert SessionState().shoot_byes is True
+
+
+def test_odd_archers_with_byes_shot_keeps_the_ordinary_schedule():
+    """shoot_byes=True: total_arrows // n_pass rotations, each with a solo bye archer."""
+    state = SessionState()
+    state.start_stage1(5, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=True)
+    assert len(state.schedule) == 5
+    assert all(r.bye is not None and r.sitting_out == () for r in state.schedule)
+
+
+def test_odd_archers_without_byes_shot_gets_a_longer_sit_out_schedule():
+    """shoot_byes=False with 5 archers needing 5 passes -> 7 rotations, nobody shoots alone."""
+    state = SessionState()
+    state.start_stage1(5, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=False)
+    assert state.shoot_byes is False
+    assert len(state.schedule) == 7
+    assert all(r.bye is None and r.sitting_out for r in state.schedule)
+
+
+def test_even_archers_ignore_shoot_byes():
+    """With an even archer count there are no byes, so the flag changes nothing."""
+    with_flag = SessionState()
+    with_flag.start_stage1(4, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=False)
+    without = SessionState()
+    without.start_stage1(4, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=True)
+    assert with_flag.schedule == without.schedule
+    assert len(with_flag.schedule) == 5
+
+
+def test_reset_restores_shoot_byes_default():
+    """reset() puts shoot_byes back to its default of True."""
+    state = SessionState()
+    state.start_stage1(5, 60, 12, RoundMode.INDOOR_PORTSMOUTH, shoot_byes=False)
+    state.reset()
+    assert state.shoot_byes is True

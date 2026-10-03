@@ -51,6 +51,7 @@ def create_app(state: SessionState | None = None) -> Flask:
             total_arrows=session.total_arrows,
             n_pass=session.n_pass,
             round_mode=session.round_mode.value,
+            shoot_byes=session.shoot_byes,
             error=error,
         )
 
@@ -66,7 +67,8 @@ def create_app(state: SessionState | None = None) -> Flask:
                 round_mode = RoundMode.INDOOR_WA18
             else:
                 round_mode = RoundMode.INDOOR_PORTSMOUTH
-            session.start_stage1(n_archers, total_arrows, n_pass, round_mode)
+            shoot_byes = request.form.get("shoot_byes", "yes") != "no"
+            session.start_stage1(n_archers, total_arrows, n_pass, round_mode, shoot_byes)
         except (ValueError, KeyError) as exc:
             return stage1(error=str(exc) or "Invalid input.")
         return redirect(url_for("stage2"))

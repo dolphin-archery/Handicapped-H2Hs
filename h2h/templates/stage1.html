@@ -13,6 +13,19 @@
     </label>
   </div>
 
+  <div class="row" id="shoot_byes_choice" {% if n_archers % 2 == 0 %}hidden{% endif %}>
+    <span>Shoot byes?</span>
+    <label style="margin-left: 0.5rem;"><input type="radio" name="shoot_byes" value="yes"
+        {% if shoot_byes %}checked{% endif %}> Yes</label>
+    <label style="margin-left: 1rem;"><input type="radio" name="shoot_byes" value="no"
+        {% if not shoot_byes %}checked{% endif %}> No</label>
+    <br>
+    <small>With an odd number of archers, one archer has no opponent each pass.
+      <strong>Yes:</strong> they still shoot, on their own, so every archer shoots every pass.
+      <strong>No:</strong> they sit that pass out, which adds passes to the event so that
+      everyone still shoots all of their arrows.</small>
+  </div>
+
   <div class="row">
     <label>Total arrows:
       <input type="number" name="total_arrows" id="total_arrows" min="1" step="1" value="{{ total_arrows }}" required>
@@ -102,5 +115,14 @@
   document.getElementById("round_mode_indoor").addEventListener("change", updateIndoorVisibility);
   document.getElementById("round_mode_outdoor").addEventListener("change", updateIndoorVisibility);
   updateIndoorVisibility();
+
+  // The Shoot byes? control only applies to an odd number of archers.
+  const nArchersInput = document.getElementById("n_archers");
+  function updateByesVisibility() {
+    const n = parseInt(nArchersInput.value, 10);
+    document.getElementById("shoot_byes_choice").hidden = !(n >= 3 && n % 2 === 1);
+  }
+  nArchersInput.addEventListener("input", updateByesVisibility);
+  updateByesVisibility();
 </script>
 {% endblock %}
