@@ -2442,3 +2442,103 @@ def test_a_custom_lookback_still_overrides_the_default_and_invalid_ones_are_stil
     start_advanced_stage2(client, n_archers=2, total_arrows=60)
     resp = client.post("/event/stage2", data=updating_form(n_lookback="0", start_weight="5"))
     assert b"Lookback must be a whole number of at least 1." in resp.data
+
+
+# --- Feedback 7: Pass starting handicap column in the pass tables ---------------------------
+
+UPDATING_HEADINGS = ["Archer", "Score", "Percentile", "Pass starting handicap", "Handicap", "Winner"]
+
+
+def started_updating_pair(update=True, n_lookback="1", start_weight="2", total_arrows=36):
+    """An advanced two-archer event (Ann 30, Ben 40), with handicap updating as given; returns (client, state)."""
+    client, state = make_client_and_state()
+    start_advanced_stage2(client, n_archers=2, total_arrows=total_arrows)
+    form = updating_form(update="yes" if update else "no", n_lookback=n_lookback, start_weight=start_weight)
+    assert client.post("/event/stage2", data=form).status_code == 302
+    client.post("/event/stage3")
+    return client, state
+
+
+def start_texts(event, rotation):
+    """The one-decimal pass starting handicaps of Ann and Ben for a rotation, as the tables show them."""
+    return [f"{event.handicap_for(i, rotation):.1f}" for i in (0, 1)]
+
+
+def test_the_match_page_table_has_a_pass_starting_handicap_column_when_updating():
+    """Six headings; the column is the handicap that pass's distribution was built from."""
+    client, state = started_updating_pair()
+    event = state.event
+    save_match(client, 0, {0: 80, 1: 100})
+    headings, rows = match_page_table(client.get("/event/match/0").data.decode())
+    assert headings == UPDATING_HEADINGS
+    assert [row[3] for row in rows] == ["30.0", "40.0"]  # pass 1 starts from the entered handicaps
+
+    client.post("/event/advance")
+    save_match(client, 0, {0: 100, 1: 99})
+    headings, rows = match_page_table(client.get("/event/match/0").data.decode())
+    assert headings == UPDATING_HEADINGS
+    assert [row[3] for row in rows] == start_texts(event, 1)
+    assert rows[0][3] != "30.0"  # Ann's poor first pass moved the handicap her second pass started from
+
+
+def test_the_results_page_tables_show_each_passes_own_starting_handicap_grouped_by_match():
+    """Pass 1's table shows the entered handicaps, pass 2's the updated ones."""
+    client, state = started_updating_pair()
+    event = state.event
+    save_match(client, 0, {0: 80, 1: 100})
+    client.post("/event/advance")
+    save_match(client, 0, {0: 100, 1: 99})
+    page = client.get("/event/results").data.decode()
+    tables = [(h, rows) for h, rows in all_tables(page) if h == UPDATING_HEADINGS]
+    assert len(tables) == 2
+    assert [row[3] for row in tables[0][1]] == ["30.0", "40.0"]
+    assert [row[3] for row in tables[1][1]] == start_texts(event, 1)
+    assert page.count('<tbody class="match">') == 2
+
+
+def test_with_updating_off_the_tables_keep_five_columns_and_no_such_text_appears():
+    """The column exists only while handicaps are updated."""
+    client, state = started_updating_pair(update=False)
+    save_match(client, 0, {0: 80, 1: 100})
+    client.post("/event/advance")
+    save_match(client, 0, {0: 100, 1: 99})
+    headings, _ = match_page_table(client.get("/event/match/0").data.decode())
+    assert headings == PASS_HEADINGS
+    results = client.get("/event/results").data.decode()
+    assert len(pass_tables(results)) == 2
+    for path in ("/event/match/0", "/event/results"):
+        assert "Pass starting handicap" not in client.get(path).data.decode()
+
+
+def test_a_shown_starting_handicap_never_changes_after_later_passes_or_a_correction():
+    """Pass 1's stays as it was when pass 2 is scored; correcting the current pass leaves its own alone."""
+    client, state = started_updating_pair()
+    event = state.event
+    save_match(client, 0, {0: 80, 1: 100})
+    first_view = match_page_table(client.get("/event/match/0").data.decode())[1]
+    client.post("/event/advance")
+    save_match(client, 0, {0: 100, 1: 99})
+    before = match_page_table(client.get("/event/match/0").data.decode())[1]
+    save_match(client, 0, {0: 60, 1: 118})  # a correction to pass 2's scores
+    after = match_page_table(client.get("/event/match/0").data.decode())[1]
+    assert [row[3] for row in before] == [row[3] for row in after] == start_texts(event, 1)
+    results = client.get("/event/results").data.decode()
+    pass_1 = [rows for h, rows in all_tables(results) if h == UPDATING_HEADINGS][0]
+    assert [row[3] for row in pass_1] == [row[3] for row in first_view] == ["30.0", "40.0"]
+
+
+def test_the_percentile_in_a_row_was_judged_against_the_shown_starting_handicap():
+    """The recorded percentile equals the one from the distribution built from that handicap."""
+    from h2h import stats as h2h_stats
+
+    client, state = started_updating_pair()
+    event = state.event
+    save_match(client, 0, {0: 80, 1: 100})
+    client.post("/event/advance")
+    save_match(client, 0, {0: 100, 1: 99})
+    for r in event.results:
+        shown = event.handicap_for(r.archer_index, r.rotation_index)
+        distribution = h2h_stats.n_pass_score_distribution(
+            h2h_stats.per_arrow_pmf(shown, event.target_for(r.archer_index)), 12
+        )
+        assert r.percentile == pytest.approx(h2h_stats.percentile(distribution, r.score))

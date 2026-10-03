@@ -466,3 +466,43 @@ def test_a_half_scored_pass_changes_no_to_date_handicap_or_arrows_shot():
     first, _ = event.matches(1)
     event.record_match({first[0]: 95, first[1]: 90})
     assert [(s.arrows_shot, s.to_date_handicap) for s in archer_results(event)] == before
+
+
+# --- Feedback 7: pass starting handicap in the rows --------------------------------------------
+
+
+def test_pass_table_rows_carry_the_pass_starting_handicap_as_one_decimal_text():
+    """start_handicap is Event.handicap_for for that pass: entered in pass 1, updated afterwards."""
+    archers = [Archer("A", 30, Bowstyle.RECURVE), Archer("B", 40, Bowstyle.RECURVE)]
+    event = Event(archers, 12, PORTSMOUTH, build_schedule(2, 2), update_handicaps=True,
+                  n_lookback=1, start_weight=2)
+    event.record_match({0: 80, 1: 100})
+    first = pass_table_rows(event, event.match_results(0, (0, 1)))
+    assert [r.start_handicap for r in first] == ["30.0", "40.0"]
+    event.advance()
+    event.record_match({0: 100, 1: 99})
+    second = pass_table_rows(event, event.match_results(1, (0, 1)))
+    assert [r.start_handicap for r in second] == [f"{event.handicap_for(i, 1):.1f}" for i in (0, 1)]
+    assert second[0].start_handicap != "30.0"
+    # pass 1's rows are unchanged by what happened later
+    assert pass_table_rows(event, event.match_results(0, (0, 1))) == first
+
+
+def test_a_bye_match_row_has_a_pass_starting_handicap_too():
+    """The solo row has the value (the table decides whether to show it)."""
+    archers = [Archer(f"B{i}", 30 + 5 * i, Bowstyle.RECURVE) for i in range(3)]
+    event = Event(archers, 12, PORTSMOUTH, build_schedule(3, 3), update_handicaps=True,
+                  n_lookback=2, start_weight=3)
+    pair, solo = event.matches(0)
+    event.record_match({p: 90 + p for p in pair})
+    event.record_match({solo[0]: 95})
+    (row,) = pass_table_rows(event, event.match_results(0, solo))
+    assert row.start_handicap == f"{event.archers[solo[0]].handicap:.1f}"
+
+
+def test_with_updating_off_the_start_handicap_is_the_entered_one():
+    """Not shown by the table, but always filled."""
+    event = make_event(2, rotations=1)
+    event.record_match({0: 100, 1: 90})
+    rows = pass_table_rows(event, event.match_results(0, (0, 1)))
+    assert [r.start_handicap for r in rows] == ["20.0", "30.0"]

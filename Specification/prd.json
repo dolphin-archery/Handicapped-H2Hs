@@ -957,7 +957,7 @@
       "The percentile in a row is the one judged against that starting handicap: the stored percentile equals stats.percentile of the distribution built from the shown starting handicap and the shown score.",
       "The full suite passes with the migrated table tests."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 69,

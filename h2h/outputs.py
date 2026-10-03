@@ -326,6 +326,9 @@ class PassTableRow:
         The score shot.
     percentile : str
         The percentile as a percentage (see `percentile_pair_text`).
+    start_handicap : str
+        The handicap the archer's distribution for this pass was built from, to one decimal
+        place (`Event.handicap_for`); the table shows it only when handicaps are updated.
     handicap : str
         The handicap implied by the score to one decimal place, or "-" for a score of 0.
     winner : str
@@ -335,6 +338,7 @@ class PassTableRow:
     archer: str
     score: str
     percentile: str
+    start_handicap: str
     handicap: str
     winner: str
 
@@ -365,6 +369,7 @@ def pass_table_rows(event: Event, results: list[PassResult]) -> list[PassTableRo
             archer=event.archers[r.archer_index].name,
             score=str(r.score),
             percentile=text,
+            start_handicap=f"{event.handicap_for(r.archer_index, r.rotation_index):.1f}",
             handicap="-" if r.handicap is None else f"{r.handicap:.1f}",
             winner="-" if r.won is None else ("Yes" if r.won else "No"),
         )

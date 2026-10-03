@@ -2038,3 +2038,18 @@ the match page (graph view off: no handicap anywhere after the nav bar; graph vi
 labels, legends in the payload, and no "Name (handicap H)" in the page outside the payload). The earlier
 names-only legend tests were replaced. Suite: 895 passed. The legend is checked in a real browser with the
 rest of the Feedback 7 browser checks (tasks 71 and 72).
+
+### Task 68: Pass starting handicap column in the match page and Results page tables (complete apart from the browser check)
+`outputs.PassTableRow` gained `start_handicap` (the handicap the archer's distribution for that pass was
+built from, `Event.handicap_for(archer, rotation)` to one decimal place, worked out rather than stored - it
+depends only on earlier, fixed passes), and the shared `_pass_table.html` partial shows it as a "Pass starting
+handicap" column between Percentile and Handicap whenever `event.update_handicaps` is on; with updating off the
+partial is unchanged (Archer | Score | Percentile | Handicap | Winner). The match page's This pass table and the
+Results page's per-pass tables both use it, so both get the column, and the Results page's match grouping and
+double rules are untouched. Tests (8): with updating on, six headings on the match page and a pass-1 start of
+the entered handicaps (30.0, 40.0) with a different pass-2 start for the archer whose pass 1 was poor; the Results
+tables each showing their own pass's value, grouped by match; no column and no "Pass starting handicap" text
+anywhere when updating is off; the shown value never changing after later passes or a correction to the current
+pass; each row's recorded percentile equal to the one from the distribution of the shown handicap; and three
+`pass_table_rows` unit tests (value filled for pairs, a bye row, and the entered handicap when updating is off).
+Suite: 903 passed.
