@@ -69,6 +69,49 @@
   const passes = data.passes || [];
   const latestOnly = passes.length ? [passes[passes.length - 1]] : [];
 
+  /*
+   * Custom interaction mode used for hover and the tooltip: for each archer's
+   * curve, the point nearest the pointer by x alone, ignoring the markers.
+   *
+   * Chart.js's built-in "index" mode is not usable here. It finds the single
+   * nearest point across every visible dataset, markers included, then returns
+   * the points at that same data *index* in every dataset. A marker is a
+   * 2-point dataset (indices 0 and 1) sitting at exactly the x of a curve
+   * point, so anywhere within half a score of a marker line the marker ties
+   * with the nearest curve point, and as markers have a lower `order` than the
+   * curves they win the tie. The tooltip then showed the curves' index-0 point
+   * (the leftmost score) instead of the score under the pointer. Choosing the
+   * point from the curve datasets only fixes that for every marker line shown,
+   * and keeps markers out of the tooltip and hover highlight by construction.
+   *
+   * Arguments follow Chart.js's interaction-mode signature: chart (Chart),
+   * event (a native or Chart.js event), options (interaction options, unused),
+   * useFinalPosition (bool, use animation end positions). Returns an array of
+   * { element, datasetIndex, index }, one per curve dataset.
+   */
+  Chart.Interaction.modes.nearestCurveX = function (chart, event, options, useFinalPosition) {
+    const pointerX = Chart.helpers.getRelativePosition(event, chart).x;
+    const items = [];
+    for (const meta of chart.getSortedVisibleDatasetMetas()) {
+      if (chart.data.datasets[meta.index].isMarker) {
+        continue;
+      }
+      let nearest = null;
+      let nearestDistance = Infinity;
+      meta.data.forEach((element, index) => {
+        const distance = Math.abs(element.getProps(["x"], useFinalPosition).x - pointerX);
+        if (distance < nearestDistance) {
+          nearest = { element: element, datasetIndex: meta.index, index: index };
+          nearestDistance = distance;
+        }
+      });
+      if (nearest) {
+        items.push(nearest);
+      }
+    }
+    return items;
+  };
+
   const chart = new Chart(canvas, {
     type: "line",
     data: { datasets: baseDatasets.concat(markersFor(latestOnly)) },
@@ -87,12 +130,7 @@
           title: { display: true, text: "Probability" },
         },
       },
-      interaction: { mode: "index", intersect: false },
-      plugins: {
-        tooltip: {
-          filter: (item) => !item.dataset.isMarker,
-        },
-      },
+      interaction: { mode: "nearestCurveX", intersect: false },
     },
   });
 
