@@ -2089,3 +2089,71 @@ earlier passes (the "show previous passes" box) are drawn against the CURRENT pa
 was judged against (Assumption 54); I have not changed that, since it was not asked, but it can mislead when the
 handicap has moved a lot. Suite: 917 passed. The real-browser reading of the curve datasets and legends in
 successive passes is part of the Feedback 7 walkthrough (task 72).
+
+### Task 72: Integration checks, browser walkthrough and docs for Feedback 7 (complete)
+Two scenarios were added to `tests/test_integration.py` over the real routes (a 4-archer, 60-arrow advanced event
+of five 12-arrow passes, the Stage 2 inputs left at whatever the page pre-fills): with updating on, the pre-filled
+values are 4 and 5, the final pass's handicap for each archer is `(5 H0 + 4 H_recent) / 9` over all four earlier
+passes, and the Results page's five per-pass tables, the Archer results page's four tables and Average rows, the
+archer-results CSV, the PDF and the chart legend all show the pass starting handicaps that equal
+`Event.handicap_for` for each pass; with updating off no "Pass starting handicap" appears in any table, the CSV
+(nine columns) or the PDF and the legend shows the entered handicaps. I also mutation-checked the new tests:
+removing the table cell, making the legend ignore updating, and changing the default lookback back to 5 each broke
+4, 4 and 5 tests respectively (files restored). README.md was updated for the legend, the Pass starting handicap
+column and the default `n_lookback` of 4. Suite: 919 passed.
+
+Real-browser walkthrough (subagent, headless Edge 154 via Selenium, commit 9775646 exported with `git archive`,
+port 5078, through the page's own forms and buttons): PASS on every step, no bugs, console clean (favicon 404 and
+CDN tracking-prevention warnings only).
+- **Default lookback:** after choosing Yes on a 60-arrow Stage 2 the two inputs read n lookback 4 and Start weight 5.
+- **Confirmation (item 2) - the plotted distributions change between passes:** in a 5-pass event with
+  Ann (handicap 30) under-shooting and Dan (handicap 55) over-shooting, the chart's curves moved every pass and
+  in the expected direction (legend handicap, curve mean):
+
+  | Pass | Ann | Dan |
+  |---|---|---|
+  | 1 | 30.0, 115.5 | 55.0, 99.5 |
+  | 2 | 35.3, 113.2 | 52.1, 102.2 |
+  | 3 | 38.9, 111.4 | 49.8, 104.1 |
+  | 4 | 41.3, 110.0 | 47.8, 105.7 |
+  | 5 | 43.0, 109.0 | 46.0, 107.0 |
+
+  Within a pass the legend, mean and peak were identical after a reload and after saving the scores. With updating
+  off (scenario 2) the legend read "Ann (handicap 30)" in every pass and Ann's curve mean was identical (115.51473);
+  Dan's differed by 0.001 only because the chart's display window is shared by the pair and shifts with the
+  opponent, not because of the handicap.
+- **Legend (item 1):** every match page showed exactly two items "Name (handicap H)" (one decimal while updating,
+  as entered when not).
+- **Pass starting handicap (item 3):** the This pass table, the Results page's five pass tables (six headings), the
+  Archer results tables (with an averaged cell, e.g. Ann's Average row 96.0, 0.1%, 37.7, 58.3) and the
+  archer-results CSV (`...,Percentile (%),Pass starting handicap,Handicap of score,Exported`) all show the same
+  values as the legend (Ann: 30.0, 35.3, 38.9, 41.3, 43.0); pass 5 fits `(5 x 30 + 61.9 + 60.2 + 58.4 + 56.5) / 9 =
+  43.0`, i.e. all four earlier passes; the PDF has the column once per archer table (the raw text wraps it as "Pass
+  starting / handicap"); the leaderboard and its CSV are unchanged; with updating off nothing of it appears on any of
+  18 pages or in the exports.
+- **Double rules:** still only on the first row of the second match (3px double; other rows 1px solid).
+- **Markers:** ticking "Show previous passes' scores too" in pass 3 gave six markers drawn on the same current curve
+  (Ann's curve mean unchanged by ticking), the behaviour noted in Assumption 54.
+Tasks 67 and 71's browser confirmations are covered by this walkthrough, so those tasks are complete too.
+
+## Feedback 7 summary (for anyone picking this up)
+All of `Specification/feedback.md` "Feedback 7" is implemented (prd tasks 67-72, all `completed`):
+1. **Legend handicap back:** the chart legend reads "Name (handicap H)" again, where H is the handicap the plotted
+   curve is built from - as entered when handicaps are not updated, the current pass's (one decimal place) when they
+   are. The heading and score-box labels stay names only.
+2. **Confirmed: the plotted distributions change between passes** when handicaps are updated (and not otherwise),
+   with five HTTP-level tests and the browser table above; the legend shows the change.
+3. **Pass starting handicap:** when handicaps are updated, every table that shows a pass's handicap (the match page,
+   the Results page's per-pass tables, the Archer results tables, the archer-results CSV and the PDF) also shows a
+   "Pass starting handicap" column, the handicap that pass's distribution was built from; with updating off it is
+   left out (so the CSV's columns depend on the setting).
+4. **Default `n_lookback` is 4** (a fixed default; the start weight's stays the passes per archer).
+Decisions worth a second look, all in `Specification/AISpec.md` section 7 (Assumptions 51-55): **51** the legend
+shows the handicap the curve is built from (the current pass's updated one) rather than always the entered one;
+**52** the default lookback is the fixed number 4, not "passes minus one" (the same for a 60-arrow event; a longer
+one looks back over only its last four passes, a shorter one over all it has); **53** the new column is named "Pass
+starting handicap" (the plain "Starting handicap" already means the entered one) and sits before "Handicap"; **54**
+the confirmation, and a consequence you may want to know about: the markers of earlier passes are drawn against
+the current pass's curve, not the curve each was judged against (I have not changed this); **55** the feedback
+list's numbering (1, 2, 2, 3) is read as four items. Not touched: everything under "Future Plans - DO NOT
+IMPLEMENT YET". Final suite: 919 tests passing.

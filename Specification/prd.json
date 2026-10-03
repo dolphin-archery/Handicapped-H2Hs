@@ -942,7 +942,7 @@
       "A real-browser check reads chart.legend.legendItems and finds exactly the two 'Name (handicap H)' texts and no marker entries.",
       "The existing names-only legend tests are replaced and the full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 68,
@@ -1000,7 +1000,7 @@
       "A real-browser check on a 4-archer, 3-pass advanced event with updating on (lookback 1, start weight 2) reads, for one archer, the curve dataset's points and the legend text in each of their passes and finds the curve peak/mean shifted and the legend handicap changed between passes, with the same archer's curve unchanged between pages of the same pass; with updating off the curves are the same in every pass.",
       "The finding that earlier passes' markers are drawn against the current pass's curve is recorded in the logbook (and, if confusing, flagged to the user)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 72,
@@ -1012,6 +1012,6 @@
       "A real-browser walkthrough (Stage 2 default n_lookback 4, the legend with handicaps, the extra column on the match page, the Results page and the Archer results page, the CSV header and a row, the PDF text, and the curve/legend change between passes) completes with no JS console errors.",
       "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 7 section."
     ],
-    "completed": false
+    "completed": true
   }
 ]
