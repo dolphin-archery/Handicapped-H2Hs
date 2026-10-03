@@ -35,7 +35,28 @@ Output for this stage - pairings initalised for full rotation over total arrows
 ## Graphs
 - Add toggle to plot all ends not just current
 
-# Future Feedback - DO NOT IMPLEMENT YET
+# Feedback 3
+
+## Iteration from Feedback 1
+- Handicap calculator needs to know if round shot with a compound bow or not
+- add longbow to bowstyle drop down
+- switch back to preious page strucutre with one page per match that you click into for entering results, shows graphs/results so far per match there, then go back to summary of all current matches. I do not like the current view of inputting data for all matches at once. Add a button to move forward to the next pass once all data from a given pass has been entered. This should update the pairings in the overview page and allow data for the next pass to be entered on the per match pages.
+- I do not think the bye features was implemented as I intended. If an odd number of archers $n$ are entered there should be an option to 'Shoot Byes?'. If set to yes then all archers shoot in every pass, with each archer having one match with no opponent. If set to no then archers with byes sit that pass out and only shoot matches with opponents. This will change the total number of passes it takes to shoot the full round.
+
+
+
+
+
+# Future Plans - DO NOT IMPLEMENT YET
+
+## Additional Features
+- Option to redraw the random assignment of pairings
+- Confirmation button before resetting scores
+- Rename current advance mode to graph view. A differnt advanced mode will be added soon.
+- Add a toggle for simple or advanced mode on first setup page. 
+    - Simple mode sets all archers to the same distance and target faces size. There should be drop downs for both distance and face size if simple mode is selected, with options for the standard metric/imperial distances and face sizes. Face type should be the standard archery face (not 3 spots), though compound archers take care to ensure compound archers still have the reduced size 10. Indoor/outdoor arrow diameter size should be inferred from the distance and the corresponding arrow diamter used in handicap calculations. (I think all distances >30m class as outdoor though check this as I am not certain)
+    - Advanced mode will be implemeted later. Leave a TBA message for now.
+- Validate that starting handicaps are in the allowed range of handicap values (0-150)
 
 ## Advanced mode
 - Different scoring method/face/distance per archer. All to have drop downs
@@ -43,11 +64,15 @@ Output for this stage - pairings initalised for full rotation over total arrows
     - Distances to be input in meters or yards, toggle for which units
 
 ## Outputs
-- Overall leaderboard across all archers, 1 point for winning a match
-- Results print outs
+- Overall leaderboard across all archers, 1 point for winning a match, 0 for loosing, draws never happen
+- Results print out to .pdf and .csv
+
 
 ## UI and Deployment
-- UI, get existing design from online - may need something more than flask?
+- Nicer UI
+    - get existing design from online - may need something more than flask
+- Explanation of underlying maths
+- Guide for how to use
 - Publication to existing webpage/githubpages
 
 # Notes - IGNORE
