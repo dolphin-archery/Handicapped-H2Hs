@@ -424,5 +424,164 @@
       "The full suite passes, README.md describes the new flow, and Specification/logbook.md has a Feedback 3 section."
     ],
     "completed": true
+  },
+  {
+    "id": 34,
+    "name": "Rename advanced mode to graph view; toggle only on score-input pages",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.6 (Assumption 26): the session's basic/advanced display mode becomes a graph view on/off setting. SessionState.mode (a string) is replaced by a boolean graph_view (default off), toggled by POST /graph-view (replacing /mode) which redirects to its `next` target. The nav bar no longer carries the toggle; the button is rendered only on the match (score-input) pages, labelled 'Graph view: off/on'. No user-facing text calls it 'advanced mode' or 'basic mode' any more (the word 'advanced' is reserved for the Stage 1 setup mode, task 42). Behaviour is otherwise unchanged: with graph view on, match pages show the chart and the explanation, and the results page's 'View chart' links follow the same setting.",
+    "tests": [
+      "SessionState has a boolean graph_view that defaults to False, flips on toggle, is restored by reset(), and no `mode` string field remains.",
+      "POST /graph-view flips the setting and redirects to the posted `next` page; the old POST /mode endpoint no longer exists.",
+      "The graph view toggle form (action /graph-view) is present on every match page and absent from the overview, results, Stage 1, Stage 2, handicap calculator and pair-history pages.",
+      "The toggle button text reads 'Graph view: off' / 'Graph view: on'; no rendered page or template contains the phrases 'advanced mode' or 'basic mode'.",
+      "Graph view off: a match page has no canvas#match-chart, no MATCH_CHART_DATA and no explanation; graph view on: it has all three (existing behaviour, migrated tests).",
+      "The results page shows 'View chart' links only when graph view is on.",
+      "Toggling graph view preserves entered scores and the current pass."
+    ],
+    "completed": false
+  },
+  {
+    "id": 35,
+    "name": "Show each archer's handicap on the match pages",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.3: the match page shows every archer's handicap, in the page heading and beside their score box (a bye match shows the bye archer's). Handicaps display as entered, without a trailing '.0' for whole numbers (22.5 stays 22.5).",
+    "tests": [
+      "A pair's match page shows both archers' handicaps in the heading and next to their score boxes, before any scores are entered and after.",
+      "A bye match page shows the bye archer's handicap.",
+      "A whole-number handicap renders without '.0' and a decimal one (e.g. 22.5) renders in full.",
+      "The handicaps shown belong to the right archers (checked with differing handicaps so they cannot be swapped unnoticed)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 36,
+    "name": "Simplify the 'How the winner is decided' text",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.6: replace the long explanation in the shared _pair_chart.html partial with a short plain-language one that avoids the statistical terms (aiming-error standard deviation, convolution, sigma_r, variance, the bowstyle note and the humanSpec reference). It must say that a handicap sets how well an archer is expected to shoot, that a percentile says how good a score is for that handicap (the chance of scoring that much or less), that the higher percentile wins the pass, and that the curves are the expected scores while the vertical lines are the scores actually shot.",
+    "tests": [
+      "The explanation text is under 650 characters (the old one was over 1,100).",
+      "It contains none of: 'convol', 'standard deviation', 'sigma', 'variance', 'humanSpec', 'indoor-compound'.",
+      "It still mentions the percentile, that the higher percentile wins the pass, and what the vertical lines show.",
+      "It appears with the chart on a match page and on the pair-history page when graph view is on, and not when it is off.",
+      "The text lives in exactly one template (the shared partial)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 37,
+    "name": "Overview table: Match | Score | Percentiles | Winner | Actions",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.3 (Assumption 29): the per-pass summary table on /event/rotation has the headed columns Match, Score, Percentiles, Winner, Actions. Match is the opponents as now; Score is 'A - B' (integers) in the same order as the opponents; Percentiles is 'A% - B%' (each archer's percentile in their own distribution, 1 decimal place) in the same order; Winner is the winner's name; Actions is the link into the match page ('Enter scores' until scored, 'View / edit' after). Unscored rows show '-' in Score, Percentiles and Winner. A bye match shows its single score and percentile and '-' for Winner. The old 'Awaiting scores' status text goes.",
+    "tests": [
+      "The overview table's column headings are exactly Match, Score, Percentiles, Winner, Actions, in that order.",
+      "An unscored pair's row shows '-' in Score, Percentiles and Winner and an 'Enter scores' link under Actions.",
+      "After scoring, the row shows 'A - B' scores in the same order as the 'A vs B' opponents, percentiles 'x.x% - y.y%' in that order matching the Event's recorded percentiles, the winner's name matching the Event's recorded winner, and a 'View / edit' link.",
+      "Order is checked for a second pair whose archers' indices are not in ascending order of name, so a swapped orientation would be caught.",
+      "A bye match row shows one score, one percentile, and '-' as Winner.",
+      "Re-saving a match updates its row; the text 'Awaiting scores' no longer appears anywhere on the overview.",
+      "The sitting-out line, advance button behaviour and final-pass behaviour are unchanged (existing tests migrated)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 38,
+    "name": "Confirmation before resetting",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.8 (Assumption 27): the nav 'Reset' link now opens a confirmation page (GET /reset) that says what will be lost and offers a 'Reset everything' button (a form POST to /reset) and a cancel link back to the current pass, or to Stage 1 if there is no event. GET /reset must not change any state; only the POST resets and then redirects to Stage 1.",
+    "tests": [
+      "GET /reset renders a confirmation page with a POST form button and a cancel link, and leaves the event, archers, schedule and settings untouched.",
+      "POST /reset clears all state back to a fresh session and redirects to Stage 1.",
+      "The cancel link goes back to the overview when an event exists and to Stage 1 otherwise.",
+      "The nav 'Reset' link points at the confirmation page.",
+      "Following the nav link and then not confirming (e.g. just fetching the next page) never loses scores."
+    ],
+    "completed": false
+  },
+  {
+    "id": 39,
+    "name": "Validate starting handicaps are in 0-150",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.2 (Assumption 28): Stage 2 rejects a handicap that is not a number in the inclusive range 0 to 150, with a message naming the row and the range, storing nothing. Define the bounds once as constants in h2h.models. The Stage 2 number input also carries min/max attributes.",
+    "tests": [
+      "Handicaps -0.1, -1 and 150.1 are rejected with a message naming the row number and 'between 0 and 150'; 'nan' and 'inf' are rejected too.",
+      "Handicaps 0, 150 and a decimal such as 22.5 are accepted.",
+      "A rejected submission stores no archers and starts no event, and re-renders Stage 2 with the error.",
+      "Non-numeric and missing handicaps still get their existing messages.",
+      "The Stage 2 handicap inputs render min=0 and max=150.",
+      "The bounds are defined once (a constant used by both the validation and the template)."
+    ],
+    "completed": false
+  },
+  {
+    "id": 40,
+    "name": "Fix hover tooltip over previous-pass vertical lines",
+    "description": "Per Specification/feedback.md 'Feedback 4': hovering over the chart to see each archer's probability at a score breaks for the vertical lines marking scores shot in a previous pass. First reproduce it in a real browser (headless Edge via an ephemeral Selenium install, against an exported copy of the committed code) and record the diagnosis in the logbook; the working hypothesis is that Chart.js's 'index' interaction mode locates the nearest element across ALL datasets, so a two-point marker dataset (index 0/1) near the pointer makes the tooltip show the first points of the curves instead of the score under the pointer. Fix it (preferably in h2h/static/match_chart.js alone, e.g. a custom interaction mode that finds the score under the pointer from the curve datasets only, or by drawing markers outside the interaction path) so the tooltip always lists both archers' probabilities at the hovered score regardless of nearby markers. Keep the dataset structure, legend labels and checkbox behaviour unchanged.",
+    "tests": [
+      "The bug is reproduced in a real browser before the fix: with previous passes shown, hovering on or next to a previous-pass marker line gives a wrong tooltip (document what was observed).",
+      "After the fix, in a real browser, hovering at a spread of x positions including exactly on and either side of the latest pass's marker lines and a previous pass's marker lines shows a tooltip containing both archers, with each probability equal to that archer's distribution value at the hovered score (checked numerically against the chart's own data), never a marker dataset and never the first point's value.",
+      "The tooltip still behaves correctly with previous passes hidden, and on a pair with no scored passes (no markers).",
+      "Dataset counts and labels are unchanged (2 curves + 2 markers per shown pass; 6 with the checkbox ticked for two passes) and there are no console errors.",
+      "Any Python-side change is covered by a unit test; the full test suite still passes."
+    ],
+    "completed": false
+  },
+  {
+    "id": 41,
+    "name": "Target setup model: shared distance and face replace the round mode",
+    "description": "Per Specification/AISpec.md sections 5.1, 5.2a, 6 (Assumptions 22-24): replace models.RoundMode and the fixed outdoor target with a TargetSetup (distance + unit metre|yard, and face_cm; derived distance in metres and indoor = distance <= 25 m). Provide the standard option lists (distances 18, 25, 30, 40, 50, 60, 70, 90 m and 20, 25, 30, 40, 50, 60, 80, 100 yd; faces 40, 60, 80, 122 cm) and the default (20 yd, 60 cm). resolve_target(setup, bowstyle) builds an archeryutils Target directly: Compound indoors -> '10_zone_compound', everything else '10_zone', with the chosen diameter/distance and indoor flag (so per_arrow_pmf picks the arrow diameter). Event takes a TargetSetup in place of round_mode, and SessionState stores target_setup (default 20 yd / 60 cm, restored by reset) in place of round_mode. The calculator keeps its Portsmouth/WA 18 choice via a small IndoorRound enum feeding resolve_indoor_round (behaviour unchanged). Migrate every test that used RoundMode. The Stage 1 form itself changes in task 42, so for this task the existing form's posted indoor/outdoor fields are mapped onto a TargetSetup only as a temporary bridge (Portsmouth -> 20 yd/60 cm, WA 18 -> 18 m/40 cm, outdoor -> 70 m/122 cm) so the app keeps working between commits.",
+    "tests": [
+      "TargetSetup.indoor is True for 18 m, 25 m, 20 yd and 25 yd and False for 30 m, 30 yd, 40 m, 50 m, 70 m, 90 m, 80 yd and 100 yd; distance_m converts yards correctly (20 yd = 18.288 m).",
+      "The option lists contain exactly the 8 metric + 8 imperial distances and the 4 face sizes, and the default is 20 yd / 60 cm.",
+      "Every (distance, face, compound/non-compound) combination from the option lists builds a Target whose per-arrow PMF sums to 1 and is non-negative, at handicaps 0, 40, 100 and 150.",
+      "resolve_target gives Recurve, Barebow and Longbow '10_zone' always; Compound '10_zone_compound' when indoor and '10_zone' when outdoor; the Target's diameter, distance and indoor flag are the chosen ones.",
+      "20 yd / 60 cm equals archeryutils's Portsmouth target (and, for Compound, portsmouth_compound's); 18 m / 40 cm equals WA 18's (and wa18_compound's); 70 m / 122 cm outdoor equals wa720_70's.",
+      "An Event built from a TargetSetup gives same-handicap Recurve vs Compound archers different distributions indoors and identical ones outdoors, and Recurve vs Longbow identical ones everywhere.",
+      "RoundMode no longer exists; the calculator's compound/non-compound Portsmouth and WA 18 results are unchanged (existing calculator tests pass); grep finds no RoundMode or round_mode in h2h/ or tests/.",
+      "SessionState stores target_setup (default 20 yd / 60 cm) and reset() restores it.",
+      "The full suite passes after migrating the event, state, chart-data, target-resolution, route and integration tests."
+    ],
+    "completed": false
+  },
+  {
+    "id": 42,
+    "name": "Stage 1: simple/advanced setup toggle with distance and face-size dropdowns",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.1 (Assumptions 22-24, 30): Stage 1 replaces the Indoor/Outdoor and Portsmouth/WA 18 radios with a Setup mode toggle (Simple default, Advanced). In Simple mode two dropdowns appear: Distance (optgroups Metric and Imperial, the standard options from task 41, default 20 yd) and Face size (40, 60, 80, 122 cm, default 60 cm); submitting stores the chosen TargetSetup via SessionState. In Advanced mode the dropdowns are hidden, a 'TBA' message is shown and the submit button is disabled; a forced POST of advanced mode is rejected server-side with the same message and stores nothing. Invalid distance/face values are rejected with a clear message. The previously chosen values are re-rendered. Stage 2's intro now states the chosen distance and face and whether it is treated as indoor (so Compound uses the reduced 10), replacing the old 'round mode' wording. Remove the temporary bridge from task 41.",
+    "tests": [
+      "The Stage 1 page renders a Setup mode toggle with Simple selected, a Distance dropdown with Metric and Imperial optgroups containing exactly the standard options (20 yd selected), and a Face size dropdown with 40/60/80/122 cm (60 cm selected); the old Indoor/Outdoor and Portsmouth/WA 18 radios are gone.",
+      "POSTing simple mode with, e.g., 50 m and 80 cm stores that TargetSetup in the session and proceeds to Stage 2; the chosen values are re-rendered on returning to Stage 1.",
+      "A distance or face value outside the offered options is rejected with a clear message and stores nothing.",
+      "POSTing advanced mode is rejected with a TBA message, stores nothing and leaves any previous setup untouched; the rendered page contains the TBA message text in its advanced section.",
+      "Stage 2's intro names the chosen distance and face and says whether it counts as indoor.",
+      "No leftover reference to the indoor/outdoor round-mode fields remains in h2h/ or tests/ (grep).",
+      "Verified in a real browser: toggling Simple/Advanced hides/shows the dropdowns and the TBA message and disables/enables the submit button; choosing a distance and face and continuing works through to Stage 2; no JS console errors."
+    ],
+    "completed": false
+  },
+  {
+    "id": 43,
+    "name": "Stage 3: random pairing assignment with redraw",
+    "description": "Per Specification/feedback.md 'Feedback 4' and Specification/AISpec.md section 5.2b (Assumption 25): add a third setup stage. Stage 2's submit no longer starts the event: SessionState.start_stage2 stores the archers (entry order) and draws a random assignment of archers to schedule positions (a random permutation; random source injectable for tests, default random.Random()), and redirects to /event/stage3. Stage 3 (GET) shows the pairings for EVERY pass by archer name (matches, bye archer or sitting-out archers per pass), a 'Redraw pairings' button (POST /event/stage3/redraw, a fresh random draw, back to Stage 3) and a 'Confirm pairings and start event' button (POST /event/stage3, builds the Event with the archers in assigned position order and redirects to the overview). Stage 3 without a completed Stage 2 redirects back to setup; once the event has started it redirects to the overview and neither button changes anything. Reuse the schedule built at Stage 1 unchanged. Update the existing test helpers so flows run Stage 1 -> Stage 2 -> Stage 3 confirm deterministically (identity assignment via the injectable random source), migrating the tests that started events.",
+    "tests": [
+      "start_stage2 stores the archers, draws a valid permutation of 0..n-1 over positions and builds NO event; start_event/confirm builds the Event whose archers[position] is the assigned archer.",
+      "With an identity (non-shuffling) random source the assignment equals entry order; with a seeded random.Random it is a deterministic non-trivial permutation.",
+      "redraw produces a new valid permutation (with a seeded source, different from the previous one within a few draws for 4+ archers) without touching the schedule's structure (same number of rotations and sit-out counts).",
+      "Stage 2's POST redirects to Stage 3; Stage 3 renders a section for every pass of the schedule with each pass's pairings by archer name, byes or sitting-out archers, and every archer's name appears.",
+      "POST redraw keeps the user on Stage 3 showing a different assignment (seeded source); reloading Stage 3 without redrawing shows the same assignment.",
+      "POST confirm creates the event, redirects to the overview, and the overview's first-pass matches equal the first pass shown on Stage 3.",
+      "Stage 3 without a completed Stage 2 redirects to setup; after the event has started, GET/POST on Stage 3 redirect to the overview and the event is unchanged.",
+      "A Stage 2 submission with invalid input (e.g. a bad handicap) does not draw an assignment or reach Stage 3.",
+      "The full suite passes with the migrated, deterministic start-of-event helpers."
+    ],
+    "completed": false
+  },
+  {
+    "id": 44,
+    "name": "End-to-end integration check, browser walkthrough and docs for Feedback 4",
+    "description": "Extend tests/test_integration.py for the full Feedback 4 flow over HTTP: Stage 1 (simple setup with a non-default distance and face, including an outdoor-class one), Stage 2 (a rejected out-of-range handicap, then valid), Stage 3 (redraw then confirm), scoring through the new overview table, the graph view toggle on a match page, and the reset confirmation. Then run a real-browser walkthrough (headless Edge via an ephemeral Selenium install, exporting the exact commit with git archive) of the whole flow, including hovering the chart near a previous pass's marker, with no JS console errors. Update README.md (three-stage setup, setup modes, graph view, reset confirmation) and Specification/logbook.md with a Feedback 4 section (summary, assumptions, the indoor-distance survey findings, verification notes).",
+    "tests": [
+      "A full event over HTTP with a 50 m / 80 cm simple setup: every archer's target has that distance and face, is not indoor, and Compound archers score '10_zone' (no reduced 10); with an 18 m / 40 cm setup Compound archers score '10_zone_compound' and the others '10_zone'.",
+      "Stage 2 rejects an out-of-range handicap and stores nothing, then accepts valid ones; Stage 3 redraw changes the assignment (seeded) and confirming starts the event with exactly the assignment shown.",
+      "The overview table's Score/Percentiles/Winner for every match of a full event agree with the Event's recorded results.",
+      "The graph view toggle exists only on match pages and switches the chart and explanation on and off without losing scores.",
+      "Reset: GET asks for confirmation and loses nothing; POST clears everything and a fresh session sees no event.",
+      "A real-browser walkthrough (Stage 1 setup toggle and dropdowns, Stage 2 handicap validation, Stage 3 redraw and confirm, overview table, match page with handicaps, graph view toggle, chart hover near a previous pass's marker, reset confirmation) completes with no JS console errors.",
+      "The full suite passes, README.md describes the new flow, and Specification/logbook.md has a Feedback 4 section."
+    ],
+    "completed": false
   }
 ]
