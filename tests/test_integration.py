@@ -7,6 +7,9 @@ handling), indoor mode with mixed bowstyles, outdoor mode, and that a fresh
 app/state sees no prior event.
 """
 
+import random
+import re
+
 from h2h.app import create_app
 from h2h.models import Bowstyle, resolve_target
 from h2h.state import SessionState
@@ -15,6 +18,7 @@ from .helpers import (
     OUTDOOR_70M,
     PORTSMOUTH,
     make_state,
+    overview_table,
     pass_position,
     play_whole_event,
     save_match,
@@ -309,3 +313,159 @@ def test_advance_is_refused_until_every_match_is_scored_at_every_pass():
     final_refused = client.post("/event/advance")  # nothing after the last pass
     assert b"final pass" in final_refused.data
     assert state.event.is_complete
+
+
+# --- Feedback 4: setup stages, shared target, summary table, graph view, reset -----
+
+MIXED_BOWS = [
+    ("Rec", "Recurve", 20),
+    ("Comp", "Compound", 20),
+    ("Bare", "Barebow", 30),
+    ("Long", "Longbow", 40),
+]
+
+
+def start_with_setup(client, archers, distance, face_cm, total_arrows=36):
+    """Stage 1 (simple setup with the given distance/face), Stage 2, then confirm Stage 3."""
+    client.post(
+        "/event/stage1",
+        data=stage1_form(len(archers), total_arrows, 12, distance=distance, face_cm=face_cm),
+    )
+    client.post("/event/stage2", data=stage2_form(archers))
+    client.post("/event/stage3")
+
+
+def test_outdoor_distance_event_gives_everyone_the_chosen_face_and_no_reduced_ten():
+    """50 m / 80 cm: every archer shoots that target, outdoors, and Compound scores plain 10_zone."""
+    client, state = make_client_and_state()
+    start_with_setup(client, MIXED_BOWS, distance="50m", face_cm=80)
+    play_whole_event(client)
+
+    event = state.event
+    assert event.is_complete
+    for i in range(4):
+        target = event.target_for(i)
+        assert target.distance == 50 and target.diameter == 0.8
+        assert target.indoor is False
+        assert target.scoring_system == "10_zone"
+    # Same handicap, same score: Recurve and outdoor Compound share a distribution.
+    assert event.distribution_for(0) == event.distribution_for(1)
+
+
+def test_indoor_distance_event_gives_compound_the_reduced_ten_only():
+    """18 m / 40 cm: Compound scores 10_zone_compound, the others 10_zone."""
+    client, state = make_client_and_state()
+    start_with_setup(client, MIXED_BOWS, distance="18m", face_cm=40)
+    play_whole_event(client)
+
+    event = state.event
+    assert [event.target_for(i).scoring_system for i in range(4)] == [
+        "10_zone", "10_zone_compound", "10_zone", "10_zone",
+    ]
+    assert all(event.target_for(i).indoor for i in range(4))
+    assert event.distribution_for(0) != event.distribution_for(1)
+
+
+def test_imperial_distance_is_converted_and_classified_by_its_length_in_metres():
+    """30 yd (27.4 m) is outdoor while 25 yd (22.9 m) is indoor."""
+    for distance, indoor in (("30yd", False), ("25yd", True)):
+        client, state = make_client_and_state()
+        start_with_setup(client, MIXED_BOWS, distance=distance, face_cm=60)
+        assert state.event.target_for(0).indoor is indoor
+        assert state.event.target_for(0).distance == round(int(distance[:2]) * 0.9144, 6)
+
+
+def test_setup_flow_rejects_a_bad_handicap_then_redraws_then_confirms_the_shown_pairings():
+    """Stage 2 refuses 150.1 (storing nothing); Stage 3 redraw changes pairings; confirm keeps them."""
+    state = SessionState(rng=random.Random(11))
+    client = create_app(state=state).test_client()
+    client.post("/event/stage1", data=stage1_form(4, 36, 12))
+
+    names = ["Ann", "Ben", "Cat", "Dan"]
+    bad = stage2_form([(n, "Recurve", 20 + i) for i, n in enumerate(names)])
+    bad["handicap_2"] = "150.1"
+    refused = client.post("/event/stage2", data=bad)
+    assert b"between 0 and 150" in refused.data
+    assert state.pending_archers is None and state.assignment is None
+
+    good = stage2_form([(n, "Recurve", 20 + i) for i, n in enumerate(names)])
+    assert client.post("/event/stage2", data=good).status_code == 302
+
+    def shown():
+        page = client.get("/event/stage3").data.decode()
+        return [re.findall(r"[A-Z][a-z]+ vs [A-Z][a-z]+", row[1]) for row in overview_table(page)[1]]
+
+    first = shown()
+    client.post("/event/stage3/redraw")
+    second = shown()
+    assert second != first
+
+    client.post("/event/stage3")
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert [row[0] for row in rows] == second[0]
+    assert [a.name for a in state.event.archers] == [
+        state.pending_archers[i].name for i in state.assignment
+    ]
+
+
+def test_overview_table_agrees_with_the_event_for_every_match_of_a_full_event():
+    """After each pass is scored, Score / Percentiles / Winner match the Event's own results."""
+    client, state = make_client_and_state()
+    archers = [(f"A{i}", "Recurve", 20 + 5 * i) for i in range(4)]
+    start_with_setup(client, archers, distance="20yd", face_cm=60)
+    event = state.event
+    scores = {0: 95, 1: 88, 2: 101, 3: 74}
+
+    for pass_number in range(1, 4):
+        score_current_pass(client, lambda archer: scores[archer] + pass_number)
+        _, rows = overview_table(client.get("/event/rotation").data.decode())
+        for row, (a, b) in zip(rows, event.matches(event.current_rotation_index), strict=True):
+            ra, rb = event.match_results(event.current_rotation_index, (a, b))
+            winner = ra if ra.won else rb
+            assert row[0] == f"{event.archers[a].name} vs {event.archers[b].name}"
+            assert row[1] == f"{ra.score} - {rb.score}"
+            assert row[2] == f"{ra.percentile * 100:.1f}% - {rb.percentile * 100:.1f}%"
+            assert row[3] == event.archers[winner.archer_index].name
+        if pass_number < 3:
+            client.post("/event/advance")
+
+
+def test_graph_view_toggle_lives_on_match_pages_and_switches_the_chart_without_losing_scores():
+    """Graph view on/off changes only the chart and explanation; scores stay."""
+    client, state = make_client_and_state()
+    start_with_setup(client, MIXED_BOWS, distance="20yd", face_cm=60)
+    save_match(client, 0, {0: 100, 3: 80})
+    toggle = b'action="/graph-view"'
+
+    assert toggle not in client.get("/event/rotation").data
+    assert toggle not in client.get("/event/results").data
+    match_page = client.get("/event/match/0").data
+    assert toggle in match_page and b"Graph view: off" in match_page
+    assert b'id="match-chart"' not in match_page
+
+    client.post("/graph-view", data={"next": "/event/match/0"})
+    on_page = client.get("/event/match/0").data.decode()
+    assert "Graph view: on" in on_page
+    assert 'id="match-chart"' in on_page and "How the winner is decided" in on_page
+
+    client.post("/graph-view", data={"next": "/event/match/0"})
+    assert b'id="match-chart"' not in client.get("/event/match/0").data
+    _, rows = overview_table(client.get("/event/rotation").data.decode())
+    assert rows[0][1] == "100 - 80"
+
+
+def test_reset_asks_for_confirmation_and_only_the_post_clears_everything():
+    """GET /reset loses nothing; POST /reset clears; a fresh session then sees no event."""
+    client, state = make_client_and_state()
+    start_with_setup(client, MIXED_BOWS, distance="20yd", face_cm=60)
+    save_match(client, 0, {0: 100, 3: 80})
+
+    asked = client.get("/reset")
+    assert b"Reset everything" in asked.data
+    assert state.event is not None and state.event.results
+
+    client.post("/reset")
+    assert state.event is None and state.schedule is None and state.pending_archers is None
+    after = client.get("/event/results", follow_redirects=True)
+    assert b"Event setup - Stage 1" in after.data  # no event any more: sent back to setup
+    assert client.get("/event/stage3").headers["Location"].endswith("/event/stage1")
