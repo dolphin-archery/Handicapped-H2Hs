@@ -311,64 +311,11 @@ class Event:
         """dict[float, float]: an archer's own n_pass score distribution."""
         return self._distributions[archer_index]
 
-    def next_rotation_index(self) -> int | None:
-        """int | None: index of the next unscored rotation, or None if done."""
-        scored = {r.rotation_index for r in self.results}
-        for i in range(len(self.schedule)):
-            if i not in scored:
-                return i
-        return None
-
     @property
     def is_complete(self) -> bool:
-        """bool: whether every rotation has been scored."""
-        return self.next_rotation_index() is None
-
-    def record_rotation(self, rotation_index: int, scores: dict[int, float]) -> list[PassResult]:
-        """Record every archer's score for a rotation and derive results.
-
-        Parameters
-        ----------
-        rotation_index : int
-            Index of the rotation being scored.
-        scores : dict[int, float]
-            Mapping of archer index to raw score, covering exactly the
-            archers active in this rotation (every paired archer, plus the
-            bye archer if there is one).
-
-        Returns
-        -------
-        list[PassResult]
-            The results recorded for this rotation, one per participant.
-
-        Raises
-        ------
-        ValueError
-            If `scores`' keys don't exactly match the rotation's
-            participants, or any score is invalid (see `_validate_score`).
-            Raised before anything is recorded.
-        """
-        rotation = self.schedule[rotation_index]
-        expected = {p for pair in rotation.pairs for p in pair}
-        if rotation.bye is not None:
-            expected.add(rotation.bye)
-        if set(scores) != expected:
-            msg = (
-                f"Scores must be provided for exactly rotation {rotation_index}'s "
-                f"participants {sorted(expected)}; got {sorted(scores)}."
-            )
-            raise ValueError(msg)
-
-        validated = {idx: _validate_score(score, self.n_pass) for idx, score in scores.items()}
-
-        results: list[PassResult] = []
-        for a, b in rotation.pairs:
-            results.extend(self._pair_results(rotation_index, a, b, validated[a], validated[b]))
-        if rotation.bye is not None:
-            results.append(self._solo_result(rotation_index, rotation.bye, validated[rotation.bye]))
-
-        self.results.extend(results)
-        return results
+        """bool: whether the final rotation has been reached and every match in it scored."""
+        last = len(self.schedule) - 1
+        return self.current_rotation_index == last and self.is_rotation_complete(last)
 
     def _pair_results(
         self, rotation_index: int, a: int, b: int, score_a: int, score_b: int

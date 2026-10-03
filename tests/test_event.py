@@ -6,6 +6,8 @@ from h2h import stats
 from h2h.models import Archer, Bowstyle, Event, RoundMode
 from h2h.rotation import Rotation, build_schedule, build_sit_out_schedule
 
+from .helpers import record_whole_rotation
+
 
 def make_archers(n, base_handicap=20, step=5):
     """n archers with staggered handicaps, alternating bowstyle, for testing."""
@@ -48,30 +50,28 @@ def test_schedule_index_out_of_range_rejected():
 def test_recording_a_rotation_uses_each_archers_own_distribution():
     """Percentile/handicap for each archer must use their OWN resolved target."""
     event = make_event(2, round_mode=RoundMode.INDOOR_PORTSMOUTH)
-    results = event.record_rotation(0, {0: 100, 1: 60})
+    results = event.record_match({0: 100, 1: 60})
     assert len(results) == 2
     for r in results:
         assert 0.0 <= r.percentile <= 1.0
 
 
 def test_missing_or_extra_scores_rejected():
-    """Scores must cover exactly the rotation's participants, no more, no less."""
+    """Scores must cover exactly one match's archers, no more, no less."""
     event = make_event(2)
     with pytest.raises(ValueError):
-        event.record_rotation(0, {0: 100})  # missing archer 1
+        event.record_match({0: 100})  # missing archer 1
     with pytest.raises(ValueError):
-        event.record_rotation(0, {0: 100, 1: 60, 5: 10})  # extra, unknown archer
+        event.record_match({0: 100, 1: 60, 5: 10})  # extra, unknown archer
 
 
 def test_bye_archer_recorded_with_no_winner_and_no_pairwise_result():
     """The bye archer's pass is recorded but produces no winner or pairwise result."""
     event = make_event(3, n_rotations=3)  # odd -> each rotation has one bye
     rotation = event.schedule[0]
-    scores = {p: 50 for pair in rotation.pairs for p in pair}
-    scores[rotation.bye] = 40
-    results = event.record_rotation(0, scores)
+    record_whole_rotation(event, score=50)
 
-    bye_result = next(r for r in results if r.archer_index == rotation.bye)
+    bye_result = next(r for r in event.results if r.archer_index == rotation.bye)
     assert bye_result.won is None
     assert bye_result.opponent_index is None
     # The bye archer must not appear in any pairwise result derived from this rotation.
@@ -82,7 +82,7 @@ def test_bye_archer_recorded_with_no_winner_and_no_pairwise_result():
 def test_pairwise_result_after_one_shared_pass():
     """After sharing one pass, the pair's pairwise result reflects that pass's winner."""
     event = make_event(2, n_pass=12)
-    event.record_rotation(0, {0: 120, 1: 0})  # archer 0 crushes archer 1
+    event.record_match({0: 120, 1: 0})  # archer 0 crushes archer 1
     result = event.pairwise_result(0, 1)
     assert result is not None
     assert result.outcome == 0
@@ -105,27 +105,33 @@ def test_all_pairwise_results_grows_as_rotations_are_scored():
     event = make_event(4, n_rotations=3)
     assert event.all_pairwise_results() == []
     rotation0 = event.schedule[0]
-    scores = {p: 60 for pair in rotation0.pairs for p in pair}
-    event.record_rotation(0, scores)
+    record_whole_rotation(event)
     assert len(event.all_pairwise_results()) == len(rotation0.pairs)
 
 
-def test_next_rotation_index_and_is_complete():
-    """next_rotation_index advances correctly and is_complete flips once done."""
-    event = make_event(2, n_rotations=1)
-    assert event.next_rotation_index() == 0
+def test_is_complete_only_once_the_final_rotation_is_fully_scored():
+    """is_complete flips only when the last rotation is current and every match in it is scored."""
+    event = make_event(4)  # 3 rotations, two matches each
     assert not event.is_complete
-    event.record_rotation(0, {0: 100, 1: 50})
-    assert event.next_rotation_index() is None
+    for _ in range(2):  # score and advance past the first two rotations
+        record_whole_rotation(event)
+        assert not event.is_complete
+        event.advance()
+    assert not event.is_complete  # final rotation reached but unscored
+    first, second = event.matches(2)
+    event.record_match({p: 60 for p in first})
+    assert not event.is_complete  # one of the two matches still unscored
+    event.record_match({p: 60 for p in second})
     assert event.is_complete
 
 
-def test_invalid_score_leaves_rotation_unrecorded():
-    """An invalid score in the batch must not partially record the rotation."""
+def test_invalid_score_leaves_match_unrecorded():
+    """An invalid score must not partially record the match."""
     event = make_event(2)
     with pytest.raises(ValueError):
-        event.record_rotation(0, {0: 100.5, 1: 50})
-    assert event.next_rotation_index() == 0  # nothing recorded
+        event.record_match({0: 100.5, 1: 50})
+    assert event.results == []  # nothing recorded
+    assert not event.is_rotation_complete(0)
 
 
 def test_different_bowstyles_give_different_indoor_distributions():

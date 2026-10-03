@@ -4,6 +4,8 @@ from h2h.chart_data import build_pair_chart_data
 from h2h.models import Archer, Bowstyle, Event, RoundMode
 from h2h.rotation import build_schedule
 
+from .helpers import record_whole_rotation
+
 
 def make_event(n_archers=4, n_pass=12, round_mode=RoundMode.INDOOR_PORTSMOUTH):
     bowstyles = [Bowstyle.RECURVE, Bowstyle.COMPOUND, Bowstyle.BAREBOW]
@@ -44,10 +46,7 @@ def test_shared_pass_appears_after_scoring():
     event = make_event()
     rotation = event.schedule[0]
     a, b = rotation.pairs[0]
-    scores = {p: 60 for pair in rotation.pairs for p in pair}
-    if rotation.bye is not None:
-        scores[rotation.bye] = 50
-    event.record_rotation(0, scores)
+    record_whole_rotation(event, score=60)
 
     data = build_pair_chart_data(event, a, b)
     assert len(data["passes"]) == 1

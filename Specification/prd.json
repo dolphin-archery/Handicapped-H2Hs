@@ -392,7 +392,7 @@
       "Event.record_rotation and Event.next_rotation_index no longer exist; grep finds no references to them in h2h/ or tests/.",
       "The full test suite passes after migrating the old rotation-based route, event and integration tests."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 32,

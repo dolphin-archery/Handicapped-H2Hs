@@ -99,3 +99,17 @@ def play_whole_event(client, score_fn=lambda archer: 60):
         if pass_number < total:
             client.post("/event/advance")
     return passes
+
+
+def record_whole_rotation(event, score=60):
+    """Record every match of an Event's current rotation directly on the model.
+
+    Parameters
+    ----------
+    event : h2h.models.Event
+        Event to record scores on.
+    score : int, default=60
+        Score given to every archer in the rotation.
+    """
+    for match in event.matches(event.current_rotation_index):
+        event.record_match({p: score for p in match if p is not None})

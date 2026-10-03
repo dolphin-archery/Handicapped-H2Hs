@@ -745,3 +745,51 @@ was based on a stale commit (the end of prd task 25), not the current HEAD, so
 the agent exported the right commit with `git archive` instead. Don't rely on
 the isolated worktree being current; give a browser-verification subagent the
 commit hash to export.
+
+### Task 31: Overview page, per-match pages and advance button (complete)
+Done as two commits so the suite stayed green throughout. Part 1 swapped the
+web flow onto the task-30 API while the old `Event` methods still existed;
+part 2 then removed them.
+
+- `/event/rotation` is now a read-only **overview** of the current pass ("Pass k
+  of N"): a row per match (pair, or the bye archer's solo match when byes are
+  shot) with its status ("Awaiting scores" or the entered scores and winner) and
+  an "Enter scores" / "View / edit" link, a "Sitting out this pass" line when
+  byes aren't shot, and an "Advance to next pass" button that is `disabled`
+  until every match has scores. `POST /event/rotation` no longer exists (405).
+- `POST /event/advance` calls `Event.advance()` and, if it refuses (pass
+  incomplete, or already the final pass), re-renders the overview with the
+  error rather than advancing - so the disabled button is a convenience and the
+  rule is enforced server-side.
+- `/event/match/<idx>` (new `match.html`): GET shows a score box per archer in
+  that match only (one for a bye match), prefilled with any saved scores; POST
+  saves through `Event.record_match` and redirects back to the same match page
+  (so the result is visible straight away; the overview is one link away).
+  Non-numeric input gets a per-archer message; out-of-range/non-integer input
+  surfaces the existing `_validate_score` message; the form is refilled with
+  what was typed and nothing is recorded. An out-of-range index redirects to
+  the overview. Re-saving replaces the earlier scores (Assumption 17), and a
+  small note on the page says so.
+- The final pass has no advance button; once every match in it is scored the
+  overview says the event is complete and links to results (it is not
+  redirected away, so the last pass stays editable, Assumption 21).
+- Nav gained a "Current pass" link; results.html's "Continue scoring" link now
+  uses `current_rotation_index`.
+- Removed `Event.record_rotation` and `Event.next_rotation_index`; `is_complete`
+  is now "final rotation current and fully scored". Grep confirms no references
+  remain in `h2h/` or `tests/`.
+- Tests: the old rotation-scoring route tests were replaced with overview /
+  match-page / advance tests (including the 405, bye and sit-out variants,
+  parametrised invalid scores, re-save, advance gating at both ends, and the
+  next pass's pairings appearing). `tests/helpers.py` (new) holds HTTP helpers
+  that discover each pass's matches from the rendered pages
+  (`score_current_pass`, `play_whole_event`, ...) plus a model-level
+  `record_whole_rotation`; the old integration and event/chart tests were
+  migrated onto them. Suite: 393 passed.
+
+Process notes: two of my own mistakes surfaced in review rather than in the app
+- a blanket search-and-replace in the test migration also rewrote the one
+deliberate POST to the removed endpoint (caught by that very test failing), and
+my page-peek script posted the wrong archer indices (the app correctly rejected
+them). Neither affected shipped code. The match page currently shows only this
+pass's result; history and the chart arrive in task 32.
