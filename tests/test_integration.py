@@ -999,3 +999,141 @@ def test_markers_of_earlier_passes_are_drawn_against_the_current_curve_not_the_o
     pass_1 = event.distribution_for(0, 0)
     assert all(y == pytest.approx(pass_2.get(float(x), 0.0)) for x, y in current.items())
     assert any(y != pytest.approx(pass_1.get(float(x), 0.0)) for x, y in current.items())
+
+
+# --- Feedback 7: legend handicap, Pass starting handicap everywhere, default lookback of 4 ---------
+
+
+def start_with_stage_2_defaults(client, rows=ADVANCED_FOUR, total_arrows=60, update=True):
+    """Advanced setup; the updating inputs are left at whatever Stage 2 pre-fills (read off the page)."""
+    form = stage1_form(len(rows), total_arrows)
+    form["setup_mode"] = "advanced"
+    client.post("/event/stage1", data=form)
+    page = client.get("/event/stage2").data.decode()
+    defaults = {
+        "n_lookback": re.search(r'name="n_lookback"[^>]*value="(\d+)"', page, re.S).group(1),
+        "start_weight": re.search(r'name="start_weight"[^>]*value="(\d+)"', page, re.S).group(1),
+    }
+    data = dict(defaults, update_handicaps="yes" if update else "no")
+    for i, (name, bowstyle, handicap, face_type, face_cm, distance) in enumerate(rows):
+        data.update(
+            {
+                f"name_{i}": name, f"bowstyle_{i}": bowstyle, f"handicap_{i}": str(handicap),
+                f"face_type_{i}": face_type, f"face_cm_{i}": str(face_cm), f"distance_{i}": distance,
+            }
+        )
+    assert client.post("/event/stage2", data=data).status_code == 302
+    client.post("/event/stage3")
+    return defaults
+
+
+def play_60_arrow_event(client, state):
+    """Score all five 12-arrow passes with scores that make the handicaps move."""
+    event = state.event
+    assert len(event.schedule) == 5
+    for pass_number in range(1, 6):
+        score_current_pass(
+            client, lambda i, n=pass_number: int(event.max_score_for(i) * (0.5 + 0.04 * n)) + i
+        )
+        if pass_number < 5:
+            client.post("/event/advance")
+    assert event.is_complete
+
+
+def test_full_60_arrow_updating_event_shows_the_same_pass_starting_handicaps_everywhere():
+    """Default lookback 4 and start weight 5; the final pass uses all four earlier passes; legend, tables,
+    CSV and PDF all show the figures the percentiles were judged against."""
+    from h2h import stats as h2h_stats
+
+    client, state = updating_client()
+    defaults = start_with_stage_2_defaults(client)
+    assert defaults == {"n_lookback": "4", "start_weight": "5"}
+    event = state.event
+    assert (event.n_lookback, event.start_weight) == (4, 5)
+    play_60_arrow_event(client, state)
+
+    # The final pass uses every earlier pass (m = 4, weight 4): (5 H0 + 4 H_recent) / 9.
+    for i in range(4):
+        last_four = [r.score for r in event.results if r.archer_index == i and r.rotation_index < 4]
+        assert len(last_four) == 4
+        recent = h2h_stats.equivalent_handicap(sum(last_four), 48, event.target_for(i))
+        expected = (5 * event.archers[i].handicap + 4 * recent) / 9
+        assert event.handicap_for(i, 4) == pytest.approx(min(max(expected, 0), 150))
+
+    def start(i, rotation):
+        return f"{event.handicap_for(i, rotation):.1f}"
+
+    # Results page: each pass's table rows show that pass's own starting handicap.
+    results = client.get("/event/results").data.decode()
+    headings = ["Archer", "Score", "Percentile", "Pass starting handicap", "Handicap", "Winner"]
+    tables = [rows for found, rows in all_page_tables(results) if found == headings]
+    assert len(tables) == 5
+    names = {a.name: i for i, a in enumerate(event.archers)}
+    for rotation, rows in enumerate(tables):
+        assert [row[3] for row in rows] == [start(names[row[0]], rotation) for row in rows]
+
+    # Archer results page, CSV and PDF.
+    archers_page = client.get("/event/archers").data.decode()
+    section_headings = ["Pass", "Opponent", "Score", "Percentile", "Pass starting handicap", "Handicap"]
+    per_archer = [rows for found, rows in all_page_tables(archers_page) if found == section_headings]
+    assert len(per_archer) == 4
+    csv = csv_rows(client.get("/event/export/archer-results.csv").data.decode())
+    assert csv[0][7] == "Pass starting handicap" and len(csv) == 1 + 20
+    pdf_text = " ".join(
+        "\n".join(p.extract_text() for p in pypdf.PdfReader(io.BytesIO(client.get("/event/export/results.pdf").data)).pages).split()
+    )
+    assert pdf_text.count("Pass starting handicap") == 4
+    for section in outputs.archer_results(event):
+        i = section.archer_index
+        rows = per_archer[i]
+        assert [row[4] for row in rows[:-1]] == [start(i, p) for p in range(5)]
+        mine = [row for row in csv[1:] if row[0] == section.name]
+        assert [row[7] for row in mine] == [start(i, p) for p in range(5)]
+        average = section.averages.start_handicap
+        assert rows[-1][3] == f"{average:.1f}"
+        assert f"{average:.1f}" in pdf_text
+
+    # The legend on the match pages shows the handicap the curve is built from (current pass).
+    client.post("/graph-view", data={"next": "/event/rotation"})
+    payload = embedded_payload(client.get("/event/match/0").data.decode())
+    a, b = event.matches(4)[0]
+    assert payload["archer_a"]["legend"] == f"{event.archers[a].name} (handicap {start(a, 4)})"
+    assert payload["archer_b"]["legend"] == f"{event.archers[b].name} (handicap {start(b, 4)})"
+
+
+def all_page_tables(html):
+    """Every <table> in a page as (headings, body rows of cell text)."""
+
+    def text(fragment):
+        return " ".join(re.sub(r"<[^>]+>", " ", fragment).split())
+
+    tables = []
+    for block in re.findall(r"<table>(.*?)</table>", html, re.S):
+        headings = [text(h) for h in re.findall(r"<th>(.*?)</th>", block, re.S)]
+        rows = [
+            [text(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", block, re.S)
+            if "<td" in row
+        ]
+        tables.append((headings, rows))
+    return tables
+
+
+def test_the_same_event_with_updating_off_has_no_pass_starting_handicap_anywhere():
+    """No column in any table, the CSV or the PDF; the legend shows the entered handicaps."""
+    client, state = updating_client()
+    start_with_stage_2_defaults(client, update=False)
+    play_60_arrow_event(client, state)
+    event = state.event
+    assert event.update_handicaps is False
+    for path in ("/event/results", "/event/archers", "/event/match/0"):
+        assert "Pass starting handicap" not in client.get(path).data.decode(), path
+    csv = csv_rows(client.get("/event/export/archer-results.csv").data.decode())
+    assert "Pass starting handicap" not in csv[0] and len(csv[0]) == 9
+    pdf = pypdf.PdfReader(io.BytesIO(client.get("/event/export/results.pdf").data))
+    assert "Pass starting handicap" not in " ".join("\n".join(p.extract_text() for p in pdf.pages).split())
+    client.post("/graph-view", data={"next": "/event/rotation"})
+    payload = embedded_payload(client.get("/event/match/0").data.decode())
+    a, b = event.matches(4)[0]
+    assert payload["archer_a"]["legend"] == f"{event.archers[a].name} (handicap {event.archers[a].handicap:g})"
+    assert payload["archer_b"]["legend"] == f"{event.archers[b].name} (handicap {event.archers[b].handicap:g})"

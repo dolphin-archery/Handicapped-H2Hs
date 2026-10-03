@@ -66,10 +66,14 @@ Setup has three stages, then you score the event one pass at a time.
      their total score over those `m` passes implies. `n_lookback` is how many passes
      back to look (1 = only the previous pass); *Start weight* is how many passes'
      worth of arrows the entered handicap counts for. Both are whole numbers of at
-     least 1 and default to the number of passes each archer shoots (5 for 60 arrows
-     in 12-arrow passes), i.e. use everything shot so far. The updated handicap sets
-     the distribution a pass is judged against (so the percentiles and the chart);
-     it is not displayed.
+     least 1. `n_lookback` defaults to 4 (so the final pass of a 60-arrow round of
+     12-arrow passes is based on every arrow shot so far in the round; a shorter event
+     just uses all the passes it has) and the start weight to the number of passes each
+     archer shoots (5 for 60 arrows in 12-arrow passes). The updated handicap sets the
+     distribution a pass is judged against, so the percentiles and the chart's curves
+     change from pass to pass. While handicaps are being updated, the tables that show a
+     pass's handicap also show a **Pass starting handicap** column: the handicap that
+     pass's distribution was built from, beside the handicap the pass score implies.
 3. **Stage 3 - pairings:** the archers are drawn at random into the round-robin,
    and every pass's pairings are shown. Press **Redraw pairings** for a fresh draw
    as often as you like, then **Confirm pairings and start event**.
@@ -77,7 +81,8 @@ Setup has three stages, then you score the event one pass at a time.
    Match | Score | Percentiles | Winner | Actions. Open each match to enter its
    scores on its own page. No handicap is shown beside an archer's name while scoring;
    once saved, a table shows just this pass (Archer | Score | Percentile | Handicap |
-   Winner, the handicap being the one the pass score implies). Where two percentiles
+   Winner, the handicap being the one the pass score implies; with handicap updating
+   on, a Pass starting handicap column sits before it). Where two percentiles
    would look the same at one decimal place, more places are shown until they differ.
    Once every match has scores, press **Advance to next pass**.
    - *Tie-break:* a pass is won by the higher percentile, then the higher score,
@@ -104,7 +109,8 @@ Setup has three stages, then you score the event one pass at a time.
 
 Graph view (a button on the match pages) shows or hides the interactive
 distribution chart and a short explanation of how the winner is decided. The chart
-names each curve with its archer's name, marks every score either archer has
+names each curve with its archer's name and handicap (the handicap the curve is
+built from, so it moves between passes when handicaps are updated), marks every score either archer has
 shot so far (against any opponent) with a vertical line labelled with its pass
 number ("P3"; by default only this pass's scores, with a tick box for the earlier
 ones), and widens its axis if a score falls outside the usual range.
