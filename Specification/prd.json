@@ -766,7 +766,7 @@
       "Verified in a real browser: switching Indoor/Outdoor swaps the dropdown and shows/hides the compound checkbox, calculating works for one indoor and one outdoor round; no JS console errors.",
       "The existing calculator tests are migrated and the full suite passes."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 56,
@@ -781,6 +781,6 @@
       "A real-browser walkthrough (Stage 1 advanced toggle, Stage 2 advanced dropdowns, Stage 3, a tied match blocked then decided by the tick boxes, the match page's heading/this-pass table, the labelled chart markers and legend with the ticked box adding lines on a later pass, the Results leaderboard, the Archer results page, downloading each export and checking its first bytes, the calculator's indoor/outdoor switch) completes with no JS console errors.",
       "The full suite passes, README.md describes the new behaviour and Specification/logbook.md has a Feedback 5 section."
     ],
-    "completed": false
+    "completed": true
   }
 ]

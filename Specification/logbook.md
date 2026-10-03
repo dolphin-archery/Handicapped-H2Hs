@@ -1638,3 +1638,79 @@ scoring), 2/4 and 2/6; legend exactly the two "Name (handicap H)" entries; h1 wi
 handicap; every marker inside the axis; each curve has one point per whole score across the
 x-range (117 points for 4-120, 121 for 0-120); console free of JS errors. The flat zero part of
 a curve is a thin line along the axis with no fill, which reads fine. Task 51 is complete.
+
+### Task 56: Integration checks, browser walkthrough and docs for Feedback 5 (complete)
+Six scenarios were added to `tests/test_integration.py` over the real routes: a 4-archer advanced
+event (Recurve and Compound on 40 cm at 18 m, a 5-zone face at 50 yd, a Worcester face; maxima
+120/120/108/60) in which, after every pass, the Results page's points equal the passes each
+archer has won so far; the same event after the last pass, where the leaderboard page, the Archer
+results page, both CSVs and the PDF all agree with the Event and with each other (6 points in
+total, one per decided match); a tie (same handicap and score) that cannot be saved until a box
+is ticked and then credits the ticked archer, with a later percentile-decided pass, giving 1
+point each and `decided_by` of "closest" and "percentile"; a half-scored pass that changes
+neither the leaderboard nor the exports; a pair that has not met showing both archers' earlier
+scores in the chart payload with an extreme score (5) inside the x-range; and the calculator
+flow (indoor compound Portsmouth, outdoor WA 1440 (90m)) equal to `archeryutils`. README.md was
+rewritten for advanced setup, the tie-break, the leaderboard, Archer results and exports, the
+calculator and the chart's labelled markers. Suite: 798 passed.
+
+Real-browser walkthrough (subagent, headless Edge 154 via Selenium, commit ac72561 exported with
+`git archive`, port 5075, through the page's own forms and buttons): PASS on every step, no
+bugs, console clean (favicon 404 and CDN tracking-prevention warnings only).
+- **Advanced setup:** choosing Advanced hides the simple dropdowns with Continue enabled; Stage 2
+  has the three extra dropdowns per row with the right labels; Redraw changed all three passes'
+  pairings; Confirm reached the overview.
+- **Match pages:** every heading is just the two names; score boxes read e.g. "Cat (handicap 35)
+  score (0-108)" with max attributes 108, 120 and 60 (the 5-zone and Worcester archers); each saved
+  match shows a This pass table (Archer | Score | Percentile | Winner, Yes/No).
+- **Tie-break:** Ann vs Ben, both Recurve handicap 30, scoring 90 and 90 with nothing ticked gives the
+  "Percentile and score are tied. Tick which archer's arrow was closest to the middle, then save
+  again." warning with the scores kept; the boxes are mutually exclusive; ticking Ann and saving
+  gives Ann Yes / Ben No, the "decided by closest to the middle" note and Ann's box still ticked.
+- **Chart:** on a pass-2 and a pass-3 page for a pair that had not met, the ticked box shows 2 and 4
+  marker lines labelled P1/P2 (0 unticked), the legend reads "Cat (handicap 35)" etc., every label
+  is inside the plot, and the screenshot reads well.
+- **Results:** the leaderboard (Cat 3, Dan 2, Ann 1, Ben 0; 3 of 3 passes) sums to 6 and matches the
+  winners tallied from the match pages; the Archer results page has four "name - total score N -
+  handicap H" sections with 3 rows and an Average row each; the tie-break pass shows as 90 / 90 for
+  both. The CSVs have the agreed headers (12 rows, no Average), the right content types and
+  `attachment; filename=` names, and the PDF (1 page) contains Leaderboard, every name and Average.
+- **Liveness:** with one of the two matches of pass 1 saved, every archer had 0 points, 0 decided
+  ("0 of 3 so far") and the CSV matched; after the second, 2 points in total, 1 decided each.
+- **Calculator:** Indoor selected by default with Portsmouth and the compound box (16 indoor rounds);
+  Outdoor swaps to the 76-round list with WA 70m selected and hides the compound box; York 900
+  gives 40.2; indoor Portsmouth 540 gives 39.4 compound and 44.5 plain, with the choices kept.
+One observation, not a bug: an archer pair with unrounded percentiles that both display as 0.0%
+(e.g. 1e-20 and 1e-18) still gets a winner by percentile, because ties are judged on the unrounded
+values (relative 1e-9, Assumption 33); the tie-break only applies to a genuine exact tie.
+Task 55's browser check (indoor/outdoor switch, calculation) is covered by step 2 of this
+walkthrough, so task 55 is complete too.
+
+## Feedback 5 summary (for anyone picking this up)
+All of `Specification/feedback.md` "Feedback 5" is implemented (prd tasks 45-56, all `completed`):
+- **Graphs:** each archer's chart markers are every score they have shot, against any opponent
+  (the old chart used only passes the pair had shared, which is why "show previous passes" added no
+  lines in later passes), each labelled "P<n>" on the chart; the x-axis always covers every marker;
+  the base handicap moved from the match heading into the chart legend (and stays beside the score
+  boxes, Assumption 32).
+- **Match page:** a single This pass table, Archer | Score | Percentile | Winner (Yes/No).
+- **Tie-break:** percentile, then score, then "closest to the middle" ticked by the scorer in two
+  mutually exclusive boxes; no coin flip; an unresolved tie is not saved.
+- **Advanced setup:** per-archer face type (all 16 `archeryutils` scoring systems), face size and
+  distance dropdowns; each archer's maximum score follows their own face.
+- **Outputs:** leaderboard (1 point per pass won), Archer results page (name, total score,
+  handicap, a table with an Average row), live and counting only completed passes; CSV (leaderboard,
+  archer results) and PDF exports (`fpdf2`).
+- **Calculator:** Indoor/Outdoor, a dropdown of every standard AGB/WA round, compound for indoor only.
+Decisions worth a second look, all in `Specification/AISpec.md` section 7: **31** "previous passes"
+means every score the two archers have shot; **32** handicap removed from the match heading only;
+**33** relative 1e-9 percentile tolerance and the tie-break design; **34** "face shape" read as face
+size, bowstyle has no effect on the target in advanced mode; **36** outputs use completed passes only
+(the existing pairwise and per-pass sections still show saved matches at once); **37-38** leaderboard
+ties share a rank, the heading handicap is the entered one, the Average row's label spans Pass and
+Opponent; **39** plain-UTF-8 CSV, `fpdf2` PDF; **40** the calculator offers the AGB and WA rounds only.
+Defects found by the browser checks and fixed: edge labels sticking out of the plot and a hover
+that showed a far-away point; by the unit tests: absolute percentile tolerance wrongly tying
+lower-tail scores, and a `nan` score accepted by the calculator (pre-existing). Not touched:
+everything under "Future Plans - DO NOT IMPLEMENT YET" (the handicap moving average, nicer UI,
+maths explainer, user guide, publication). Final suite: 798 tests passing.
