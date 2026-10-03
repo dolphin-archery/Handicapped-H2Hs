@@ -660,3 +660,22 @@ behaviour unchanged), a bad score with compound ticked -> friendly error, the
 control renders, and `resolve_indoor_round` returns the real archeryutils round
 objects. The checkbox state is not remembered after calculating (the existing
 round radio isn't either); left as is since it wasn't asked for. No issues.
+
+### Task 28: Scheduler: sitting-out rotations and the no-bye-shot schedule (complete)
+`h2h/rotation.py` only. `Rotation` gained `sitting_out: tuple[int, ...] = ()` and
+a `matches` property (the pairs, then `(bye, None)` for a solo bye match);
+`build_schedule` and the circle-method generator are untouched. New
+`build_sit_out_schedule(n_archers, passes_per_archer)` (plus a private
+`_catch_up_rotation` helper): an even `n_archers` just returns `build_schedule`.
+For an odd count it cycles the round-robin and stops at the largest number of
+rotations R0 in which no archer exceeds their passes, i.e. the largest R with
+`R - R // n <= P` (that expression is the pass count of the archers with the
+fewest byes, who are the ones closest to the limit). Each bye archer sits out.
+Everyone then has P or P-1 passes; if anyone has P-1, one catch-up rotation
+pairs those archers (greedily, preferring opponents not yet met) and the rest
+sit out. If their number is odd, the complete archer who has faced the fewest
+of them (ties to lowest index) joins and shoots P+1. No issues hit. 48 odd
+(n, P) combinations (n in 3..9, P in 1..12) never broke the "at least P, at most
+one P+1" rule. Known cases: (5,4) -> 5 rotations, (5,5) -> 7, (3,5) -> 8,
+(3,1) -> 2, (7,5) -> 6. 169 tests added (186 in test_rotation.py; whole suite
+353 passing at the time).

@@ -342,7 +342,7 @@
       "An even n_archers returns exactly build_schedule(n_archers, passes_per_archer).",
       "n_archers < 2 or passes_per_archer < 1 raises ValueError."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 29,

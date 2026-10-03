@@ -3,11 +3,15 @@
 Generates a schedule of archer-position pairings (the standard "circle
 method" round-robin), independent of archer identities (Stage 1 runs before
 names/handicaps are known -- see AISpec.md section 5.1) and of the stats
-engine. An odd number of archers gets a bye slot each rotation.
+engine. An odd number of archers gets a bye slot each rotation, which is
+either shot alone (`build_schedule`) or sat out (`build_sit_out_schedule`,
+which adds a catch-up rotation so every archer still shoots all their passes
+-- see AISpec.md section 5.3 and Assumption 15).
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 
 
@@ -20,12 +24,30 @@ class Rotation:
     pairs : list[tuple[int, int]]
         Archer-index pairs facing off this rotation.
     bye : int | None
-        Archer index sitting out this rotation (shoots alone, no comparison
-        -- see AISpec.md Assumption 14), or None if `n_archers` is even.
+        Archer index shooting alone with no opponent this rotation (no
+        comparison -- see AISpec.md Assumption 14), or None. Only set when
+        byes are shot and `n_archers` is odd.
+    sitting_out : tuple[int, ...]
+        Archer indices not shooting this rotation (empty unless the schedule
+        comes from `build_sit_out_schedule`).
     """
 
     pairs: list[tuple[int, int]]
     bye: int | None = None
+    sitting_out: tuple[int, ...] = ()
+
+    @property
+    def matches(self) -> list[tuple[int, int | None]]:
+        """Every match shot this rotation.
+
+        Returns
+        -------
+        list[tuple[int, int | None]]
+            The `pairs`, followed by `(bye, None)` (the bye archer's solo
+            match) if `bye` is not None.
+        """
+        solo = [] if self.bye is None else [(self.bye, None)]
+        return [*self.pairs, *solo]
 
 
 def _full_round_robin(n_archers: int) -> list[Rotation]:
@@ -101,3 +123,106 @@ def build_schedule(n_archers: int, n_rotations: int) -> list[Rotation]:
 
     full = _full_round_robin(n_archers)
     return [full[i % len(full)] for i in range(n_rotations)]
+
+
+def _catch_up_rotation(
+    n_archers: int,
+    passes_per_archer: int,
+    main_rotations: list[Rotation],
+) -> Rotation | None:
+    """Build the single rotation that tops up archers who are one pass short.
+
+    Parameters
+    ----------
+    n_archers : int
+        Number of archers (archer-index positions 0..n_archers-1).
+    passes_per_archer : int
+        Passes every archer must shoot.
+    main_rotations : list[Rotation]
+        The sit-out rotations already scheduled; only their `pairs` are read.
+
+    Returns
+    -------
+    Rotation | None
+        None if nobody is short. Otherwise a rotation pairing the short
+        archers with each other (plus one already-complete archer as an extra
+        partner if their number is odd, chosen as the one who has faced the
+        fewest short archers, ties to the lowest index), preferring opponents
+        not yet faced in `main_rotations`; everyone else sits out.
+    """
+    shots = Counter(a for r in main_rotations for pair in r.pairs for a in pair)
+    shooters = [a for a in range(n_archers) if shots[a] < passes_per_archer]
+    if not shooters:
+        return None
+
+    faced = {frozenset(pair) for r in main_rotations for pair in r.pairs}
+    if len(shooters) % 2 == 1:
+        complete = [a for a in range(n_archers) if a not in shooters]
+        partner = min(
+            complete,
+            key=lambda c: (sum(frozenset((c, s)) in faced for s in shooters), c),
+        )
+        shooters = sorted([*shooters, partner])
+
+    pairs: list[tuple[int, int]] = []
+    remaining = shooters[:]
+    while remaining:
+        a = remaining.pop(0)
+        b = next((x for x in remaining if frozenset((a, x)) not in faced), remaining[0])
+        remaining.remove(b)
+        pairs.append((a, b))
+
+    sitting_out = tuple(a for a in range(n_archers) if a not in shooters)
+    return Rotation(pairs=pairs, bye=None, sitting_out=sitting_out)
+
+
+def build_sit_out_schedule(n_archers: int, passes_per_archer: int) -> list[Rotation]:
+    """Build a schedule in which bye archers sit out rather than shoot alone.
+
+    Parameters
+    ----------
+    n_archers : int
+        Number of archers (must be >= 2).
+    passes_per_archer : int
+        Passes every archer must shoot (must be >= 1).
+
+    Returns
+    -------
+    list[Rotation]
+        For an even `n_archers`, exactly `build_schedule(n_archers,
+        passes_per_archer)`. For an odd `n_archers`, the cycled circle-method
+        round-robin run for the largest number of rotations R in which nobody
+        shoots more than `passes_per_archer` passes (the archers with the
+        fewest byes have shot R - R // n_archers passes), each rotation's bye
+        archer in `sitting_out` and `bye` None. Every archer then has shot
+        `passes_per_archer` or one fewer; if any are short, one catch-up
+        rotation (see `_catch_up_rotation`) is appended. Everyone ends with at
+        least `passes_per_archer` passes and at most one archer with one extra
+        (an exact count is impossible when both `n_archers` and
+        `passes_per_archer` are odd, as every rotation has an even number of
+        shooters). See AISpec.md Assumption 15.
+
+    Raises
+    ------
+    ValueError
+        If `n_archers` < 2 or `passes_per_archer` < 1.
+    """
+    if n_archers < 2:
+        msg = f"n_archers must be at least 2, got {n_archers}."
+        raise ValueError(msg)
+    if passes_per_archer < 1:
+        msg = f"passes_per_archer must be at least 1, got {passes_per_archer}."
+        raise ValueError(msg)
+    if n_archers % 2 == 0:
+        return build_schedule(n_archers, passes_per_archer)
+
+    n_main = 0
+    while (n_main + 1) - (n_main + 1) // n_archers <= passes_per_archer:
+        n_main += 1
+
+    main = [
+        Rotation(pairs=r.pairs, bye=None, sitting_out=(r.bye,))
+        for r in build_schedule(n_archers, n_main)
+    ]
+    catch_up = _catch_up_rotation(n_archers, passes_per_archer, main)
+    return main if catch_up is None else [*main, catch_up]
