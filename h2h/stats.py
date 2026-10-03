@@ -12,8 +12,9 @@ in isolation.
 
 from __future__ import annotations
 
-import random
+import math
 import warnings
+from typing import NamedTuple
 
 import numpy as np
 
@@ -22,6 +23,34 @@ from archeryutils import rounds as au_rounds
 from archeryutils import targets
 
 _AGB_SCHEME = hc.handicap_scheme("AGB")
+
+# Two percentiles whose relative difference is below this are treated as equal when
+# deciding a pass (AISpec.md Assumption 33): a percentile is a sum of probabilities,
+# so it is only accurate to within floating-point rounding (the percentile of a
+# top score is 1 only to about 1e-16), and exact equality would let that noise decide
+# the pass. The tolerance is relative, not absolute, because a score far in the lower
+# tail has a percentile like 1e-18, and 1e-18 and 1e-20 are not a tie.
+PERCENTILE_REL_TOLERANCE = 1e-9
+
+
+class TieBreakRequired(ValueError):
+    """Raised when percentile and score are both tied and no closest archer was given."""
+
+
+class PassDecision(NamedTuple):
+    """The outcome of deciding one pass between two archers.
+
+    Attributes
+    ----------
+    winner : str
+        "a" or "b".
+    decided_by : str
+        Which step of the tie-break chain decided it: "percentile", "score" or
+        "closest" (the archer whose arrow was closest to the middle).
+    """
+
+    winner: str
+    decided_by: str
 
 
 def per_arrow_pmf(
@@ -206,33 +235,50 @@ def decide_pass_winner(
     score_a: float,
     percentile_b: float,
     score_b: float,
-    rng: random.Random | None = None,
-) -> str:
+    closest: str | None = None,
+) -> PassDecision:
     """Decide the winner of a single pass between two archers.
 
     Compares each archer's percentile (see `percentile`) under their own
     handicap-implied distribution, so the comparison naturally accounts for
-    different variances between archers. Ties are always broken, per
-    Testing/idea_evaluation.md: first by raw score, then by coin flip.
+    different variances between archers. Ties are broken, per Specification/
+    feedback.md "Feedback 5", by raw score and then by which archer's arrow was
+    closest to the middle (judged by the archers); there is no randomness.
 
     Parameters
     ----------
     percentile_a, percentile_b : float
-        Each archer's percentile for the pass just shot.
+        Each archer's percentile for the pass just shot. Percentiles that differ
+        by a relative amount below `PERCENTILE_REL_TOLERANCE` count as equal.
     score_a, score_b : float
-        Each archer's raw score for the pass (used only to break ties).
-    rng : random.Random | None, default=None
-        Source of randomness for the coin-flip tie-break; defaults to the
-        `random` module's own state if not provided.
+        Each archer's raw score for the pass (the first tie-break).
+    closest : str | None, default=None
+        "a" or "b": the archer whose arrow was closest to the middle. Only used
+        when the percentiles and the scores are both tied; ignored otherwise.
 
     Returns
     -------
-    str
-        "a" or "b" — the winning archer. Never a tie.
+    PassDecision
+        The winning archer ("a" or "b") and the step that decided it.
+
+    Raises
+    ------
+    ValueError
+        If `closest` is not None, "a" or "b".
+    TieBreakRequired
+        If the percentiles and scores are both tied and `closest` is None.
     """
-    if percentile_a != percentile_b:
-        return "a" if percentile_a > percentile_b else "b"
+    if closest not in (None, "a", "b"):
+        msg = f"closest must be 'a', 'b' or None, got {closest!r}."
+        raise ValueError(msg)
+    if not math.isclose(percentile_a, percentile_b, rel_tol=PERCENTILE_REL_TOLERANCE, abs_tol=0.0):
+        return PassDecision("a" if percentile_a > percentile_b else "b", "percentile")
     if score_a != score_b:
-        return "a" if score_a > score_b else "b"
-    source = rng if rng is not None else random
-    return "a" if source.random() < 0.5 else "b"
+        return PassDecision("a" if score_a > score_b else "b", "score")
+    if closest is None:
+        msg = (
+            "Percentile and score are tied: say which archer's arrow was closest "
+            "to the middle."
+        )
+        raise TieBreakRequired(msg)
+    return PassDecision(closest, "closest")

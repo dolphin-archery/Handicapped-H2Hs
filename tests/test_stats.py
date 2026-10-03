@@ -103,23 +103,65 @@ def test_percentile_extremes(dist_h25):
 
 def test_decide_pass_winner_picks_higher_percentile():
     """A clearly higher percentile wins regardless of raw score."""
-    assert stats.decide_pass_winner(0.9, 100, 0.1, 200) == "a"
-    assert stats.decide_pass_winner(0.1, 200, 0.9, 100) == "b"
+    assert stats.decide_pass_winner(0.9, 100, 0.1, 200) == ("a", "percentile")
+    assert stats.decide_pass_winner(0.1, 200, 0.9, 100) == ("b", "percentile")
 
 
 def test_decide_pass_winner_tie_breaks_on_raw_score():
     """Equal percentiles fall back to comparing raw scores."""
-    assert stats.decide_pass_winner(0.5, 110, 0.5, 100) == "a"
-    assert stats.decide_pass_winner(0.5, 100, 0.5, 110) == "b"
+    assert stats.decide_pass_winner(0.5, 110, 0.5, 100) == ("a", "score")
+    assert stats.decide_pass_winner(0.5, 100, 0.5, 110) == ("b", "score")
 
 
-def test_decide_pass_winner_full_tie_is_a_genuine_coin_flip():
-    """Equal percentile and equal score must still resolve, via a fair coin flip."""
-    outcomes = {
-        stats.decide_pass_winner(0.5, 100, 0.5, 100, rng=random.Random(seed))
-        for seed in range(50)
-    }
-    assert outcomes == {"a", "b"}
+@pytest.mark.parametrize("closest", ["a", "b"])
+def test_decide_pass_winner_full_tie_goes_to_the_closest_archer(closest):
+    """Equal percentile and score: the archer closest to the middle wins."""
+    assert stats.decide_pass_winner(0.5, 100, 0.5, 100, closest=closest) == (closest, "closest")
+
+
+def test_decide_pass_winner_full_tie_without_a_closest_archer_is_refused_not_guessed():
+    """There is no coin flip: the caller must be told the tie needs resolving."""
+    with pytest.raises(stats.TieBreakRequired):
+        stats.decide_pass_winner(0.5, 100, 0.5, 100)
+    assert issubclass(stats.TieBreakRequired, ValueError)
+
+
+def test_decide_pass_winner_ignores_closest_unless_percentile_and_score_are_tied():
+    """A supplied closest archer never overrides the percentile or the score."""
+    assert stats.decide_pass_winner(0.9, 100, 0.1, 100, closest="b") == ("a", "percentile")
+    assert stats.decide_pass_winner(0.5, 110, 0.5, 100, closest="b") == ("a", "score")
+
+
+def test_decide_pass_winner_rejects_a_closest_value_that_is_not_a_or_b():
+    """closest is 'a', 'b' or None only."""
+    with pytest.raises(ValueError):
+        stats.decide_pass_winner(0.5, 100, 0.5, 100, closest="c")
+
+
+def test_decide_pass_winner_is_deterministic_and_takes_no_random_source():
+    """The same inputs always give the same output, and no rng parameter exists."""
+    results = {stats.decide_pass_winner(0.5, 100, 0.5, 100, closest="a") for _ in range(100)}
+    assert results == {("a", "closest")}
+    with pytest.raises(TypeError):
+        stats.decide_pass_winner(0.5, 100, 0.5, 100, rng=random.Random(0))
+
+
+@pytest.mark.parametrize(
+    ("percentile_a", "percentile_b"),
+    [(1.0, 1.0 - 1e-12), (0.5, 0.5 + 1e-12), (0.0, 0.0), (1e-18, 1e-18 * (1 + 1e-12))],
+)
+def test_percentiles_within_rounding_of_each_other_are_tied(percentile_a, percentile_b):
+    """Floating-point noise must not decide a pass: such percentiles fall through to the score."""
+    assert stats.decide_pass_winner(percentile_a, 101, percentile_b, 100) == ("a", "score")
+
+
+@pytest.mark.parametrize(
+    ("percentile_a", "percentile_b", "winner"),
+    [(0.5, 0.5 + 1e-6, "b"), (1e-18, 1e-20, "a"), (1e-20, 1e-18, "b")],
+)
+def test_percentiles_that_genuinely_differ_are_not_tied(percentile_a, percentile_b, winner):
+    """The tolerance is relative: very small percentiles that differ a lot are not a tie."""
+    assert stats.decide_pass_winner(percentile_a, 100, percentile_b, 100) == (winner, "percentile")
 
 
 # --- Feedback 1: equivalent_handicap -------------------------------------

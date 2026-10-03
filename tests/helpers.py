@@ -32,8 +32,37 @@ _SCORE_INPUT = re.compile(r'name="score_(\d+)"')
 _PASS_HEADING = re.compile(r"Pass (\d+) of (\d+)")
 
 
-def save_match(client, match_index, scores):
+def save_match(client, match_index, scores, closest=None):
     """POST one match's scores to its page.
+
+    Parameters
+    ----------
+    client : flask.testing.FlaskClient
+        Test client with an event already set up.
+    match_index : int
+        Position of the match in the current pass.
+    scores : dict[int, int | str]
+        Mapping of archer index to the score text/number to submit.
+    closest : int | None, default=None
+        Archer whose "closest to the middle" box is ticked, if any.
+
+    Returns
+    -------
+    werkzeug.test.TestResponse
+        The (non-redirect-followed) response.
+    """
+    data = {f"score_{archer}": str(score) for archer, score in scores.items()}
+    if closest is not None:
+        data["closest"] = str(closest)
+    return client.post(f"/event/match/{match_index}", data=data)
+
+
+def save_match_breaking_ties(client, match_index, scores):
+    """Like `save_match`, but if the scores tie, tick the lowest-numbered archer as closest.
+
+    Tests that give same-handicap archers the same score use this (via
+    `score_current_pass`) so the tie-break needed to save the match does not
+    stop them playing on.
 
     Parameters
     ----------
@@ -47,12 +76,12 @@ def save_match(client, match_index, scores):
     Returns
     -------
     werkzeug.test.TestResponse
-        The (non-redirect-followed) response.
+        The response of the save that finally succeeded (or failed for another reason).
     """
-    return client.post(
-        f"/event/match/{match_index}",
-        data={f"score_{archer}": str(score) for archer, score in scores.items()},
-    )
+    response = save_match(client, match_index, scores)
+    if response.status_code == 200 and b"closest to the middle" in response.data:
+        response = save_match(client, match_index, scores, closest=min(scores))
+    return response
 
 
 def pass_position(client):
@@ -97,7 +126,7 @@ def score_current_pass(client, score_fn=lambda archer: 60):
     for match_index in sorted({int(m) for m in _MATCH_LINK.findall(overview)}):
         page = client.get(f"/event/match/{match_index}").data.decode()
         archers = sorted({int(a) for a in _SCORE_INPUT.findall(page)})
-        save_match(client, match_index, {a: score_fn(a) for a in archers})
+        save_match_breaking_ties(client, match_index, {a: score_fn(a) for a in archers})
         scored.append(archers)
     return scored
 

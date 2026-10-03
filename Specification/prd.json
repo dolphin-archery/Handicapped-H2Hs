@@ -587,10 +587,10 @@
   {
     "id": 45,
     "name": "Tie-break: percentile, then score, then closest to the middle (statistics and event model)",
-    "description": "Per Specification/feedback.md 'Feedback 5' (Tie breaks) and Specification/AISpec.md section 5.3 'Tie-break' (Assumption 33): remove the random coin flip from the pass-winner decision. h2h.stats.decide_pass_winner no longer takes an rng. It compares percentiles (equal when they differ by less than 1e-9), then raw scores, then an optional `closest` argument ('a' or 'b': the archer the scorer says was closest to the middle); it returns the winner ('a'/'b') together with which step decided it ('percentile', 'score' or 'closest'). If percentiles and scores are both tied and `closest` is not given it raises a dedicated ValueError subclass (TieBreakRequired) instead of guessing; an unneeded `closest` is ignored. PassResult gains `decided_by` (None for a bye match). Event.record_match accepts an optional `closest` archer index (which must be one of the two archers of the match) and passes it through; a tie with no closest archer raises TieBreakRequired and records nothing (earlier scores for the match stay untouched). Reopening a decided-by-closest match must be able to report which archer was ticked (the winner when decided_by == 'closest'). Update every existing test that relied on the coin flip or on the rng parameter.",
+    "description": "Per Specification/feedback.md 'Feedback 5' (Tie breaks) and Specification/AISpec.md section 5.3 'Tie-break' (Assumption 33): remove the random coin flip from the pass-winner decision. h2h.stats.decide_pass_winner no longer takes an rng. It compares percentiles (equal when their relative difference is below 1e-9), then raw scores, then an optional `closest` argument ('a' or 'b': the archer the scorer says was closest to the middle); it returns the winner ('a'/'b') together with which step decided it ('percentile', 'score' or 'closest'). If percentiles and scores are both tied and `closest` is not given it raises a dedicated ValueError subclass (TieBreakRequired) instead of guessing; an unneeded `closest` is ignored. PassResult gains `decided_by` (None for a bye match). Event.record_match accepts an optional `closest` archer index (which must be one of the two archers of the match) and passes it through; a tie with no closest archer raises TieBreakRequired and records nothing (earlier scores for the match stay untouched). Reopening a decided-by-closest match must be able to report which archer was ticked (the winner when decided_by == 'closest'). Update every existing test that relied on the coin flip or on the rng parameter.",
     "tests": [
       "Higher percentile wins whatever the scores; with equal percentiles the higher score wins; the result reports decided_by 'percentile' / 'score' respectively.",
-      "Percentiles that differ by less than 1e-9 (e.g. 1.0 and 1.0 - 1e-12) count as equal, so the score decides; percentiles that differ by 1e-6 do not.",
+      "Percentiles with a relative difference below 1e-9 (e.g. 1.0 and 1.0 - 1e-12, or 0.5 and 0.5 + 1e-12) count as equal, so the score decides; percentiles that differ by 1e-6 relative do not; two very small percentiles such as 1e-18 and 1e-20 are NOT tied (the higher wins by percentile); two exact zeros are tied.",
       "Equal percentiles and equal scores with closest='a' or 'b' give that archer the win with decided_by 'closest'; with closest=None a TieBreakRequired (a ValueError) is raised.",
       "A supplied `closest` is ignored when percentile or score already decides the pass (the winner and decided_by are unchanged).",
       "decide_pass_winner no longer accepts an rng and nothing in h2h/ imports random for deciding a pass; the same inputs always give the same output (called 100 times).",
@@ -599,7 +599,7 @@
       "A bye match records decided_by None and a closest argument for it is ignored.",
       "The full suite passes after the existing winner and tie tests are migrated."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 46,

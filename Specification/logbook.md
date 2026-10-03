@@ -1302,3 +1302,64 @@ the feedback: the Stage 2 form refills after an error, and a redraw prefers
 pairings that actually differ. Not touched: everything under "Future Plans - DO NOT
 IMPLEMENT YET" apart from what Feedback 4 promoted out of it. Final suite: 550
 tests passing.
+
+
+## Feedback 5 - Graph markers, tie-break, advanced setup, outputs, calculator
+
+Scope: every item under `Specification/feedback.md`'s "Feedback 5" heading
+(prd tasks 45-56). Items that were under "Future Plans" before and are now
+promoted into Feedback 5 (advanced setup, the leaderboard/per-archer results/
+exports) are built; what is still under "Future Plans - DO NOT IMPLEMENT YET"
+(the handicap moving average, nicer UI/maths explainer/user guide/publication)
+is not touched. `Specification/AISpec.md` was updated first (sections 1-6, new
+5.4a, and Assumptions 31-40; Assumptions 6, 10 and 30 are superseded), then
+`prd.json`.
+
+Assumptions made (full text in `Specification/AISpec.md` section 7):
+- **31** - chart markers: every score each of the two archers has shot, against
+  any opponent (the old chart used only passes the pair had shared); the
+  default shows only the current pass's scores; labels are "P<n>" on the chart.
+- **32** - the handicap is removed from the match page heading only; it stays
+  beside the score boxes (graph view is off by default, so the legend alone
+  would leave the page with no handicaps, against Feedback 4).
+- **33** - tie-break: relative percentile tolerance 1e-9; two mutually exclusive
+  tick boxes always shown on paired matches; an unresolved tie is rejected, not
+  stored; ticks editable until the pass is advanced.
+- **34** - advanced setup: "face type" = an `archeryutils` scoring system (16 of
+  them, not "Custom"), "shape" read as face size; bowstyle has no effect on the
+  target in advanced mode.
+- **36-38** - outputs use only fully scored ("completed") passes; leaderboard
+  ranks by points with shared ranks; the per-archer heading handicap is the
+  entered one, and the Average row leaves Pass and Opponent blank.
+- **39-40** - plain-UTF-8 CSV, `fpdf2` for the PDF; the calculator offers the AGB
+  and WA indoor/outdoor rounds only.
+
+### Task 45: Tie-break in the statistics engine and event model (complete)
+`h2h.stats.decide_pass_winner` lost its `rng` parameter and the coin flip. It now
+compares percentiles (tied when their *relative* difference is below 1e-9), then
+raw scores, then an optional `closest` ("a"/"b"), and returns a `PassDecision`
+(winner, decided_by with "percentile", "score" or "closest"). A full tie with no
+`closest` raises `TieBreakRequired` (a `ValueError` subclass); an unneeded
+`closest` is ignored. `PassResult` gained `decided_by` (None for a bye), and
+`Event.record_match(scores, closest=None)` passes the ticked archer's index
+through, validating it is one of the pair; nothing is recorded when a tie is
+refused, so an earlier saved result for the match survives a rejected re-save.
+`import random` is gone from `stats.py`.
+
+The first version used an absolute tolerance of 1e-9 and 24 existing tests failed:
+their scores (e.g. 60 for archers of handicap 20 and 25) sit so far in the lower
+tail that both percentiles are around 1e-18, which an absolute tolerance calls a
+tie. Rounding error in a sum of probabilities is relative to the sum, so the
+tolerance is now relative (`math.isclose(rel_tol=1e-9, abs_tol=0)`), after which
+only the intentional ties remained; the spec (Assumption 33a) and the prd test were
+corrected to say so. Tests: the old coin-flip test became a refusal test, plus
+tie-chain, tolerance (ties at the top end, non-ties in the lower tail, exact zeros),
+determinism, `closest`-ignored, re-save and bye cases at the stats and event level.
+
+One piece of task 47 was done here so the commit stays green: the match POST
+handler now reads the `closest` tick (rejecting several ticks, or one that is not in
+the match; ignoring it for a bye match) and hands it to `record_match`, and the
+test helpers' `score_current_pass` resolves a tie (the mixed-bowstyle integration
+tests deliberately give same-handicap archers the same score) by ticking the
+lowest-numbered archer. The boxes themselves, the note, the script and their tests
+are still task 47. Suite: 573 passed.

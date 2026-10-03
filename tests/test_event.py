@@ -381,3 +381,104 @@ def test_outdoor_compound_and_recurve_share_a_distribution_but_indoor_ones_diffe
     for setup, identical in ((TargetSetup(50, METRE, 80), True), (TargetSetup(25, METRE, 60), False)):
         event = Event(pair, 12, setup, schedule)
         assert (event.distribution_for(0) == event.distribution_for(1)) is identical
+
+
+# --- Feedback 5: tie-break (percentile, then score, then closest to the middle) ----
+
+
+def make_tied_event(n_pass=12):
+    """A 2-archer event whose archers have the same handicap, bowstyle and target.
+
+    Any equal scores for the two give an exact tie in percentile and score.
+    """
+    archers = [Archer(f"T{i}", 30, Bowstyle.RECURVE) for i in range(2)]
+    return Event(archers, n_pass, PORTSMOUTH, build_schedule(2, 1))
+
+
+def test_a_tied_match_without_a_closest_archer_raises_and_records_nothing():
+    """Same handicap, target and score: a tie that needs the closest-to-the-middle archer."""
+    event = make_tied_event()
+    with pytest.raises(stats.TieBreakRequired):
+        event.record_match({0: 90, 1: 90})
+    assert event.results == []
+    assert not event.is_rotation_complete(0)
+
+
+@pytest.mark.parametrize("closest", [0, 1])
+def test_a_tied_match_is_decided_by_the_closest_archer(closest):
+    """Exactly the ticked archer wins, and the result says how it was decided."""
+    event = make_tied_event()
+    results = {r.archer_index: r for r in event.record_match({0: 90, 1: 90}, closest=closest)}
+    assert results[closest].won is True
+    assert results[1 - closest].won is False
+    assert {r.decided_by for r in results.values()} == {"closest"}
+    assert event.pairwise_result(0, 1).outcome == closest
+
+
+def test_a_closest_archer_who_is_not_in_the_match_is_rejected():
+    """closest must be one of the two archers; nothing is recorded otherwise."""
+    event = make_tied_event()
+    with pytest.raises(ValueError):
+        event.record_match({0: 90, 1: 90}, closest=5)
+    assert event.results == []
+
+
+def test_results_record_which_step_decided_them():
+    """decided_by is 'percentile' when percentiles differ and 'score' when only scores do."""
+    event = make_event(2)
+    results = event.record_match({0: 110, 1: 60})
+    assert {r.decided_by for r in results} == {"percentile"}
+
+
+def test_a_closest_archer_is_ignored_when_percentile_or_score_decides():
+    """The tick is not stored (decided_by stays percentile) and cannot override the winner."""
+    event = make_event(2)
+    results = {r.archer_index: r for r in event.record_match({0: 110, 1: 60}, closest=1)}
+    assert results[0].won is True
+    assert results[0].decided_by == results[1].decided_by == "percentile"
+
+
+def test_resaving_a_tied_match_with_the_other_closest_archer_replaces_the_winner():
+    """The tick can be corrected like any score until the pass is advanced."""
+    event = make_tied_event()
+    event.record_match({0: 90, 1: 90}, closest=0)
+    event.record_match({0: 90, 1: 90}, closest=1)
+    assert len(event.results) == 2
+    assert {r.archer_index for r in event.results if r.won} == {1}
+
+
+def test_resaving_a_tied_match_with_scores_that_no_longer_tie_drops_the_tick():
+    """With different scores the better one wins and the result is no longer 'closest'."""
+    event = make_tied_event()
+    event.record_match({0: 90, 1: 90}, closest=0)
+    results = {r.archer_index: r for r in event.record_match({0: 90, 1: 95}, closest=0)}
+    assert results[1].won is True
+    assert {r.decided_by for r in results.values()} == {"percentile"}
+
+
+def test_equal_percentiles_at_the_top_end_are_decided_by_score_not_rounding_noise():
+    """Handicap-150 archers' near-impossible high scores all sit at ~100%: the score decides."""
+    archers = [Archer(f"H{i}", 150, Bowstyle.RECURVE) for i in range(2)]
+    event = Event(archers, 12, PORTSMOUTH, build_schedule(2, 1))
+    results = {r.archer_index: r for r in event.record_match({0: 100, 1: 90})}
+    assert results[0].won is True
+    assert {r.decided_by for r in results.values()} == {"score"}
+
+
+def test_resaving_a_match_as_a_tie_without_a_tick_keeps_the_earlier_result():
+    """A rejected re-save leaves what was saved before untouched."""
+    event = make_tied_event()
+    event.record_match({0: 90, 1: 95})
+    before = list(event.results)
+    with pytest.raises(stats.TieBreakRequired):
+        event.record_match({0: 90, 1: 90})
+    assert event.results == before
+
+
+def test_a_bye_match_has_no_tie_break_and_ignores_closest():
+    """A solo bye has nothing to tie with: decided_by is None and a closest value is ignored."""
+    event = make_event(3, n_rotations=3)
+    _, solo = event.matches(0)
+    (result,) = event.record_match({solo[0]: 50}, closest=solo[0])
+    assert result.won is None
+    assert result.decided_by is None

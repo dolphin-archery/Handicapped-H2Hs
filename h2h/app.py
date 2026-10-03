@@ -169,6 +169,38 @@ def create_app(state: SessionState | None = None) -> Flask:
             return stage2(error=str(exc), values=request.form)
         return redirect(url_for("stage3"))
 
+    def _closest_archer(ticked: list[str], match_archers: list[int]) -> int | None:
+        """The archer ticked as closest to the middle, validated against the match.
+
+        Parameters
+        ----------
+        ticked : list[str]
+            The submitted values of the `closest` tick boxes (archer indices).
+        match_archers : list[int]
+            The archer indices in the match being saved.
+
+        Returns
+        -------
+        int | None
+            The ticked archer, or None if none was ticked or the match has no
+            opponent (a bye match has no tie-break).
+
+        Raises
+        ------
+        ValueError
+            If more than one box is ticked, or the value is not one of the
+            match's two archers.
+        """
+        if len(match_archers) < 2 or not ticked:
+            return None
+        if len(ticked) > 1:
+            msg = "Tick only one archer as closest to the middle."
+            raise ValueError(msg)
+        if ticked[0] not in {str(i) for i in match_archers}:
+            msg = "The archer closest to the middle must be one of the two in this match."
+            raise ValueError(msg)
+        return int(ticked[0])
+
     def _stage3_redirect():
         """The redirect a Stage 3 page needs instead of acting, or None if it may proceed.
 
@@ -378,6 +410,7 @@ def create_app(state: SessionState | None = None) -> Flask:
 
         form_scores = {i: request.form.get(f"score_{i}", "") for i in archers}
         try:
+            closest = _closest_archer(request.form.getlist("closest"), archers)
             scores = {}
             for archer_idx, raw in form_scores.items():
                 try:
@@ -385,7 +418,7 @@ def create_app(state: SessionState | None = None) -> Flask:
                 except ValueError:
                     msg = f"{event.archers[archer_idx].name}'s score must be a number."
                     raise ValueError(msg) from None
-            event.record_match(scores)
+            event.record_match(scores, closest=closest)
         except ValueError as exc:
             return event_match(match_index, error=str(exc), form_scores=form_scores)
         return redirect(url_for("event_match", match_index=match_index))

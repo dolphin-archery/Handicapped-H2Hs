@@ -397,9 +397,9 @@ distribution, so archers on different targets are still compared fairly.
 - A saved match decided by the tick shows a note under its table ("percentile and
   score were tied; decided by closest to the middle"), the tick is shown ticked when
   the match is reopened, and the overview names that winner as for any other pass.
-- Percentiles are compared with a tolerance of 1e-9, so two mathematically equal
-  percentiles (for example both 100%) are tied even if floating-point rounding
-  separates them (Assumption 33).
+- Percentiles are compared with a relative tolerance of 1e-9, so two mathematically
+  equal percentiles (for example both 100%) are tied even if floating-point rounding
+  separates them, while two very small ones (1e-18 and 1e-20) are not (Assumption 33).
 - The overview has an **Advance to next pass** button, enabled only once every
   match in the current pass has scores (also enforced server-side). Pressing it
   makes the next rotation current: the overview then shows the new pairings and
@@ -802,10 +802,13 @@ built by Feedback 5) exists.
     shown in the legend when graph view is on, but kept beside each archer's score
     box, because with graph view off (the default) the legend does not exist and
     Feedback 4 asked for handicaps to be visible on the match page.
-33. **Tie-break details.** (a) Two percentiles are tied if they differ by less than 1e-9:
-    the percentile of a score at or above an archer's maximum is a sum of probabilities
-    that is 1 only to within rounding, so exact floating-point equality would let
-    rounding noise decide a pass. (b) "Closest to the middle" is entered as two
+33. **Tie-break details.** (a) Two percentiles are tied if they differ by a relative amount
+    below 1e-9: a percentile is a sum of probabilities, so (for example) the percentile of
+    a score at or above an archer's maximum is 1 only to within rounding, and exact
+    floating-point equality would let rounding noise decide a pass. The tolerance is
+    relative because rounding error in a sum is relative to the sum, and scores far in
+    the lower tail have percentiles around 1e-18, where an absolute 1e-9 would wrongly
+    call every pair tied. (b) "Closest to the middle" is entered as two
     mutually exclusive tick boxes shown always on paired matches (the scorer cannot
     know in advance that a tie will occur, and the percentile is not known until the
     scores are saved), made exclusive by script on the page and by the server. (c) A

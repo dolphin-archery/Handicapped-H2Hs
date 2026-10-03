@@ -313,6 +313,10 @@ class PassResult:
     won : bool | None
         Whether they won the pass, or None if they had the bye (no
         opponent to compare against).
+    decided_by : str | None
+        Which step of the tie-break chain decided the pass ("percentile",
+        "score" or "closest": the closest to the middle), or None for a bye.
+        When it is "closest", the winner is the archer who was ticked.
     """
 
     rotation_index: int
@@ -322,6 +326,7 @@ class PassResult:
     handicap: float | None
     opponent_index: int | None
     won: bool | None
+    decided_by: str | None = None
 
 
 @dataclass(frozen=True)
@@ -430,7 +435,13 @@ class Event:
         return self.current_rotation_index == last and self.is_rotation_complete(last)
 
     def _pair_results(
-        self, rotation_index: int, a: int, b: int, score_a: int, score_b: int
+        self,
+        rotation_index: int,
+        a: int,
+        b: int,
+        score_a: int,
+        score_b: int,
+        closest: int | None = None,
     ) -> list[PassResult]:
         """Build both archers' results for a head-to-head match (nothing is stored).
 
@@ -442,16 +453,26 @@ class Event:
             The two archers' indices.
         score_a, score_b : int
             Their already-validated scores.
+        closest : int | None, default=None
+            Index of the archer whose arrow was closest to the middle; only
+            used if the percentiles and scores are both tied.
 
         Returns
         -------
         list[PassResult]
             `[a's result, b's result]`, each using that archer's OWN
             distribution/target, with the pass winner decided between them.
+
+        Raises
+        ------
+        h2h.stats.TieBreakRequired
+            If the percentiles and scores are tied and `closest` is None.
         """
         pct_a = stats.percentile(self._distributions[a], score_a)
         pct_b = stats.percentile(self._distributions[b], score_b)
-        winner = stats.decide_pass_winner(pct_a, score_a, pct_b, score_b)
+        closest_side = None if closest is None else ("a" if closest == a else "b")
+        decision = stats.decide_pass_winner(pct_a, score_a, pct_b, score_b, closest_side)
+        winner = decision.winner
         return [
             PassResult(
                 rotation_index=rotation_index,
@@ -461,6 +482,7 @@ class Event:
                 handicap=stats.equivalent_handicap(score_a, self.n_pass, self._targets[a]),
                 opponent_index=b,
                 won=(winner == "a"),
+                decided_by=decision.decided_by,
             ),
             PassResult(
                 rotation_index=rotation_index,
@@ -470,6 +492,7 @@ class Event:
                 handicap=stats.equivalent_handicap(score_b, self.n_pass, self._targets[b]),
                 opponent_index=a,
                 won=(winner == "b"),
+                decided_by=decision.decided_by,
             ),
         ]
 
@@ -540,7 +563,9 @@ class Event:
             for i in range(len(self.matches(rotation_index)))
         )
 
-    def record_match(self, scores: dict[int, float]) -> list[PassResult]:
+    def record_match(
+        self, scores: dict[int, float], closest: int | None = None
+    ) -> list[PassResult]:
         """Record one match of the current rotation, replacing any earlier scores for it.
 
         Parameters
@@ -549,6 +574,11 @@ class Event:
             Mapping of archer index to raw score covering exactly one match
             of the current rotation: both archers of a pair, or just the bye
             archer if byes are shot.
+        closest : int | None, default=None
+            Index of the archer whose arrow was closest to the middle, as
+            judged by the archers. Only used if the two percentiles and scores
+            are exactly tied (AISpec.md section 5.3 "Tie-break"); otherwise,
+            and for a bye match, it is ignored.
 
         Returns
         -------
@@ -562,8 +592,13 @@ class Event:
         ------
         ValueError
             If `scores`' keys are not exactly one match of the current
-            rotation, or any score is invalid (see `_validate_score`).
+            rotation, any score is invalid (see `_validate_score`), or
+            `closest` is given for a pair but is not one of its two archers.
             Raised before anything is recorded.
+        h2h.stats.TieBreakRequired
+            (A ValueError.) If the percentiles and scores of a pair are tied
+            and `closest` is None. Raised before anything is recorded, so any
+            earlier scores for the match stay as they were.
         """
         rotation_index = self.current_rotation_index
         match = next(
@@ -586,7 +621,12 @@ class Event:
         if b is None:
             new_results = [self._solo_result(rotation_index, a, validated[a])]
         else:
-            new_results = self._pair_results(rotation_index, a, b, validated[a], validated[b])
+            if closest is not None and closest not in (a, b):
+                msg = f"The closest-to-the-middle archer must be {a} or {b}, got {closest}."
+                raise ValueError(msg)
+            new_results = self._pair_results(
+                rotation_index, a, b, validated[a], validated[b], closest
+            )
 
         for new in new_results:
             existing = next(
