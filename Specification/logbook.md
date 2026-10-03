@@ -845,3 +845,65 @@ used deliberately unrealistic 60-vs-100 scores at handicaps 45/15, which is
 dataset list and legend. With realistic scores (e.g. 118 and 105) both markers
 show. A simple fix, if wanted, is to widen the axis to include any scored
 values; raised for the user rather than changed here.
+
+### Task 33: End-to-end integration check, browser walkthrough and docs (complete)
+`tests/test_integration.py` gained scenarios for the new flow, all driving the
+real routes through the overview / match pages / advance via `tests/helpers.py`
+(which discovers each pass's matches from the rendered pages):
+- Even archers (4, three passes): every one of the 6 pairs has a pairwise result.
+- Odd archers, byes shot (5): `total_arrows // n_pass` passes, exactly one solo
+  result per pass, always with no winner, and every archer shoots every pass.
+- Odd archers, byes **not** shot: 5 archers needing 5 passes -> 7 passes (6
+  round-robin + 1 catch-up); on every pass the sitting-out archers are listed
+  and are never offered a score box, nobody shoots alone, and the final counts
+  are [5,5,5,5,6]; 5 archers needing 4 passes -> exactly 5 passes, everyone
+  exactly 4 (no catch-up needed).
+- Indoor with Recurve/Compound/Barebow/Longbow archers of equal handicap: scoring
+  systems are plain/compound/plain/plain, and in one pass the three plain
+  archers have identical percentiles while the Compound archer's differs.
+- Outdoor with all four bowstyles: one shared non-indoor target.
+- Advance refused at every pass of a full event until the whole pass is scored
+  (including with one of two matches done), and refused after the final pass.
+- Fresh `SessionState` sees no prior event (unchanged).
+README.md now has a "Using the app" section and an updated repo structure.
+
+Real-browser walkthrough (headless Edge via Selenium, a subagent, against the
+exact commit exported with `git archive`): Stage 1 with live typing of the
+archer count (control appears at 5, "No" selected), Stage 2 (all four bowstyles
+offered in every row), advanced mode, then all **7 passes** by hand - on every
+pass the heading, "Sitting out" line, no score inputs on the overview, Advance
+disabled until the pass is fully scored (and disabled mid-pass), a match page
+with "Results so far" and a chart of 4 datasets after saving, and no Advance
+button on pass 7 with an "event is complete" link. Results page: 7 rotation
+sections, rows per archer [5,5,5,5,6], no rank/points/total column, 10 "View
+chart" links, and the first opens a working pair-history chart. The calculator
+gave 54.5 for a Portsmouth 500 and 52.8 with the compound box ticked. Console:
+only the favicon 404 (plus benign Edge tracking-prevention warnings about the
+CDN). The pass-by-pass table from the run: sitting out Ann, Dan, Ben, Eve, Cat,
+Ann, then Cat/Dan/Eve with a single Ann-Ben catch-up match.
+
+Things worth knowing, none changed here:
+- With byes not shot and more passes than a round-robin needs, earlier pairings
+  repeat (pass 6 above is pass 1 again, and the catch-up pass paired two
+  archers who had already met - unavoidable there since the short archer had met
+  everyone). This follows the existing "cycle the schedule" rule (Assumption 13).
+- The clipped-marker limitation noted under task 32 applies to unrealistic
+  scores only.
+- Percentiles at extreme scores display as 0.0% (noted in Feedback 2 too); the
+  winner is still decided on the unrounded values.
+
+## Feedback 3 summary (for anyone picking this up)
+All of `Specification/feedback.md` "Feedback 3" is implemented (prd tasks 26-33,
+all `completed`): the handicap calculator asks whether the bow is compound and
+uses the matching `archeryutils` compound round; Longbow is in the bowstyle
+dropdown (scored like Recurve/Barebow); scoring is no longer one page for the
+whole pass - an overview of the current pass links to one page per match (score
+entry, the pair's results so far, and in advanced mode their chart) and an
+"Advance to next pass" button, enabled only once every match is scored, moves
+the event on and updates the pairings; and an odd archer count now has a "Shoot
+byes?" option (Yes: the bye archer shoots alone; No: they sit out and extra
+passes are added so everyone still shoots every arrow). The one real design
+decision was how many extra passes "No" needs - Assumption 15 in
+`Specification/AISpec.md`; the rule lives in `h2h/rotation.py`'s
+`build_sit_out_schedule` if a different one is wanted. Not touched: everything
+under "Future Plans - DO NOT IMPLEMENT YET". Final suite: 410 tests passing.

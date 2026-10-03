@@ -423,6 +423,6 @@
       "A real-browser walkthrough (Stage 1 with the byes control, Stage 2, overview, match pages incl. advanced-mode chart, advance, results) completes with no JS console errors.",
       "The full suite passes, README.md describes the new flow, and Specification/logbook.md has a Feedback 3 section."
     ],
-    "completed": false
+    "completed": true
   }
 ]
