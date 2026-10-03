@@ -20,6 +20,10 @@ from .rotation import Rotation
 # for now"); revisit if a target face other than a 10-ring face is supported.
 MAX_SCORE_PER_ARROW = 10
 
+# Allowed range of a starting AGB handicap (Specification/feedback.md "Feedback 4").
+MIN_HANDICAP = 0
+MAX_HANDICAP = 150
+
 
 def _validate_score(score: float, n_pass: int) -> int:
     """Validate a raw pass score and coerce it to an in-range integer.

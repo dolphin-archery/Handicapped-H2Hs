@@ -248,6 +248,83 @@ def test_stage2_missing_bowstyle_rejected():
     assert b"required" in resp.data or b"bowstyle" in resp.data.lower()
 
 
+# --- Handicap range validation (Feedback 4) -----------------------------------
+
+
+def stage2_after_stage1(n_archers=2):
+    """A client + state that has completed Stage 1 for `n_archers`, ready for Stage 2."""
+    client, state = make_client_and_state()
+    complete_stage1(client, n_archers=n_archers)
+    return client, state
+
+
+@pytest.mark.parametrize("bad", ["-0.1", "-1", "150.1", "1000", "nan", "inf", "-inf"])
+def test_out_of_range_handicap_is_rejected_naming_the_row_and_the_range(bad):
+    """Handicaps outside 0-150 (and nan/inf) are rejected, with the row and range in the message."""
+    client, state = stage2_after_stage1()
+    resp = client.post(
+        "/event/stage2", data=stage2_form([("Alice", "Recurve", 20), ("Bob", "Compound", bad)])
+    )
+    assert resp.status_code == 200  # re-rendered, not accepted
+    assert b"Row 2: handicap must be between 0 and 150" in resp.data
+    assert state.event is None
+
+
+@pytest.mark.parametrize("good", ["0", "150", "22.5", "0.0", "149.9"])
+def test_in_range_handicaps_including_the_boundaries_are_accepted(good):
+    """0 and 150 themselves, and decimals, are valid starting handicaps."""
+    client, _ = stage2_after_stage1()
+    resp = client.post(
+        "/event/stage2", data=stage2_form([("Alice", "Recurve", good), ("Bob", "Compound", 30)])
+    )
+    assert resp.status_code == 302  # accepted: moves on rather than re-rendering Stage 2
+
+
+def test_rejected_handicap_leaves_the_form_filled_in_for_correction():
+    """After a rejection the typed names, handicaps and bowstyles are put back."""
+    client, _ = stage2_after_stage1()
+    resp = client.post(
+        "/event/stage2",
+        data=stage2_form([("Alice", "Longbow", 20), ("Bob", "Compound", 150.1)]),
+    )
+    page = resp.data.decode()
+    assert 'value="Alice"' in page and 'value="Bob"' in page
+    assert 'value="150.1"' in page and 'value="20"' in page
+    assert '<option value="Longbow" selected>' in page
+    assert '<option value="Compound" selected>' in page
+    assert '<option value="Recurve" selected>' not in page
+
+
+def test_non_numeric_and_missing_handicaps_keep_their_existing_messages():
+    """The range check sits alongside, not instead of, the earlier checks."""
+    client, _ = stage2_after_stage1()
+    resp = client.post(
+        "/event/stage2", data=stage2_form([("Alice", "Recurve", "abc"), ("Bob", "Compound", 30)])
+    )
+    assert b"Row 1: handicap must be a number" in resp.data
+    resp = client.post(
+        "/event/stage2", data=stage2_form([("Alice", "Recurve", ""), ("Bob", "Compound", 30)])
+    )
+    assert b"name, handicap, and bowstyle are all required" in resp.data
+
+
+def test_stage2_handicap_inputs_carry_the_range_as_min_and_max():
+    """Every row's handicap input has min=0 and max=150 attributes."""
+    client, _ = stage2_after_stage1(n_archers=3)
+    page = client.get("/event/stage2").data.decode()
+    assert page.count('min="0" max="150"') == 3
+
+
+def test_handicap_bounds_are_defined_once_in_the_models_module():
+    """The 0 and 150 live as constants in h2h.models, not as literals in the route or template."""
+    from h2h import models
+
+    assert (models.MIN_HANDICAP, models.MAX_HANDICAP) == (0, 150)
+    root = Path(__file__).resolve().parent.parent / "h2h"
+    for path in (root / "app.py", root / "templates" / "stage2.html"):
+        assert "150" not in path.read_text(encoding="utf-8"), path.name
+
+
 # --- Overview, per-match pages and advance (Feedback 3) --------------------
 # Replaces task 20's single page that scored a whole rotation at once.
 

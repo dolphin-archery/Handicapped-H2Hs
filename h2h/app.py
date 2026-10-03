@@ -13,7 +13,14 @@ from flask import Flask, redirect, render_template, request, url_for
 
 from . import stats
 from .chart_data import build_pair_chart_data
-from .models import Archer, Bowstyle, RoundMode, resolve_indoor_round
+from .models import (
+    MAX_HANDICAP,
+    MIN_HANDICAP,
+    Archer,
+    Bowstyle,
+    RoundMode,
+    resolve_indoor_round,
+)
 from .state import SessionState
 
 
@@ -74,13 +81,33 @@ def create_app(state: SessionState | None = None) -> Flask:
         return redirect(url_for("stage2"))
 
     @app.get("/event/stage2")
-    def stage2(error: str | None = None):
+    def stage2(error: str | None = None, values: dict[str, str] | None = None):
+        """Archer details form.
+
+        Parameters
+        ----------
+        error : str | None, default=None
+            Message to show above the form (a rejected submission).
+        values : dict[str, str] | None, default=None
+            The previously submitted form fields (`name_i`, `bowstyle_i`,
+            `handicap_i`), used to refill the form after a rejected
+            submission so nothing has to be retyped.
+
+        Returns
+        -------
+        flask.Response | str
+            The rendered form, or a redirect to Stage 1 if Stage 1 has not
+            been completed.
+        """
         if session.schedule is None or session.n_archers is None:
             return redirect(url_for("stage1"))
         return render_template(
             "stage2.html",
             n_archers=session.n_archers,
             bowstyles=list(Bowstyle),
+            min_handicap=MIN_HANDICAP,
+            max_handicap=MAX_HANDICAP,
+            values=values or {},
             error=error,
         )
 
@@ -107,10 +134,16 @@ def create_app(state: SessionState | None = None) -> Flask:
                 except ValueError:
                     msg = f"Row {i + 1}: handicap must be a number."
                     raise ValueError(msg) from None
+                if not MIN_HANDICAP <= handicap <= MAX_HANDICAP:  # also rejects nan
+                    msg = (
+                        f"Row {i + 1}: handicap must be between {MIN_HANDICAP} and "
+                        f"{MAX_HANDICAP}, got {handicap_raw}."
+                    )
+                    raise ValueError(msg)
                 archers.append(Archer(name=name, handicap=handicap, bowstyle=bowstyle))
             session.start_stage2(archers)
         except ValueError as exc:
-            return stage2(error=str(exc))
+            return stage2(error=str(exc), values=request.form)
         return redirect(url_for("event_rotation"))
 
     @app.get("/event/rotation")

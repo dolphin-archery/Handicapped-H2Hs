@@ -15,16 +15,17 @@
     <tbody>
       {% for i in range(n_archers) %}
       <tr>
-        <td><input type="text" name="name_{{ i }}" required></td>
+        <td><input type="text" name="name_{{ i }}" value="{{ values.get('name_' ~ i, '') }}" required></td>
         <td>
           <select name="bowstyle_{{ i }}" required>
-            <option value="" disabled selected>Choose...</option>
+            <option value="" disabled{% if not values.get('bowstyle_' ~ i) %} selected{% endif %}>Choose...</option>
             {% for b in bowstyles %}
-            <option value="{{ b.value }}">{{ b.value }}</option>
+            <option value="{{ b.value }}"{% if values.get('bowstyle_' ~ i) == b.value %} selected{% endif %}>{{ b.value }}</option>
             {% endfor %}
           </select>
         </td>
-        <td><input type="number" step="0.1" name="handicap_{{ i }}" required></td>
+        <td><input type="number" step="0.1" min="{{ min_handicap }}" max="{{ max_handicap }}" name="handicap_{{ i }}"
+                   value="{{ values.get('handicap_' ~ i, '') }}" required></td>
       </tr>
       {% endfor %}
     </tbody>

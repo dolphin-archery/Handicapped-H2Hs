@@ -1022,3 +1022,23 @@ graph view and the byes option) and redirects to Stage 1; the cancel link target
 for both cases; the nav link; and that opening the page and navigating away loses
 no scores. Suite: 437 passed. Not changed (not asked): resubmitting Stage 1 or 2
 still replaces an event in progress without a prompt.
+
+### Task 39: Validate starting handicaps are in 0-150 (complete)
+Stage 2 now rejects a handicap outside 0 to 150 inclusive with
+"Row N: handicap must be between 0 and 150, got X.", storing nothing (the handler
+validates every row before touching state, as before). The check is written as
+`not MIN_HANDICAP <= handicap <= MAX_HANDICAP`, so `nan` is rejected too (every
+comparison with nan is False), as are `inf`/`-inf`. The bounds are the new
+`MIN_HANDICAP` / `MAX_HANDICAP` constants in `h2h.models`, imported by the route
+and passed to the template for the inputs' `min`/`max` attributes, so the numbers
+are defined once (a test asserts no literal "150" in `app.py` or `stage2.html`).
+The existing "must be a number" and "required" messages are unchanged. Decimals
+and the boundary values 0, 0.0, 150 and 149.9 are accepted.
+
+One small addition beyond the letter of the request, in the same handler: Stage 2
+used to re-render **blank** after any error, so a rejected handicap would have
+wiped every typed row (up to a dozen archers). It now refills the names,
+bowstyles and handicaps that were submitted (`stage2(error, values=request.form)`),
+so only the offending value needs fixing. A test checks the refill. Along the way
+the refill template briefly added a stray space inside the `<option>` tags, which
+the existing Longbow-dropdown test caught; fixed in the template. Suite: 437+ passed.

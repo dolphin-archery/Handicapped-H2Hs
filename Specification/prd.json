@@ -505,7 +505,7 @@
       "The Stage 2 handicap inputs render min=0 and max=150.",
       "The bounds are defined once (a constant used by both the validation and the template)."
     ],
-    "completed": false
+    "completed": true
   },
   {
     "id": 40,
