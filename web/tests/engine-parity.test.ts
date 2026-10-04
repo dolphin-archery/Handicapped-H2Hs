@@ -88,7 +88,6 @@ describe("the engine under Node Pyodide", () => {
     expect(statuses.map((s) => (s.state === "loading" ? s.stage : s.state))).toEqual([
       "runtime",
       "packages",
-      "pdf",
       "app",
       "ready",
     ]);

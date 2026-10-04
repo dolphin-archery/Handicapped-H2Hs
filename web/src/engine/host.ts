@@ -3,8 +3,10 @@
  *
  * The browser runs it inside a module Web Worker (worker.ts); the Vitest parity tests run it
  * in-process under Node with the `pyodide` npm package. It loads Pyodide, numpy and micropip,
- * installs archeryutils and fpdf2, unpacks the hashed Python bundle and then answers calls with
- * `h2h.bridge.call`, passing JSON text both ways. Python keeps no state between calls.
+ * installs archeryutils, unpacks the hashed Python bundle and then answers calls with
+ * `h2h.bridge.call`, passing JSON text both ways. Python keeps no state between calls. fpdf2
+ * (with pillow and fonttools, about 2.5 MB) is installed only before the first PDF export
+ * (decision D16), so engine start does not wait for it.
  */
 import type { PyodideAPI } from "pyodide";
 
@@ -17,14 +19,12 @@ export const PYODIDE_CDN = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}
 const APP_DIR = "/home/pyodide/app";
 
 /** The stages of engine start, in order, reported as progress. */
-export type LoadStage = "runtime" | "packages" | "pdf" | "app";
+export type LoadStage = "runtime" | "packages" | "app";
 
 /** How long each part of engine start took, in milliseconds (logged for UI-7, decision D16). */
 export interface EngineTimings {
   runtime_ms: number;
   packages_ms: number;
-  /** Installing fpdf2 (with pillow and fonttools) and importing it. */
-  fpdf_ms: number;
   app_ms: number;
   total_ms: number;
 }
@@ -68,6 +68,9 @@ export interface HostOptions {
 export function createEngineHost(options: HostOptions): (message: ToEngine) => Promise<void> {
   const now = options.now ?? (() => performance.now());
   let starting: Promise<((command: string, payload: string) => string) | null> | null = null;
+  let micropip: { install: (requirements: string[]) => Promise<void> } | null = null;
+  let pdfReady: Promise<void> | null = null;
+  const pdfRequirements = options.requirements.filter((r) => r.startsWith("fpdf2"));
 
   async function start(bundleUrl: string): Promise<(command: string, payload: string) => string> {
     const t0 = now();
@@ -80,16 +83,9 @@ export function createEngineHost(options: HostOptions): (message: ToEngine) => P
 
     options.post({ type: "progress", stage: "packages" });
     await pyodide.loadPackage(["numpy", "micropip"], { messageCallback: () => {} });
-    const micropip = pyodide.pyimport("micropip");
-    const fpdfRequirement = options.requirements.filter((r) => r.startsWith("fpdf2"));
-    await micropip.install(options.requirements.filter((r) => !r.startsWith("fpdf2")));
+    micropip = pyodide.pyimport("micropip") as typeof micropip;
+    await micropip!.install(options.requirements.filter((r) => !r.startsWith("fpdf2")));
     const t2 = now();
-
-    options.post({ type: "progress", stage: "pdf" });
-    await micropip.install(fpdfRequirement);
-    pyodide.runPython("import fpdf");
-    micropip.destroy();
-    const t3 = now();
 
     options.post({ type: "progress", stage: "app" });
     const bundle = await options.fetchBundle(bundleUrl);
@@ -98,16 +94,15 @@ export function createEngineHost(options: HostOptions): (message: ToEngine) => P
       `import sys\nif ${JSON.stringify(APP_DIR)} not in sys.path: sys.path.insert(0, ${JSON.stringify(APP_DIR)})`,
     );
     const bridge = pyodide.pyimport("h2h.bridge");
-    const t4 = now();
+    const t3 = now();
 
     options.post({
       type: "ready",
       timings: {
         runtime_ms: t1 - t0,
         packages_ms: t2 - t1,
-        fpdf_ms: t3 - t2,
-        app_ms: t4 - t3,
-        total_ms: t4 - t0,
+        app_ms: t3 - t2,
+        total_ms: t3 - t0,
       },
     });
     return (command, payload) => bridge.call(command, payload) as string;
@@ -129,6 +124,13 @@ export function createEngineHost(options: HostOptions): (message: ToEngine) => P
     }
     let envelope: string;
     try {
+      if (needsPdf(message)) {
+        pdfReady ??= micropip!.install(pdfRequirements).catch((error: unknown) => {
+          pdfReady = null; // let a later export try again, e.g. after the network returns
+          throw error;
+        });
+        await pdfReady;
+      }
       envelope = call(message.command, message.payload);
     } catch (error) {
       envelope = JSON.stringify({
@@ -138,6 +140,21 @@ export function createEngineHost(options: HostOptions): (message: ToEngine) => P
     }
     options.post({ type: "result", id: message.id, envelope });
   };
+}
+
+/**
+ * Whether a call is a PDF export, which needs fpdf2 installed first.
+ *
+ * @param message - A call from the client.
+ * @returns True for the `export` command with kind `results_pdf`.
+ */
+function needsPdf(message: { command: string; payload: string }): boolean {
+  if (message.command !== "export") return false;
+  try {
+    return (JSON.parse(message.payload) as { kind?: unknown }).kind === "results_pdf";
+  } catch {
+    return false; // the bridge answers malformed JSON with a validation error
+  }
 }
 
 /**

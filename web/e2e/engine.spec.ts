@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 /**
  * The Python engine in a real browser (UISpec.md 8, UI-7 and UI-9): the module worker loads
  * Pyodide from jsDelivr and the packages, and "New event" creates an event through the bridge,
- * stores it and opens Stage 1. Also prints the first-load transfer for the logbook. Needs network.
+ * stores it and opens Stage 1. Also prints the first-load transfer for the logbook, which must not
+ * include the PDF library (fpdf2 is installed on the first PDF export, decision D16). Needs network.
  */
 test("New event creates an event through the engine and opens Stage 1", async ({ page }) => {
   test.setTimeout(300_000);
@@ -26,6 +27,7 @@ test("New event creates an event through the engine and opens Stage 1", async ({
   console.log(`First load: ${(total / 1e6).toFixed(1)} MB in ${transferred.size} requests.`);
   expect(errors).toEqual([]);
   expect(total).toBeGreaterThan(5e6);
+  expect([...transferred.keys()].filter((url) => /fpdf2|pillow|fonttools/i.test(url))).toEqual([]);
 
   await page.goto("./");
   await expect(page.getByTestId("resume-card")).toContainText("New event");

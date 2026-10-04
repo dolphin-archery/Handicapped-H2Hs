@@ -11,7 +11,6 @@ import type { EngineTimings, FromEngine, ToEngine } from "../src/engine/host";
 const TIMINGS: EngineTimings = {
   runtime_ms: 1,
   packages_ms: 2,
-  fpdf_ms: 3,
   app_ms: 4,
   total_ms: 10,
 };
@@ -76,13 +75,12 @@ describe("EngineClient", () => {
     client.start(); // already starting: no second worker
     expect(workers).toHaveLength(1);
     expect(workers[0].received).toEqual([{ type: "init", bundleUrl: BUNDLE }]);
-    for (const stage of ["packages", "pdf", "app"] as const)
+    for (const stage of ["packages", "app"] as const)
       workers[0].emit({ type: "progress", stage });
     workers[0].emit({ type: "ready", timings: TIMINGS });
     expect(seen).toEqual([
       { state: "loading", stage: "runtime" },
       { state: "loading", stage: "packages" },
-      { state: "loading", stage: "pdf" },
       { state: "loading", stage: "app" },
       { state: "ready", timings: TIMINGS },
     ]);

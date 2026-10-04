@@ -6,8 +6,7 @@ import { useEngineStatus } from "../engine/useEngineStatus";
 /** What each load stage is doing, and how far along engine start it roughly is. */
 const STAGES: Record<LoadStage, { text: string; value: number }> = {
   runtime: { text: "Starting Python", value: 15 },
-  packages: { text: "Loading the statistics packages", value: 45 },
-  pdf: { text: "Loading the PDF export", value: 70 },
+  packages: { text: "Loading the statistics packages", value: 55 },
   app: { text: "Loading the app's own code", value: 90 },
 };
 
@@ -26,7 +25,7 @@ export function EngineBanner({ engine }: { engine: EngineClient }) {
     return (
       <Alert variant="light" color="blue" mb="md" title="Getting the scoring engine ready">
         <Text size="sm" aria-live="polite">
-          {stage.text}... The first visit downloads about 12 MB; later visits are faster. You can
+          {stage.text}... The first visit downloads about 10 MB; later visits are faster. You can
           look at saved events meanwhile.
         </Text>
         <Progress

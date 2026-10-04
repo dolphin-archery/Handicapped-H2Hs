@@ -12,11 +12,13 @@ from __future__ import annotations
 import csv
 import io
 from datetime import datetime
-
-from fpdf import FPDF
+from typing import TYPE_CHECKING
 
 from .models import Event
 from .outputs import archer_results, leaderboard
+
+if TYPE_CHECKING:
+    from fpdf import FPDF
 
 LEADERBOARD_HEADER = [
     "Rank",
@@ -234,7 +236,15 @@ def results_pdf(event: Event, now: datetime | None = None) -> bytes:
         passes are completed; the leaderboard and each archer's heading carry the starting and
         to-date handicap; each archer has a table with an Average row, as on the Archer results
         page.
+
+    Notes
+    -----
+    `fpdf2` is imported on the first call rather than with this module.
     """
+    # Imported here, not at the top, so the browser engine can install fpdf2 (with pillow and
+    # fonttools, about 2.5 MB) only when the first PDF is requested (decision D16).
+    from fpdf import FPDF
+
     stamp = timestamp_text(now or datetime.now())
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=15)

@@ -2932,3 +2932,27 @@ For the owner's review (UI-9 has `needs_review`), run from `web/`:
   http://localhost:4173/Handicapped-H2Hs/ (or use `npm run dev`).
 - Try New event, rename, delete, Download and Import backup, the colour scheme and resize to phone width.
 - Stage, pass, results and calculator views are placeholders until UI-10 to UI-17.
+
+## UI-9 owner review: decisions and the lazy PDF library (2026-10-04)
+
+The owner reviewed UI-9 ("the skeleton looks good"; additions to follow after the core build) and decided:
+1. **D16: load the PDF library only on a PDF export.** Done:
+   - `h2h/exports.py` imports `fpdf` inside `results_pdf`, with a `TYPE_CHECKING` import for the annotation.
+   - `web/src/engine/host.ts` no longer installs fpdf2 at start. The `pdf` load stage and `fpdf_ms` timing are
+     removed. Before an `export` call with kind `results_pdf`, the host installs fpdf2 (pillow and fonttools
+     come with it) once, caching the promise; after a failure a later export retries.
+   - The engine banner now says "about 10 MB".
+   - Verified:
+     - pytest 1267 passed, including a new subprocess test that importing `h2h.bridge` does not import `fpdf`.
+     - Vitest 93 passed. Under Node, Pillow and fonttools load only when the `results_pdf` fixture step runs,
+       and parity holds.
+     - Playwright: the engine test reports a **first load of 9.6 MB** (was 12.1-12.2 MB). It now asserts that
+       no fpdf2, pillow or fonttools request is made before a PDF export. Shell and smoke tests: 12 passed.
+   - Note for UI-15: the first PDF export waits for the install (about 2-3 s), so the Export PDF button needs
+     a loading state.
+2. **Setup pages are read-only after the start, until a reset.** This confirms UI-9 assumption 1, and UI-11 to
+   UI-13 must lock editing. Multiple instances running in parallel are not supported.
+3. **The "both archers closest" wording** may differ from Flask, as long as the UI makes clear that exactly one
+   archer must be chosen as the winner. In practice this happens only when both archers shoot the pass's
+   maximum score. UI-14 shows that message clearly.
+4. **Stage 2's default start weight:** add a small read-only bridge command when UI-11/UI-12 need it.
