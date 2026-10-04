@@ -1,0 +1,2718 @@
+{
+ "environment": {
+  "python": "3.14.0",
+  "platform": "win32",
+  "numpy": "2.5.3",
+  "archeryutils": "3.0.0",
+  "fpdf2": "2.8.9"
+ },
+ "outputs": {
+  "simple": {
+   "schedule": [
+    {
+     "pairs": [
+      [
+       0,
+       3
+      ],
+      [
+       1,
+       2
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       2
+      ],
+      [
+       3,
+       1
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       1
+      ],
+      [
+       2,
+       3
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       3
+      ],
+      [
+       1,
+       2
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       2
+      ],
+      [
+       3,
+       1
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    }
+   ],
+   "tie_break_message": "Percentile and score are tied: say which archer's arrow was closest to the middle.",
+   "advance_message": "This is the final pass; there is no next pass to advance to.",
+   "invalid_score_message": "Score must be between 0 and 120 for a 12-arrow pass, got 10000.",
+   "passes": [
+    {
+     "pass_index": 0,
+     "handicaps": [
+      35.0,
+      20.0,
+      50.0,
+      35.0
+     ],
+     "max_scores": [
+      120,
+      120,
+      120,
+      120
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "100",
+        "percentile": "0.0%",
+        "start_handicap": "35.0",
+        "handicap": "54.5",
+        "winner": "No"
+       },
+       {
+        "archer": "Dan",
+        "score": "100",
+        "percentile": "0.0%",
+        "start_handicap": "35.0",
+        "handicap": "54.5",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Ben",
+        "score": "110",
+        "percentile": "2.3%",
+        "start_handicap": "20.0",
+        "handicap": "33.9",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Cat",
+        "score": "85",
+        "percentile": "0.0%",
+        "start_handicap": "50.0",
+        "handicap": "67.1",
+        "winner": "No"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 1,
+     "handicaps": [
+      35.0,
+      20.0,
+      50.0,
+      35.0
+     ],
+     "max_scores": [
+      120,
+      120,
+      120,
+      120
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "95",
+        "percentile": "0.00%",
+        "start_handicap": "35.0",
+        "handicap": "59.3",
+        "winner": "No"
+       },
+       {
+        "archer": "Cat",
+        "score": "90",
+        "percentile": "0.04%",
+        "start_handicap": "50.0",
+        "handicap": "63.5",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Dan",
+        "score": "102",
+        "percentile": "0.0%",
+        "start_handicap": "35.0",
+        "handicap": "52.3",
+        "winner": "No"
+       },
+       {
+        "archer": "Ben",
+        "score": "112",
+        "percentile": "21.3%",
+        "start_handicap": "20.0",
+        "handicap": "26.9",
+        "winner": "Yes"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 2,
+     "handicaps": [
+      35.0,
+      20.0,
+      50.0,
+      35.0
+     ],
+     "max_scores": [
+      120,
+      120,
+      120,
+      120
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "104",
+        "percentile": "0.01%",
+        "start_handicap": "35.0",
+        "handicap": "50.0",
+        "winner": "No"
+       },
+       {
+        "archer": "Ben",
+        "score": "108",
+        "percentile": "0.04%",
+        "start_handicap": "20.0",
+        "handicap": "39.4",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Cat",
+        "score": "80",
+        "percentile": "0.000001%",
+        "start_handicap": "50.0",
+        "handicap": "70.3",
+        "winner": "No"
+       },
+       {
+        "archer": "Dan",
+        "score": "99",
+        "percentile": "0.000002%",
+        "start_handicap": "35.0",
+        "handicap": "55.6",
+        "winner": "Yes"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 3,
+     "handicaps": [
+      35.0,
+      20.0,
+      50.0,
+      35.0
+     ],
+     "max_scores": [
+      120,
+      120,
+      120,
+      120
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "98",
+        "percentile": "0.0000%",
+        "start_handicap": "35.0",
+        "handicap": "56.5",
+        "winner": "No"
+       },
+       {
+        "archer": "Dan",
+        "score": "101",
+        "percentile": "0.0001%",
+        "start_handicap": "35.0",
+        "handicap": "53.4",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Ben",
+        "score": "113",
+        "percentile": "41.3%",
+        "start_handicap": "20.0",
+        "handicap": "23.2",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Cat",
+        "score": "0",
+        "percentile": "0.0%",
+        "start_handicap": "50.0",
+        "handicap": "-",
+        "winner": "No"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 4,
+     "handicaps": [
+      35.0,
+      20.0,
+      50.0,
+      35.0
+     ],
+     "max_scores": [
+      120,
+      120,
+      120,
+      120
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "90",
+        "percentile": "0.0000000000000%",
+        "start_handicap": "35.0",
+        "handicap": "63.5",
+        "winner": "No"
+       },
+       {
+        "archer": "Cat",
+        "score": "70",
+        "percentile": "0.0000000000004%",
+        "start_handicap": "50.0",
+        "handicap": "76.0",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Dan",
+        "score": "100",
+        "percentile": "0.0%",
+        "start_handicap": "35.0",
+        "handicap": "54.5",
+        "winner": "No"
+       },
+       {
+        "archer": "Ben",
+        "score": "115",
+        "percentile": "82.4%",
+        "start_handicap": "20.0",
+        "handicap": "16.2",
+        "winner": "Yes"
+       }
+      ]
+     ]
+    }
+   ],
+   "is_complete": true,
+   "completed_passes": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "results": [
+    {
+     "rotation_index": 0,
+     "archer_index": 0,
+     "score": 100,
+     "percentile": 1.705114090786427e-07,
+     "handicap": 54.518707985821116,
+     "opponent_index": 3,
+     "won": false,
+     "decided_by": "closest"
+    },
+    {
+     "rotation_index": 0,
+     "archer_index": 3,
+     "score": 100,
+     "percentile": 1.705114090786427e-07,
+     "handicap": 54.518707985821116,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "closest"
+    },
+    {
+     "rotation_index": 0,
+     "archer_index": 1,
+     "score": 110,
+     "percentile": 0.023062874735251742,
+     "handicap": 33.871921584527314,
+     "opponent_index": 2,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 0,
+     "archer_index": 2,
+     "score": 85,
+     "percentile": 2.9937799938836428e-06,
+     "handicap": 67.0970667168912,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 0,
+     "score": 95,
+     "percentile": 3.4423861607085995e-12,
+     "handicap": 59.34839694210045,
+     "opponent_index": 2,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 2,
+     "score": 90,
+     "percentile": 0.00035346700616774426,
+     "handicap": 63.479607759241034,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 3,
+     "score": 102,
+     "percentile": 6.094004807245094e-06,
+     "handicap": 52.33535878061456,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 1,
+     "score": 112,
+     "percentile": 0.2134356470274061,
+     "handicap": 26.858221509246828,
+     "opponent_index": 3,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 0,
+     "score": 104,
+     "percentile": 0.00013956731727043275,
+     "handicap": 49.969888880936445,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 1,
+     "score": 108,
+     "percentile": 0.00035366189554164205,
+     "handicap": 39.41452989208596,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 2,
+     "score": 80,
+     "percentile": 8.98464926380601e-09,
+     "handicap": 70.32810985057066,
+     "opponent_index": 3,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 3,
+     "score": 99,
+     "percentile": 2.4234602405529617e-08,
+     "handicap": 55.551127095984214,
+     "opponent_index": 2,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 0,
+     "score": 98,
+     "percentile": 3.0957674309864185e-09,
+     "handicap": 56.54766378815631,
+     "opponent_index": 3,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 3,
+     "score": 101,
+     "percentile": 1.0767770335365234e-06,
+     "handicap": 53.44861471283738,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 1,
+     "score": 113,
+     "percentile": 0.41338663370807377,
+     "handicap": 23.151053329053482,
+     "opponent_index": 2,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 2,
+     "score": 0,
+     "percentile": 3.9977144135310345e-108,
+     "handicap": null,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 0,
+     "score": 90,
+     "percentile": 5.354516019557361e-18,
+     "handicap": 63.479607759241034,
+     "opponent_index": 2,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 2,
+     "score": 70,
+     "percentile": 4.323611571472193e-15,
+     "handicap": 75.99693868679489,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 3,
+     "score": 100,
+     "percentile": 1.705114090786427e-07,
+     "handicap": 54.518707985821116,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 1,
+     "score": 115,
+     "percentile": 0.8235652139590027,
+     "handicap": 16.229128755382142,
+     "opponent_index": 3,
+     "won": true,
+     "decided_by": "percentile"
+    }
+   ],
+   "pairwise": [
+    {
+     "archer_a": 0,
+     "archer_b": 1,
+     "wins_a": 0,
+     "wins_b": 1,
+     "outcome": 1
+    },
+    {
+     "archer_a": 0,
+     "archer_b": 2,
+     "wins_a": 0,
+     "wins_b": 2,
+     "outcome": 2
+    },
+    {
+     "archer_a": 0,
+     "archer_b": 3,
+     "wins_a": 0,
+     "wins_b": 2,
+     "outcome": 3
+    },
+    {
+     "archer_a": 1,
+     "archer_b": 2,
+     "wins_a": 2,
+     "wins_b": 0,
+     "outcome": 1
+    },
+    {
+     "archer_a": 1,
+     "archer_b": 3,
+     "wins_a": 2,
+     "wins_b": 0,
+     "outcome": 1
+    },
+    {
+     "archer_a": 2,
+     "archer_b": 3,
+     "wins_a": 0,
+     "wins_b": 1,
+     "outcome": 3
+    }
+   ],
+   "leaderboard": [
+    {
+     "rank": 1,
+     "archer_index": 1,
+     "name": "Ben",
+     "points": 5,
+     "passes_decided": 5,
+     "starting_handicap": 20.0,
+     "to_date_handicap": 28.34357123476254
+    },
+    {
+     "rank": 2,
+     "archer_index": 3,
+     "name": "Dan",
+     "points": 3,
+     "passes_decided": 5,
+     "starting_handicap": 35.0,
+     "to_date_handicap": 54.09838937411573
+    },
+    {
+     "rank": 3,
+     "archer_index": 2,
+     "name": "Cat",
+     "points": 2,
+     "passes_decided": 5,
+     "starting_handicap": 50.0,
+     "to_date_handicap": 78.57541552284582
+    },
+    {
+     "rank": 4,
+     "archer_index": 0,
+     "name": "Ann",
+     "points": 0,
+     "passes_decided": 5,
+     "starting_handicap": 35.0,
+     "to_date_handicap": 57.13001928385592
+    }
+   ],
+   "archer_results": [
+    {
+     "archer_index": 0,
+     "name": "Ann",
+     "handicap": 35.0,
+     "to_date_handicap": 57.13001928385592,
+     "arrows_shot": 60,
+     "total_score": 487,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Dan",
+       "score": 100,
+       "percentile": 1.705114090786427e-07,
+       "start_handicap": 35.0,
+       "handicap": 54.518707985821116
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Cat",
+       "score": 95,
+       "percentile": 3.4423861607085995e-12,
+       "start_handicap": 35.0,
+       "handicap": 59.34839694210045
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Ben",
+       "score": 104,
+       "percentile": 0.00013956731727043275,
+       "start_handicap": 35.0,
+       "handicap": 49.969888880936445
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Dan",
+       "score": 98,
+       "percentile": 3.0957674309864185e-09,
+       "start_handicap": 35.0,
+       "handicap": 56.54766378815631
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Cat",
+       "score": 90,
+       "percentile": 5.354516019557361e-18,
+       "start_handicap": 35.0,
+       "handicap": 63.479607759241034
+      }
+     ],
+     "averages": {
+      "score": 97.4,
+      "percentile": 2.7948185577866775e-05,
+      "start_handicap": 35.0,
+      "handicap": 56.77285307125108
+     }
+    },
+    {
+     "archer_index": 1,
+     "name": "Ben",
+     "handicap": 20.0,
+     "to_date_handicap": 28.34357123476254,
+     "arrows_shot": 60,
+     "total_score": 558,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Cat",
+       "score": 110,
+       "percentile": 0.023062874735251742,
+       "start_handicap": 20.0,
+       "handicap": 33.871921584527314
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Dan",
+       "score": 112,
+       "percentile": 0.2134356470274061,
+       "start_handicap": 20.0,
+       "handicap": 26.858221509246828
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Ann",
+       "score": 108,
+       "percentile": 0.00035366189554164205,
+       "start_handicap": 20.0,
+       "handicap": 39.41452989208596
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Cat",
+       "score": 113,
+       "percentile": 0.41338663370807377,
+       "start_handicap": 20.0,
+       "handicap": 23.151053329053482
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Dan",
+       "score": 115,
+       "percentile": 0.8235652139590027,
+       "start_handicap": 20.0,
+       "handicap": 16.229128755382142
+      }
+     ],
+     "averages": {
+      "score": 111.6,
+      "percentile": 0.2947608062650552,
+      "start_handicap": 20.0,
+      "handicap": 27.904971014059146
+     }
+    },
+    {
+     "archer_index": 2,
+     "name": "Cat",
+     "handicap": 50.0,
+     "to_date_handicap": 78.57541552284582,
+     "arrows_shot": 60,
+     "total_score": 325,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Ben",
+       "score": 85,
+       "percentile": 2.9937799938836428e-06,
+       "start_handicap": 50.0,
+       "handicap": 67.0970667168912
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Ann",
+       "score": 90,
+       "percentile": 0.00035346700616774426,
+       "start_handicap": 50.0,
+       "handicap": 63.479607759241034
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Dan",
+       "score": 80,
+       "percentile": 8.98464926380601e-09,
+       "start_handicap": 50.0,
+       "handicap": 70.32810985057066
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Ben",
+       "score": 0,
+       "percentile": 3.9977144135310345e-108,
+       "start_handicap": 50.0,
+       "handicap": null
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Ann",
+       "score": 70,
+       "percentile": 4.323611571472193e-15,
+       "start_handicap": 50.0,
+       "handicap": 75.99693868679489
+      }
+     ],
+     "averages": {
+      "score": 65.0,
+      "percentile": 7.129395416304306e-05,
+      "start_handicap": 50.0,
+      "handicap": 69.22543075337444
+     }
+    },
+    {
+     "archer_index": 3,
+     "name": "Dan",
+     "handicap": 35.0,
+     "to_date_handicap": 54.09838937411573,
+     "arrows_shot": 60,
+     "total_score": 502,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Ann",
+       "score": 100,
+       "percentile": 1.705114090786427e-07,
+       "start_handicap": 35.0,
+       "handicap": 54.518707985821116
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Ben",
+       "score": 102,
+       "percentile": 6.094004807245094e-06,
+       "start_handicap": 35.0,
+       "handicap": 52.33535878061456
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Cat",
+       "score": 99,
+       "percentile": 2.4234602405529617e-08,
+       "start_handicap": 35.0,
+       "handicap": 55.551127095984214
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Ann",
+       "score": 101,
+       "percentile": 1.0767770335365234e-06,
+       "start_handicap": 35.0,
+       "handicap": 53.44861471283738
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Ben",
+       "score": 100,
+       "percentile": 1.705114090786427e-07,
+       "start_handicap": 35.0,
+       "handicap": 54.518707985821116
+      }
+     ],
+     "averages": {
+      "score": 100.4,
+      "percentile": 1.5072078522688864e-06,
+      "start_handicap": 35.0,
+      "handicap": 54.074503312215676
+     }
+    }
+   ],
+   "leaderboard_csv": "Rank,Archer,Points,Passes decided,Starting handicap,To-date handicap,Exported\r\n1,Ben,5,5,20,28.3,2026-10-04 15:30:12\r\n2,Dan,3,5,35,54.1,2026-10-04 15:30:12\r\n3,Cat,2,5,50,78.6,2026-10-04 15:30:12\r\n4,Ann,0,5,35,57.1,2026-10-04 15:30:12\r\n",
+   "archer_results_csv": "Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),Handicap of score,Exported\r\nAnn,35,57.1,1,Dan,100,0.0,54.5,2026-10-04 15:30:12\r\nAnn,35,57.1,2,Cat,95,0.0,59.3,2026-10-04 15:30:12\r\nAnn,35,57.1,3,Ben,104,0.0,50.0,2026-10-04 15:30:12\r\nAnn,35,57.1,4,Dan,98,0.0,56.5,2026-10-04 15:30:12\r\nAnn,35,57.1,5,Cat,90,0.0,63.5,2026-10-04 15:30:12\r\nBen,20,28.3,1,Cat,110,2.3,33.9,2026-10-04 15:30:12\r\nBen,20,28.3,2,Dan,112,21.3,26.9,2026-10-04 15:30:12\r\nBen,20,28.3,3,Ann,108,0.0,39.4,2026-10-04 15:30:12\r\nBen,20,28.3,4,Cat,113,41.3,23.2,2026-10-04 15:30:12\r\nBen,20,28.3,5,Dan,115,82.4,16.2,2026-10-04 15:30:12\r\nCat,50,78.6,1,Ben,85,0.0,67.1,2026-10-04 15:30:12\r\nCat,50,78.6,2,Ann,90,0.0,63.5,2026-10-04 15:30:12\r\nCat,50,78.6,3,Dan,80,0.0,70.3,2026-10-04 15:30:12\r\nCat,50,78.6,4,Ben,0,0.0,,2026-10-04 15:30:12\r\nCat,50,78.6,5,Ann,70,0.0,76.0,2026-10-04 15:30:12\r\nDan,35,54.1,1,Ann,100,0.0,54.5,2026-10-04 15:30:12\r\nDan,35,54.1,2,Ben,102,0.0,52.3,2026-10-04 15:30:12\r\nDan,35,54.1,3,Cat,99,0.0,55.6,2026-10-04 15:30:12\r\nDan,35,54.1,4,Ann,101,0.0,53.4,2026-10-04 15:30:12\r\nDan,35,54.1,5,Ben,100,0.0,54.5,2026-10-04 15:30:12\r\n",
+   "pdf": {
+    "header": "%PDF-1.3",
+    "pages": 2,
+    "content_sha256": "39fd697e8598772aa605c5f3c76768fe9cfbf2122a7d687f2af557aa9fcc3815"
+   },
+   "pair_chart": {
+    "archer_a": {
+     "name": "Ann",
+     "legend": "Ann (handicap 35)",
+     "passes": [
+      {
+       "index": 0,
+       "score": 100
+      },
+      {
+       "index": 1,
+       "score": 95
+      },
+      {
+       "index": 2,
+       "score": 104
+      },
+      {
+       "index": 3,
+       "score": 98
+      },
+      {
+       "index": 4,
+       "score": 90
+      }
+     ]
+    },
+    "archer_b": {
+     "name": "Dan",
+     "legend": "Dan (handicap 35)",
+     "passes": [
+      {
+       "index": 0,
+       "score": 100
+      },
+      {
+       "index": 1,
+       "score": 102
+      },
+      {
+       "index": 2,
+       "score": 99
+      },
+      {
+       "index": 3,
+       "score": 101
+      },
+      {
+       "index": 4,
+       "score": 100
+      }
+     ]
+    },
+    "distribution_a": [
+     {
+      "x": 89,
+      "y": 2.6100755524677234e-19
+     },
+     {
+      "x": 90,
+      "y": 5.080829333454936e-18
+     },
+     {
+      "x": 91,
+      "y": 8.954530142852773e-17
+     },
+     {
+      "x": 92,
+      "y": 1.4278944243014518e-15
+     },
+     {
+      "x": 93,
+      "y": 2.0586419104587007e-14
+     },
+     {
+      "x": 94,
+      "y": 2.68131233158687e-13
+     },
+     {
+      "x": 95,
+      "y": 3.152145714203576e-12
+     },
+     {
+      "x": 96,
+      "y": 3.341357890260432e-11
+     },
+     {
+      "x": 97,
+      "y": 3.190161927057541e-10
+     },
+     {
+      "x": 98,
+      "y": 2.7398952732173515e-09
+     },
+     {
+      "x": 99,
+      "y": 2.1138834974543198e-08
+     },
+     {
+      "x": 100,
+      "y": 1.462768066731131e-07
+     },
+     {
+      "x": 101,
+      "y": 9.062656244578807e-07
+     },
+     {
+      "x": 102,
+      "y": 5.01722777370857e-06
+     },
+     {
+      "x": 103,
+      "y": 2.4764661904291812e-05
+     },
+     {
+      "x": 104,
+      "y": 0.00010870865055889583
+     },
+     {
+      "x": 105,
+      "y": 0.00042316476457302096
+     },
+     {
+      "x": 106,
+      "y": 0.0014559201258208135
+     },
+     {
+      "x": 107,
+      "y": 0.004410600135856762
+     },
+     {
+      "x": 108,
+      "y": 0.011713047571420875
+     },
+     {
+      "x": 109,
+      "y": 0.027126760399993847
+     },
+     {
+      "x": 110,
+      "y": 0.05444999997020001
+     },
+     {
+      "x": 111,
+      "y": 0.09402228526296284
+     },
+     {
+      "x": 112,
+      "y": 0.1383948778124649
+     },
+     {
+      "x": 113,
+      "y": 0.17166475504615755
+     },
+     {
+      "x": 114,
+      "y": 0.1768099030656643
+     },
+     {
+      "x": 115,
+      "y": 0.14828337850304812
+     },
+     {
+      "x": 116,
+      "y": 0.09855341774499632
+     },
+     {
+      "x": 117,
+      "y": 0.04988799490199288
+     },
+     {
+      "x": 118,
+      "y": 0.01805207873183497
+     },
+     {
+      "x": 119,
+      "y": 0.00415536717168555
+     },
+     {
+      "x": 120,
+      "y": 0.00045688147405600205
+     }
+    ],
+    "distribution_b": [
+     {
+      "x": 89,
+      "y": 2.6100755524677234e-19
+     },
+     {
+      "x": 90,
+      "y": 5.080829333454936e-18
+     },
+     {
+      "x": 91,
+      "y": 8.954530142852773e-17
+     },
+     {
+      "x": 92,
+      "y": 1.4278944243014518e-15
+     },
+     {
+      "x": 93,
+      "y": 2.0586419104587007e-14
+     },
+     {
+      "x": 94,
+      "y": 2.68131233158687e-13
+     },
+     {
+      "x": 95,
+      "y": 3.152145714203576e-12
+     },
+     {
+      "x": 96,
+      "y": 3.341357890260432e-11
+     },
+     {
+      "x": 97,
+      "y": 3.190161927057541e-10
+     },
+     {
+      "x": 98,
+      "y": 2.7398952732173515e-09
+     },
+     {
+      "x": 99,
+      "y": 2.1138834974543198e-08
+     },
+     {
+      "x": 100,
+      "y": 1.462768066731131e-07
+     },
+     {
+      "x": 101,
+      "y": 9.062656244578807e-07
+     },
+     {
+      "x": 102,
+      "y": 5.01722777370857e-06
+     },
+     {
+      "x": 103,
+      "y": 2.4764661904291812e-05
+     },
+     {
+      "x": 104,
+      "y": 0.00010870865055889583
+     },
+     {
+      "x": 105,
+      "y": 0.00042316476457302096
+     },
+     {
+      "x": 106,
+      "y": 0.0014559201258208135
+     },
+     {
+      "x": 107,
+      "y": 0.004410600135856762
+     },
+     {
+      "x": 108,
+      "y": 0.011713047571420875
+     },
+     {
+      "x": 109,
+      "y": 0.027126760399993847
+     },
+     {
+      "x": 110,
+      "y": 0.05444999997020001
+     },
+     {
+      "x": 111,
+      "y": 0.09402228526296284
+     },
+     {
+      "x": 112,
+      "y": 0.1383948778124649
+     },
+     {
+      "x": 113,
+      "y": 0.17166475504615755
+     },
+     {
+      "x": 114,
+      "y": 0.1768099030656643
+     },
+     {
+      "x": 115,
+      "y": 0.14828337850304812
+     },
+     {
+      "x": 116,
+      "y": 0.09855341774499632
+     },
+     {
+      "x": 117,
+      "y": 0.04988799490199288
+     },
+     {
+      "x": 118,
+      "y": 0.01805207873183497
+     },
+     {
+      "x": 119,
+      "y": 0.00415536717168555
+     },
+     {
+      "x": 120,
+      "y": 0.00045688147405600205
+     }
+    ],
+    "x_min": 89,
+    "x_max": 120,
+    "y_max": 0.20333138852551394,
+    "current_pass": 4
+   }
+  },
+  "advanced": {
+   "schedule": [
+    {
+     "pairs": [
+      [
+       0,
+       3
+      ],
+      [
+       1,
+       2
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       2
+      ],
+      [
+       3,
+       1
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       1
+      ],
+      [
+       2,
+       3
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       3
+      ],
+      [
+       1,
+       2
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    },
+    {
+     "pairs": [
+      [
+       0,
+       2
+      ],
+      [
+       3,
+       1
+      ]
+     ],
+     "bye": null,
+     "sitting_out": []
+    }
+   ],
+   "advance_message": "This is the final pass; there is no next pass to advance to.",
+   "invalid_score_message": "Score must be between 0 and 60 for a 6-arrow pass, got 10000.",
+   "passes": [
+    {
+     "pass_index": 0,
+     "handicaps": [
+      40.0,
+      25.0,
+      70.0,
+      55.0
+     ],
+     "max_scores": [
+      60,
+      60,
+      54,
+      30
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "44",
+        "percentile": "52.2%",
+        "start_handicap": "40.0",
+        "handicap": "40.1",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Dan",
+        "score": "21",
+        "percentile": "24.4%",
+        "start_handicap": "55.0",
+        "handicap": "60.2",
+        "winner": "No"
+       }
+      ],
+      [
+       {
+        "archer": "Ben",
+        "score": "52",
+        "percentile": "59.2%",
+        "start_handicap": "25.0",
+        "handicap": "24.5",
+        "winner": "No"
+       },
+       {
+        "archer": "Cat",
+        "score": "30",
+        "percentile": "87.0%",
+        "start_handicap": "70.0",
+        "handicap": "62.4",
+        "winner": "Yes"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 1,
+     "handicaps": [
+      40.02441117686745,
+      24.91516728612045,
+      68.73782582915088,
+      55.869409781058
+     ],
+     "max_scores": [
+      60,
+      60,
+      54,
+      30
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "40",
+        "percentile": "19.2%",
+        "start_handicap": "40.0",
+        "handicap": "45.6",
+        "winner": "No"
+       },
+       {
+        "archer": "Cat",
+        "score": "33",
+        "percentile": "91.0%",
+        "start_handicap": "68.7",
+        "handicap": "59.1",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Dan",
+        "score": "24",
+        "percentile": "76.2%",
+        "start_handicap": "55.9",
+        "handicap": "52.3",
+        "winner": "No"
+       },
+       {
+        "archer": "Ben",
+        "score": "55",
+        "percentile": "93.3%",
+        "start_handicap": "24.9",
+        "handicap": "15.6",
+        "winner": "Yes"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 2,
+     "handicaps": [
+      40.86424158647945,
+      23.681662749492325,
+      67.37186044831326,
+      55.43263162891803
+     ],
+     "max_scores": [
+      60,
+      60,
+      54,
+      30
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "47",
+        "percentile": "82.3%",
+        "start_handicap": "40.9",
+        "handicap": "35.2",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Ben",
+        "score": "50",
+        "percentile": "22.3%",
+        "start_handicap": "23.7",
+        "handicap": "29.1",
+        "winner": "No"
+       }
+      ],
+      [
+       {
+        "archer": "Cat",
+        "score": "28",
+        "percentile": "68.7%",
+        "start_handicap": "67.4",
+        "handicap": "64.5",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Dan",
+        "score": "19",
+        "percentile": "8.0%",
+        "start_handicap": "55.4",
+        "handicap": "64.6",
+        "winner": "No"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 3,
+     "handicaps": [
+      40.2415856862889,
+      24.48702529213456,
+      67.02601827456019,
+      56.66182188103554
+     ],
+     "max_scores": [
+      60,
+      60,
+      54,
+      30
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "38",
+        "percentile": "10.1%",
+        "start_handicap": "40.2",
+        "handicap": "48.1",
+        "winner": "No"
+       },
+       {
+        "archer": "Dan",
+        "score": "25",
+        "percentile": "89.8%",
+        "start_handicap": "56.7",
+        "handicap": "49.0",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Ben",
+        "score": "56",
+        "percentile": "97.3%",
+        "start_handicap": "24.5",
+        "handicap": "11.8",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Cat",
+        "score": "35",
+        "percentile": "92.2%",
+        "start_handicap": "67.0",
+        "handicap": "56.8",
+        "winner": "No"
+       }
+      ]
+     ]
+    },
+    {
+     "pass_index": 4,
+     "handicaps": [
+      41.189519427102255,
+      23.273689708851588,
+      65.91178291594521,
+      55.96177023387727
+     ],
+     "max_scores": [
+      60,
+      60,
+      54,
+      30
+     ],
+     "tables": [
+      [
+       {
+        "archer": "Ann",
+        "score": "44",
+        "percentile": "59.4%",
+        "start_handicap": "41.2",
+        "handicap": "40.1",
+        "winner": "No"
+       },
+       {
+        "archer": "Cat",
+        "score": "31",
+        "percentile": "75.0%",
+        "start_handicap": "65.9",
+        "handicap": "61.3",
+        "winner": "Yes"
+       }
+      ],
+      [
+       {
+        "archer": "Dan",
+        "score": "22",
+        "percentile": "44.9%",
+        "start_handicap": "56.0",
+        "handicap": "57.8",
+        "winner": "No"
+       },
+       {
+        "archer": "Ben",
+        "score": "53",
+        "percentile": "65.2%",
+        "start_handicap": "23.3",
+        "handicap": "21.8",
+        "winner": "Yes"
+       }
+      ]
+     ]
+    }
+   ],
+   "is_complete": true,
+   "completed_passes": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "results": [
+    {
+     "rotation_index": 0,
+     "archer_index": 0,
+     "score": 44,
+     "percentile": 0.5220828379517145,
+     "handicap": 40.14646706120473,
+     "opponent_index": 3,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 0,
+     "archer_index": 3,
+     "score": 21,
+     "percentile": 0.24404753703268633,
+     "handicap": 60.21645868634803,
+     "opponent_index": 0,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 0,
+     "archer_index": 1,
+     "score": 52,
+     "percentile": 0.5915500429808963,
+     "handicap": 24.491003716722698,
+     "opponent_index": 2,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 0,
+     "archer_index": 2,
+     "score": 30,
+     "percentile": 0.8697854816911914,
+     "handicap": 62.42695497490522,
+     "opponent_index": 1,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 0,
+     "score": 40,
+     "percentile": 0.1915428380854081,
+     "handicap": 45.64800104333666,
+     "opponent_index": 2,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 2,
+     "score": 33,
+     "percentile": 0.9103150928848487,
+     "handicap": 59.13271333876643,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 3,
+     "score": 24,
+     "percentile": 0.7615110153820895,
+     "handicap": 52.276792009056045,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 1,
+     "archer_index": 1,
+     "score": 55,
+     "percentile": 0.9329022489210392,
+     "handicap": 15.573309345161729,
+     "opponent_index": 3,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 0,
+     "score": 47,
+     "percentile": 0.8229462777887686,
+     "handicap": 35.221702163269,
+     "opponent_index": 1,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 1,
+     "score": 50,
+     "percentile": 0.22280224912984775,
+     "handicap": 29.078573569558518,
+     "opponent_index": 0,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 2,
+     "score": 28,
+     "percentile": 0.686731996779829,
+     "handicap": 64.54793738553415,
+     "opponent_index": 3,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 2,
+     "archer_index": 3,
+     "score": 19,
+     "percentile": 0.0801377099559336,
+     "handicap": 64.60384114394148,
+     "opponent_index": 2,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 0,
+     "score": 38,
+     "percentile": 0.101049134701176,
+     "handicap": 48.08155134029428,
+     "opponent_index": 3,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 3,
+     "score": 25,
+     "percentile": 0.8984420529697598,
+     "handicap": 49.04775593959191,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 1,
+     "score": 56,
+     "percentile": 0.9725948432943856,
+     "handicap": 11.835442507295642,
+     "opponent_index": 2,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 3,
+     "archer_index": 2,
+     "score": 35,
+     "percentile": 0.9215384324070021,
+     "handicap": 56.814884187677436,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 0,
+     "score": 44,
+     "percentile": 0.5943929153218529,
+     "handicap": 40.14646706120473,
+     "opponent_index": 2,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 2,
+     "score": 31,
+     "percentile": 0.7500500663149604,
+     "handicap": 61.347417142171324,
+     "opponent_index": 0,
+     "won": true,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 3,
+     "score": 22,
+     "percentile": 0.4485289727730128,
+     "handicap": 57.79689707918064,
+     "opponent_index": 1,
+     "won": false,
+     "decided_by": "percentile"
+    },
+    {
+     "rotation_index": 4,
+     "archer_index": 1,
+     "score": 53,
+     "percentile": 0.6516773961424123,
+     "handicap": 21.825427884423945,
+     "opponent_index": 3,
+     "won": true,
+     "decided_by": "percentile"
+    }
+   ],
+   "pairwise": [
+    {
+     "archer_a": 0,
+     "archer_b": 1,
+     "wins_a": 1,
+     "wins_b": 0,
+     "outcome": 0
+    },
+    {
+     "archer_a": 0,
+     "archer_b": 2,
+     "wins_a": 0,
+     "wins_b": 2,
+     "outcome": 2
+    },
+    {
+     "archer_a": 0,
+     "archer_b": 3,
+     "wins_a": 1,
+     "wins_b": 1,
+     "outcome": "draw"
+    },
+    {
+     "archer_a": 1,
+     "archer_b": 2,
+     "wins_a": 1,
+     "wins_b": 1,
+     "outcome": "draw"
+    },
+    {
+     "archer_a": 1,
+     "archer_b": 3,
+     "wins_a": 2,
+     "wins_b": 0,
+     "outcome": 1
+    },
+    {
+     "archer_a": 2,
+     "archer_b": 3,
+     "wins_a": 1,
+     "wins_b": 0,
+     "outcome": 2
+    }
+   ],
+   "leaderboard": [
+    {
+     "rank": 1,
+     "archer_index": 2,
+     "name": "Cat",
+     "points": 4,
+     "passes_decided": 5,
+     "starting_handicap": 70.0,
+     "to_date_handicap": 60.908686109511365
+    },
+    {
+     "rank": 2,
+     "archer_index": 1,
+     "name": "Ben",
+     "points": 3,
+     "passes_decided": 5,
+     "starting_handicap": 25.0,
+     "to_date_handicap": 21.262850275849672
+    },
+    {
+     "rank": 3,
+     "archer_index": 0,
+     "name": "Ann",
+     "points": 2,
+     "passes_decided": 5,
+     "starting_handicap": 40.0,
+     "to_date_handicap": 42.188425646179525
+    },
+    {
+     "rank": 4,
+     "archer_index": 3,
+     "name": "Dan",
+     "points": 1,
+     "passes_decided": 5,
+     "starting_handicap": 55.0,
+     "to_date_handicap": 57.29161050266345
+    }
+   ],
+   "archer_results": [
+    {
+     "archer_index": 0,
+     "name": "Ann",
+     "handicap": 40.0,
+     "to_date_handicap": 42.188425646179525,
+     "arrows_shot": 30,
+     "total_score": 213,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Dan",
+       "score": 44,
+       "percentile": 0.5220828379517145,
+       "start_handicap": 40.0,
+       "handicap": 40.14646706120473
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Cat",
+       "score": 40,
+       "percentile": 0.1915428380854081,
+       "start_handicap": 40.02441117686745,
+       "handicap": 45.64800104333666
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Ben",
+       "score": 47,
+       "percentile": 0.8229462777887686,
+       "start_handicap": 40.86424158647945,
+       "handicap": 35.221702163269
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Dan",
+       "score": 38,
+       "percentile": 0.101049134701176,
+       "start_handicap": 40.2415856862889,
+       "handicap": 48.08155134029428
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Cat",
+       "score": 44,
+       "percentile": 0.5943929153218529,
+       "start_handicap": 41.189519427102255,
+       "handicap": 40.14646706120473
+      }
+     ],
+     "averages": {
+      "score": 42.6,
+      "percentile": 0.44640280076978406,
+      "start_handicap": 40.463951575347615,
+      "handicap": 41.848837733861885
+     }
+    },
+    {
+     "archer_index": 1,
+     "name": "Ben",
+     "handicap": 25.0,
+     "to_date_handicap": 21.262850275849672,
+     "arrows_shot": 30,
+     "total_score": 266,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Cat",
+       "score": 52,
+       "percentile": 0.5915500429808963,
+       "start_handicap": 25.0,
+       "handicap": 24.491003716722698
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Dan",
+       "score": 55,
+       "percentile": 0.9329022489210392,
+       "start_handicap": 24.91516728612045,
+       "handicap": 15.573309345161729
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Ann",
+       "score": 50,
+       "percentile": 0.22280224912984775,
+       "start_handicap": 23.681662749492325,
+       "handicap": 29.078573569558518
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Cat",
+       "score": 56,
+       "percentile": 0.9725948432943856,
+       "start_handicap": 24.48702529213456,
+       "handicap": 11.835442507295642
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Dan",
+       "score": 53,
+       "percentile": 0.6516773961424123,
+       "start_handicap": 23.273689708851588,
+       "handicap": 21.825427884423945
+      }
+     ],
+     "averages": {
+      "score": 53.2,
+      "percentile": 0.6743053560937162,
+      "start_handicap": 24.271509007319786,
+      "handicap": 20.560751404632505
+     }
+    },
+    {
+     "archer_index": 2,
+     "name": "Cat",
+     "handicap": 70.0,
+     "to_date_handicap": 60.908686109511365,
+     "arrows_shot": 30,
+     "total_score": 157,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Ben",
+       "score": 30,
+       "percentile": 0.8697854816911914,
+       "start_handicap": 70.0,
+       "handicap": 62.42695497490522
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Ann",
+       "score": 33,
+       "percentile": 0.9103150928848487,
+       "start_handicap": 68.73782582915088,
+       "handicap": 59.13271333876643
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Dan",
+       "score": 28,
+       "percentile": 0.686731996779829,
+       "start_handicap": 67.37186044831326,
+       "handicap": 64.54793738553415
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Ben",
+       "score": 35,
+       "percentile": 0.9215384324070021,
+       "start_handicap": 67.02601827456019,
+       "handicap": 56.814884187677436
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Ann",
+       "score": 31,
+       "percentile": 0.7500500663149604,
+       "start_handicap": 65.91178291594521,
+       "handicap": 61.347417142171324
+      }
+     ],
+     "averages": {
+      "score": 31.4,
+      "percentile": 0.8276842140155664,
+      "start_handicap": 67.80949749359391,
+      "handicap": 60.85398140581092
+     }
+    },
+    {
+     "archer_index": 3,
+     "name": "Dan",
+     "handicap": 55.0,
+     "to_date_handicap": 57.29161050266345,
+     "arrows_shot": 30,
+     "total_score": 111,
+     "rows": [
+      {
+       "pass_number": 1,
+       "opponent": "Ann",
+       "score": 21,
+       "percentile": 0.24404753703268633,
+       "start_handicap": 55.0,
+       "handicap": 60.21645868634803
+      },
+      {
+       "pass_number": 2,
+       "opponent": "Ben",
+       "score": 24,
+       "percentile": 0.7615110153820895,
+       "start_handicap": 55.869409781058,
+       "handicap": 52.276792009056045
+      },
+      {
+       "pass_number": 3,
+       "opponent": "Cat",
+       "score": 19,
+       "percentile": 0.0801377099559336,
+       "start_handicap": 55.43263162891803,
+       "handicap": 64.60384114394148
+      },
+      {
+       "pass_number": 4,
+       "opponent": "Ann",
+       "score": 25,
+       "percentile": 0.8984420529697598,
+       "start_handicap": 56.66182188103554,
+       "handicap": 49.04775593959191
+      },
+      {
+       "pass_number": 5,
+       "opponent": "Ben",
+       "score": 22,
+       "percentile": 0.4485289727730128,
+       "start_handicap": 55.96177023387727,
+       "handicap": 57.79689707918064
+      }
+     ],
+     "averages": {
+      "score": 22.2,
+      "percentile": 0.4865334576226964,
+      "start_handicap": 55.78512670497777,
+      "handicap": 56.78834897162362
+     }
+    }
+   ],
+   "leaderboard_csv": "Rank,Archer,Points,Passes decided,Starting handicap,To-date handicap,Exported\r\n1,Cat,4,5,70,60.9,2026-10-04 15:30:12\r\n2,Ben,3,5,25,21.3,2026-10-04 15:30:12\r\n3,Ann,2,5,40,42.2,2026-10-04 15:30:12\r\n4,Dan,1,5,55,57.3,2026-10-04 15:30:12\r\n",
+   "archer_results_csv": "Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),Pass starting handicap,Handicap of score,Exported\r\nAnn,40,42.2,1,Dan,44,52.2,40.0,40.1,2026-10-04 15:30:12\r\nAnn,40,42.2,2,Cat,40,19.2,40.0,45.6,2026-10-04 15:30:12\r\nAnn,40,42.2,3,Ben,47,82.3,40.9,35.2,2026-10-04 15:30:12\r\nAnn,40,42.2,4,Dan,38,10.1,40.2,48.1,2026-10-04 15:30:12\r\nAnn,40,42.2,5,Cat,44,59.4,41.2,40.1,2026-10-04 15:30:12\r\nBen,25,21.3,1,Cat,52,59.2,25.0,24.5,2026-10-04 15:30:12\r\nBen,25,21.3,2,Dan,55,93.3,24.9,15.6,2026-10-04 15:30:12\r\nBen,25,21.3,3,Ann,50,22.3,23.7,29.1,2026-10-04 15:30:12\r\nBen,25,21.3,4,Cat,56,97.3,24.5,11.8,2026-10-04 15:30:12\r\nBen,25,21.3,5,Dan,53,65.2,23.3,21.8,2026-10-04 15:30:12\r\nCat,70,60.9,1,Ben,30,87.0,70.0,62.4,2026-10-04 15:30:12\r\nCat,70,60.9,2,Ann,33,91.0,68.7,59.1,2026-10-04 15:30:12\r\nCat,70,60.9,3,Dan,28,68.7,67.4,64.5,2026-10-04 15:30:12\r\nCat,70,60.9,4,Ben,35,92.2,67.0,56.8,2026-10-04 15:30:12\r\nCat,70,60.9,5,Ann,31,75.0,65.9,61.3,2026-10-04 15:30:12\r\nDan,55,57.3,1,Ann,21,24.4,55.0,60.2,2026-10-04 15:30:12\r\nDan,55,57.3,2,Ben,24,76.2,55.9,52.3,2026-10-04 15:30:12\r\nDan,55,57.3,3,Cat,19,8.0,55.4,64.6,2026-10-04 15:30:12\r\nDan,55,57.3,4,Ann,25,89.8,56.7,49.0,2026-10-04 15:30:12\r\nDan,55,57.3,5,Ben,22,44.9,56.0,57.8,2026-10-04 15:30:12\r\n",
+   "pdf": {
+    "header": "%PDF-1.3",
+    "pages": 2,
+    "content_sha256": "92b4d369fc81926506fbff3504430ac792366e65df7f86bf33f7c6e9ff1f260e"
+   },
+   "pair_chart": {
+    "archer_a": {
+     "name": "Ben",
+     "legend": "Ben (handicap 23.3)",
+     "passes": [
+      {
+       "index": 0,
+       "score": 52
+      },
+      {
+       "index": 1,
+       "score": 55
+      },
+      {
+       "index": 2,
+       "score": 50
+      },
+      {
+       "index": 3,
+       "score": 56
+      },
+      {
+       "index": 4,
+       "score": 53
+      }
+     ]
+    },
+    "archer_b": {
+     "name": "Cat",
+     "legend": "Cat (handicap 65.9)",
+     "passes": [
+      {
+       "index": 0,
+       "score": 30
+      },
+      {
+       "index": 1,
+       "score": 33
+      },
+      {
+       "index": 2,
+       "score": 28
+      },
+      {
+       "index": 3,
+       "score": 35
+      },
+      {
+       "index": 4,
+       "score": 31
+      }
+     ]
+    },
+    "distribution_a": [
+     {
+      "x": 0,
+      "y": 1.7449556241236443e-23
+     },
+     {
+      "x": 1,
+      "y": 0.0
+     },
+     {
+      "x": 2,
+      "y": 0.0
+     },
+     {
+      "x": 3,
+      "y": 0.0
+     },
+     {
+      "x": 4,
+      "y": 0.0
+     },
+     {
+      "x": 5,
+      "y": 1.3641252511768853e-21
+     },
+     {
+      "x": 6,
+      "y": 1.1355256165086986e-20
+     },
+     {
+      "x": 7,
+      "y": 5.685559972637214e-20
+     },
+     {
+      "x": 8,
+      "y": 1.6593873523377554e-19
+     },
+     {
+      "x": 9,
+      "y": 2.602146067346934e-19
+     },
+     {
+      "x": 10,
+      "y": 1.9868785620948952e-19
+     },
+     {
+      "x": 11,
+      "y": 7.397509834553616e-19
+     },
+     {
+      "x": 12,
+      "y": 6.782841092604339e-18
+     },
+     {
+      "x": 13,
+      "y": 4.1642468636381383e-17
+     },
+     {
+      "x": 14,
+      "y": 1.841270210964523e-16
+     },
+     {
+      "x": 15,
+      "y": 6.024955164174182e-16
+     },
+     {
+      "x": 16,
+      "y": 1.4669775947703546e-15
+     },
+     {
+      "x": 17,
+      "y": 2.737937980701063e-15
+     },
+     {
+      "x": 18,
+      "y": 5.173080067607504e-15
+     },
+     {
+      "x": 19,
+      "y": 1.7759296194427018e-14
+     },
+     {
+      "x": 20,
+      "y": 8.468008057389368e-14
+     },
+     {
+      "x": 21,
+      "y": 3.576677720563699e-13
+     },
+     {
+      "x": 22,
+      "y": 1.2329606226167384e-12
+     },
+     {
+      "x": 23,
+      "y": 3.4723706753726986e-12
+     },
+     {
+      "x": 24,
+      "y": 8.12901787507977e-12
+     },
+     {
+      "x": 25,
+      "y": 1.6968662875459604e-11
+     },
+     {
+      "x": 26,
+      "y": 3.859821515087587e-11
+     },
+     {
+      "x": 27,
+      "y": 1.1758001303069036e-10
+     },
+     {
+      "x": 28,
+      "y": 4.246644278443047e-10
+     },
+     {
+      "x": 29,
+      "y": 1.4640283386490135e-09
+     },
+     {
+      "x": 30,
+      "y": 4.421563927993982e-09
+     },
+     {
+      "x": 31,
+      "y": 1.1545658280721965e-08
+     },
+     {
+      "x": 32,
+      "y": 2.6527878010051613e-08
+     },
+     {
+      "x": 33,
+      "y": 5.682373173952034e-08
+     },
+     {
+      "x": 34,
+      "y": 1.2780547510011855e-07
+     },
+     {
+      "x": 35,
+      "y": 3.375624758568351e-07
+     },
+     {
+      "x": 36,
+      "y": 1.0096529811962517e-06
+     },
+     {
+      "x": 37,
+      "y": 3.017011278012896e-06
+     },
+     {
+      "x": 38,
+      "y": 8.29965395834082e-06
+     },
+     {
+      "x": 39,
+      "y": 2.0450870806757858e-05
+     },
+     {
+      "x": 40,
+      "y": 4.529013582248437e-05
+     },
+     {
+      "x": 41,
+      "y": 9.286992326439188e-05
+     },
+     {
+      "x": 42,
+      "y": 0.00018819282477245674
+     },
+     {
+      "x": 43,
+      "y": 0.00041083749141939546
+     },
+     {
+      "x": 44,
+      "y": 0.0010007421382406119
+     },
+     {
+      "x": 45,
+      "y": 0.002570563936270807
+     },
+     {
+      "x": 46,
+      "y": 0.006414751323452552
+     },
+     {
+      "x": 47,
+      "y": 0.014753333988565532
+     },
+     {
+      "x": 48,
+      "y": 0.03050173658461288
+     },
+     {
+      "x": 49,
+      "y": 0.056011084891843005
+     },
+     {
+      "x": 50,
+      "y": 0.09062076957322533
+     },
+     {
+      "x": 51,
+      "y": 0.12813641910009968
+     },
+     {
+      "x": 52,
+      "y": 0.15681610853212788
+     },
+     {
+      "x": 53,
+      "y": 0.16408135174774371
+     },
+     {
+      "x": 54,
+      "y": 0.14448495894311633
+     },
+     {
+      "x": 55,
+      "y": 0.10486590811669157
+     },
+     {
+      "x": 56,
+      "y": 0.06096895024465228
+     },
+     {
+      "x": 57,
+      "y": 0.02724725813676205
+     },
+     {
+      "x": 58,
+      "y": 0.008770550551474963
+     },
+     {
+      "x": 59,
+      "y": 0.0018064972156242305
+     },
+     {
+      "x": 60,
+      "y": 0.00017848064926642379
+     }
+    ],
+    "distribution_b": [
+     {
+      "x": 0,
+      "y": 6.545218366880188e-07
+     },
+     {
+      "x": 1,
+      "y": 5.26971474872528e-06
+     },
+     {
+      "x": 2,
+      "y": 1.7678232143644405e-05
+     },
+     {
+      "x": 3,
+      "y": 4.0276198577426426e-05
+     },
+     {
+      "x": 4,
+      "y": 8.984726134152863e-05
+     },
+     {
+      "x": 5,
+      "y": 0.00018362322250411707
+     },
+     {
+      "x": 6,
+      "y": 0.0003330686115941096
+     },
+     {
+      "x": 7,
+      "y": 0.0006003401784228197
+     },
+     {
+      "x": 8,
+      "y": 0.0009969099177803006
+     },
+     {
+      "x": 9,
+      "y": 0.0015912354011722695
+     },
+     {
+      "x": 10,
+      "y": 0.0024891154784709756
+     },
+     {
+      "x": 11,
+      "y": 0.003622610523272814
+     },
+     {
+      "x": 12,
+      "y": 0.005321912503417704
+     },
+     {
+      "x": 13,
+      "y": 0.007315144648166675
+     },
+     {
+      "x": 14,
+      "y": 0.0099503768978922
+     },
+     {
+      "x": 15,
+      "y": 0.013272358832973345
+     },
+     {
+      "x": 16,
+      "y": 0.016613031269147156
+     },
+     {
+      "x": 17,
+      "y": 0.021658353240181553
+     },
+     {
+      "x": 18,
+      "y": 0.025293697014237882
+     },
+     {
+      "x": 19,
+      "y": 0.031695434380123
+     },
+     {
+      "x": 20,
+      "y": 0.03574257400457934
+     },
+     {
+      "x": 21,
+      "y": 0.04143895242644402
+     },
+     {
+      "x": 22,
+      "y": 0.04740926710980749
+     },
+     {
+      "x": 23,
+      "y": 0.048223538943167735
+     },
+     {
+      "x": 24,
+      "y": 0.05919887377208227
+     },
+     {
+      "x": 25,
+      "y": 0.0497827288138301
+     },
+     {
+      "x": 26,
+      "y": 0.06927462011270248
+     },
+     {
+      "x": 27,
+      "y": 0.04541620321219169
+     },
+     {
+      "x": 28,
+      "y": 0.07529775284023954
+     },
+     {
+      "x": 29,
+      "y": 0.03642533773506271
+     },
+     {
+      "x": 30,
+      "y": 0.07525434627777439
+     },
+     {
+      "x": 31,
+      "y": 0.025494933019073726
+     },
+     {
+      "x": 32,
+      "y": 0.06850133143741113
+     },
+     {
+      "x": 33,
+      "y": 0.015406116455543505
+     },
+     {
+      "x": 34,
+      "y": 0.05631376364650013
+     },
+     {
+      "x": 35,
+      "y": 0.007909685590714494
+     },
+     {
+      "x": 36,
+      "y": 0.04147724199881221
+     },
+     {
+      "x": 37,
+      "y": 0.0033666411192267067
+     },
+     {
+      "x": 38,
+      "y": 0.02714120350464269
+     },
+     {
+      "x": 39,
+      "y": 0.001142593711565218
+     },
+     {
+      "x": 40,
+      "y": 0.015622737684353271
+     },
+     {
+      "x": 41,
+      "y": 0.0002896779567814315
+     },
+     {
+      "x": 42,
+      "y": 0.0078083304221604685
+     },
+     {
+      "x": 43,
+      "y": 4.8614136487360706e-05
+     },
+     {
+      "x": 44,
+      "y": 0.0033276695013730708
+     },
+     {
+      "x": 45,
+      "y": 4.034728051769702e-06
+     },
+     {
+      "x": 46,
+      "y": 0.0011775302636465293
+     },
+     {
+      "x": 47,
+      "y": 0.0
+     },
+     {
+      "x": 48,
+      "y": 0.0003322817968123793
+     },
+     {
+      "x": 49,
+      "y": 0.0
+     },
+     {
+      "x": 50,
+      "y": 7.00281004108249e-05
+     },
+     {
+      "x": 51,
+      "y": 0.0
+     },
+     {
+      "x": 52,
+      "y": 9.775530769168917e-06
+     },
+     {
+      "x": 53,
+      "y": 0.0
+     },
+     {
+      "x": 54,
+      "y": 6.760997771632091e-07
+     },
+     {
+      "x": 55,
+      "y": 0.0
+     },
+     {
+      "x": 56,
+      "y": 0.0
+     },
+     {
+      "x": 57,
+      "y": 0.0
+     },
+     {
+      "x": 58,
+      "y": 0.0
+     },
+     {
+      "x": 59,
+      "y": 0.0
+     },
+     {
+      "x": 60,
+      "y": 0.0
+     }
+    ],
+    "x_min": 0,
+    "x_max": 60,
+    "y_max": 0.18869355450990527,
+    "current_pass": 4
+   }
+  },
+  "calculator": {
+   "rounds": {
+    "indoor": [
+     "bray_i",
+     "bray_i_triple",
+     "bray_ii",
+     "bray_ii_triple",
+     "portsmouth",
+     "portsmouth_triple",
+     "stafford",
+     "vegas",
+     "vegas_300",
+     "vegas_300_triple",
+     "wa18",
+     "wa18_triple",
+     "wa25",
+     "wa25_triple",
+     "worcester",
+     "worcester_5_centre"
+    ],
+    "outdoor": [
+     "agb900_30",
+     "agb900_40",
+     "agb900_50",
+     "agb900_60",
+     "agb900_70",
+     "albion",
+     "american",
+     "bristol_i",
+     "bristol_ii",
+     "bristol_iii",
+     "bristol_iv",
+     "bristol_v",
+     "hereford",
+     "long_metric_70",
+     "long_metric_90",
+     "long_metric_i",
+     "long_metric_ii",
+     "long_metric_iii",
+     "long_metric_iv",
+     "long_metric_v",
+     "long_national",
+     "long_warwick",
+     "long_western",
+     "metric_122_30",
+     "metric_122_40",
+     "metric_122_50",
+     "metric_80_30",
+     "metric_80_40",
+     "metric_80_50",
+     "metric_i",
+     "metric_ii",
+     "metric_iii",
+     "metric_iv",
+     "metric_v",
+     "national",
+     "national_30",
+     "national_40",
+     "national_50",
+     "new_national",
+     "new_warwick",
+     "new_western",
+     "short_metric",
+     "short_metric_i",
+     "short_metric_ii",
+     "short_metric_iii",
+     "short_metric_iv",
+     "short_metric_v",
+     "st_nicholas",
+     "st_george",
+     "wa1440_60",
+     "wa1440_60_small",
+     "wa1440_70",
+     "wa1440_70_small",
+     "wa1440_90",
+     "wa1440_90_small",
+     "wa720_30_b",
+     "wa720_40",
+     "wa720_40_c",
+     "wa720_50_b",
+     "wa720_50_c",
+     "wa720_60",
+     "wa720_70",
+     "wa900",
+     "warwick",
+     "warwick_30",
+     "warwick_40",
+     "warwick_50",
+     "western",
+     "western_30",
+     "western_40",
+     "western_50",
+     "windsor",
+     "windsor_30",
+     "windsor_40",
+     "windsor_50",
+     "york"
+    ]
+   },
+   "portsmouth_compound_570": 19.598875251469458,
+   "wa720_70_600": 29.288366895606558
+  }
+ }
+}

@@ -2237,3 +2237,68 @@ patch-version difference as well as the numpy difference. `/Prompts` is git-igno
 `Prompts/UILoopPrompt.md` is not in the repository even though `README.md` lists `Prompts/`; this is the owner's
 choice and is left alone. `uv run` warns that the shell's `VIRTUAL_ENV` points elsewhere and uses the project
 `.venv`, which is the intended behaviour.
+
+## UI-1 - Pyodide compatibility gate (2026-10-04): PASSED
+
+What changed (all new; no `h2h/` file touched):
+- `web/package.json` (only `pyodide` pinned to `314.0.7`) and `web/package-lock.json`.
+- `web/scripts/pyodide-gate/scenario.py`: runs natively (`uv run web/scripts/pyodide-gate/scenario.py` writes
+  `golden.json`) and inside Pyodide (the runner imports it and calls `result_json`). It drives the existing modules
+  directly: `rotation.build_schedule`, `models.Event`, `record_match` (with a tie-break, a score of 0 and a
+  corrected score), `advance`, `outputs.pass_table_rows`, `leaderboard`, `archer_results`, pairwise results, both
+  CSVs, the PDF, `chart_data.build_pair_chart_data`, and the calculator (`calculator_rounds`,
+  `calculator_round`, `handicap_for_round_score`). It also captures the tie-break, final-pass advance and
+  out-of-range score messages.
+- `web/scripts/pyodide-gate/run-gate.mjs`: loads Pyodide 314.0.7 under Node, loads numpy and micropip,
+  `micropip.install`s `archeryutils` and `fpdf2` at the versions recorded in `golden.json`, writes the seven
+  whitelisted `h2h` modules into the Pyodide file system, runs the scenario, and compares with `golden.json`.
+  It exits with 1 on any mismatch or a missing `%PDF-` header.
+- `web/scripts/pyodide-gate/golden.json` (native output, committed).
+
+Verification:
+- `node web/scripts/pyodide-gate/run-gate.mjs` prints **GATE PASSED** and exits with 0:
+  - Environments: native Python 3.14.0 / numpy 2.5.3 / win32; Pyodide Python 3.14.2 / numpy 2.4.6 / emscripten.
+    Both have archeryutils 3.0.0 and fpdf2 2.8.9.
+  - Every int, bool, string and None is equal and of the same type. **All 492 floats are bit-identical (largest
+    relative difference 0)**, so there is no numeric drift from Pyodide's older numpy to record.
+  - Both PDFs start with `%PDF-1.3` and have the same page count and drawn content as native.
+  - Timings (Node 24.19.0, desktop, wheels cached): Pyodide loaded in 1.0 s; packages ready in 3.1 s; h2h modules
+    imported in 1.4 s; scenario ran in 0.2 s; 5.6 s in total.
+- The comparison was mutation-checked natively by feeding `compare_json` altered copies of the golden output:
+  - Flagged: a float changed by a relative 1e-8, an int changed, an int turned into a float, a string changed,
+    a list shortened and a changed PDF hash.
+  - Not flagged: a float changed by 1e-10 (within tolerance) and a changed `environment` (not compared).
+  - The PDF summary's decompressed stream contains the title and the export time, its hash changes when an
+    archer's name changes, and it is the same on repeated runs.
+- Regenerating `golden.json` natively gives a byte-identical file.
+- `uv run pytest`: 919 passed. pytest does not collect anything under `web/`.
+
+Assumptions:
+1. **Two scripted 4-archer events instead of one.** One uses simple setup (shared 20 yd / 60 cm with an indoor
+   Compound archer, a tie-break, a score of 0, a corrected score). The other uses advanced setup (four
+   per-archer faces: 10 zone, 10 zone 6 ring, 5 zone, Worcester; 6-arrow passes; handicap updating on). One
+   event cannot cover the simple and advanced paths, and the second costs almost nothing.
+2. **The gate installs the exact native versions** (`archeryutils==3.0.0`, `fpdf2==2.8.9`, read from
+   `golden.json`), so the comparison isolates Pyodide itself. The deployed app uses the loose bounds of UISpec
+   4.3. Pyodide's own Pillow 12.2.0 and fonttools 4.62.1 differ from native (12.3.0, 4.66.1), but neither is
+   used for a built-in-font PDF.
+3. **The PDF is compared by summary, not raw bytes**: header, page count and SHA-256 of the decompressed
+   streams. The raw bytes contain fpdf2's creation date and depend on the zlib build.
+4. **The comparison runs in Python** (`scenario.compare_json`, inside Pyodide) so ints and floats stay
+   distinct. Only JSON strings cross the JS/Python boundary.
+5. **The modules are written with `pyodide.FS.writeFile`**, not unpacked from an archive. The result is the
+   same; the hashed zip bundle arrives in UI-6.
+
+Spec discrepancies:
+- UISpec 8 says the scenario "prints one JSON result". In this design the native run writes `golden.json` and
+  the Pyodide run returns its JSON to the runner, which prints the comparison report. Same outcome; no spec
+  change proposed.
+
+Notes for future tasks:
+- The first run needs network access. Pyodide's own wheels (numpy, micropip, Pillow, fonttools) come from
+  jsDelivr and are cached in `web/node_modules/pyodide` (git-ignored); archeryutils, fpdf2 and defusedxml come
+  from PyPI on every run.
+- Importing the h2h modules took 1.4 s in Pyodide, most likely archeryutils round data and fpdf2. UI-7 should
+  measure the fpdf2 share (D16).
+- deploymentConstrains 4, rule 2 asks for a README note pinning the Pyodide version. It belongs with the README
+  rewrite (UI-22) or earlier if the owner prefers.
