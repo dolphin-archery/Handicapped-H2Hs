@@ -1,12 +1,12 @@
 import { HashRouter, Navigate, Route, Routes } from "react-router";
 import { Shell } from "./components/Shell";
 import { About } from "./routes/About";
+import { Calculator } from "./routes/Calculator";
 import {
   EventIndex,
   EventLayout,
   MatchRoute,
   PassRoute,
-  Placeholder,
   ResultsRoute,
   SetupRoute,
 } from "./routes/EventRoutes";
@@ -24,10 +24,7 @@ export default function App() {
       <Routes>
         <Route element={<Shell />}>
           <Route index element={<Home />} />
-          <Route
-            path="calculator"
-            element={<Placeholder title="Handicap calculator" task="UI-10" />}
-          />
+          <Route path="calculator" element={<Calculator />} />
           <Route path="about" element={<About />} />
           <Route path="e/:id" element={<EventLayout />}>
             <Route index element={<EventIndex />} />

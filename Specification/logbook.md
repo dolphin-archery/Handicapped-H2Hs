@@ -2956,3 +2956,50 @@ The owner reviewed UI-9 ("the skeleton looks good"; additions to follow after th
    archer must be chosen as the winner. In practice this happens only when both archers shoot the pass's
    maximum score. UI-14 shows that message clearly.
 4. **Stage 2's default start weight:** add a small read-only bridge command when UI-11/UI-12 need it.
+
+## UI-10: Handicap calculator (2026-10-04)
+
+What changed (all in `web/`):
+- `src/engine/useBridgeQuery.ts`: a hook that runs a read-only bridge command and returns loading, ok (data)
+  or error. It reruns when the payload changes (compared as JSON). Later views (pairings, overview, match,
+  results) reuse it.
+- `src/components/CalculatorForm.tsx`, with two parts:
+  - `CalculatorForm`: round type (`SegmentedControl` Indoor / Outdoor), a searchable round `Select`, the
+    compound `Checkbox` (indoor only, with the old page's explanation), a score `NumberInput` (numeric
+    keypad, whole numbers, no negatives) and Calculate.
+  - `CalculatorDrawer`, kept mounted so a typed calculation survives closing the drawer, for Stage 2 (D6).
+  - The round lists and defaults come from `options().calculator`. The result is "Handicap: <text>", using
+    the bridge's `text`. Bridge errors appear in a red `Alert`. Nothing is stored.
+- `src/routes/Calculator.tsx`: the `#/calculator` view, replacing the placeholder.
+- Tests:
+  - `e2e/calculator.spec.ts`: 6 tests on one shared page, so the engine starts once;
+  - `e2e/screenshots.spec.ts` gains the calculator route.
+
+Verification:
+- Playwright `calculator.spec.ts`: 6 passed.
+  - The three valid fixture cases (indoor Portsmouth 550 is 41.4; compound 570 is 19.6; outdoor WA 720 70 m
+    600 is 29.3) show "Handicap: <fixture text>".
+  - Invalid input shows "Enter a valid score for the chosen round.".
+  - The compound checkbox is visible for Indoor and absent for Outdoor.
+  - The round list has 16 indoor and 76 outdoor options, with the fixture's first label.
+- Shell and smoke tests 12 passed; Vitest 93 passed; `tsc -b`, eslint and prettier are clean; pytest 1267
+  passed.
+- Screenshots of the calculator at 1440x900 and 390x844, light and dark, reviewed:
+  - the form sits in a bordered card with a maximum width of 560 px;
+  - labels are visible and the checkbox description reads well;
+  - on phones the form takes the full width with no horizontal scroll;
+  - dark mode applies throughout.
+  - Nothing to fix. Input font size on phones (16 px) is left to UI-19 with the other views.
+
+Assumptions:
+1. **The invalid-input test leaves the score empty, not "abc" as in the fixture.** The `NumberInput` refuses
+   letters, and the bridge rejects an empty score with the same message.
+2. **The calculator remembers one round per type**, so switching Indoor and Outdoor keeps each choice, as the
+   old page did with its two lists.
+3. **The score field allows only whole, non-negative numbers.** These are input conveniences only; any other
+   rejection is the bridge's.
+
+Notes for later tasks:
+- UI-12 opens `CalculatorDrawer` from Stage 2.
+- `options` waits for the engine. Stage 1 and 2 need its lists (distances, faces, bowstyles), so those forms
+  show a loader until the engine is ready (UI-11).

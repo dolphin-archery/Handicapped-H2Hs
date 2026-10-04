@@ -11,6 +11,7 @@ const ROUTES: { name: string; hash: string }[] = [
   { name: "home", hash: "" },
   { name: "stage2", hash: "#/e/ev-setup/setup/2" },
   { name: "pass", hash: "#/e/ev-run/pass" },
+  { name: "calculator", hash: "#/calculator" },
   { name: "about", hash: "#/about" },
   { name: "not-found", hash: "#/e/missing/pass" },
 ];
