@@ -36,7 +36,7 @@ const ROUNDS = (
 ).data.calculator.rounds;
 const CASES = FIXTURE.steps.filter((step) => step.command === "calculator");
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 240_000 });
 let page: Page;
 
 test.beforeAll(async ({ browser }) => {

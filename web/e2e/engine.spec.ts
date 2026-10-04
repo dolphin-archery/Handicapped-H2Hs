@@ -9,9 +9,12 @@ import { expect, test } from "@playwright/test";
 test("New event creates an event through the engine and opens Stage 1", async ({ page }) => {
   test.setTimeout(300_000);
   const transferred = new Map<string, number>();
-  page.on("requestfinished", async (request) => {
-    const sizes = await request.sizes();
-    transferred.set(request.url(), sizes.responseBodySize + sizes.responseHeadersSize);
+  page.on("requestfinished", (request) => {
+    // A request finishing as the test closes the page has no sizes left to read: skip it.
+    request.sizes().then(
+      (sizes) => transferred.set(request.url(), sizes.responseBodySize + sizes.responseHeadersSize),
+      () => {},
+    );
   });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

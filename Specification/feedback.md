@@ -135,6 +135,7 @@ Both to use graphs where appropriate
 - Simple
     - High level, accessible explanation of underlying concepts
     - No equations
+    - What a handicap is and why it is useful
 - Complex
     - Full derivation with equations and justifcations
     - Acknowledge limitations

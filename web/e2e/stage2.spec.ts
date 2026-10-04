@@ -14,7 +14,7 @@ const ARCHERS = [
   { name: "Dan", bowstyle: "Recurve", handicap: "35" },
 ];
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 240_000 });
 let page: Page;
 
 test.beforeAll(async ({ browser }) => {

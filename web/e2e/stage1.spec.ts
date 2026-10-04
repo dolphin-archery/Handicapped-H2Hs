@@ -10,7 +10,7 @@ const NEW = fixtureDoc("new_document", { id: "ev-new", name: "Club night" });
 const STAGE2 = fixtureDoc("apply_stage2", { id: "ev-s2", name: "Archers entered" });
 const RUNNING = fixtureDoc("start_event", { id: "ev-run", name: "League round" });
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 240_000 });
 let page: Page;
 
 test.beforeAll(async ({ browser }) => {

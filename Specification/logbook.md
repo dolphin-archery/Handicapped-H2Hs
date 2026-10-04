@@ -3259,3 +3259,79 @@ Assumptions:
    `record_match`, D11).
 3. **Phones show match cards** instead of a sideways-scrolling table (UISpec 7.4: no horizontal scroll, and
    tables of more than five columns don't fit at 390 px).
+
+## UI-15: Match view without chart (2026-10-04)
+
+What changed (all in `web/`):
+- `src/scoring/MatchPage.tsx`: `#/e/:id/pass/match/:i`, built from the bridge `match` command; saving calls
+  `record_match`.
+  - **Heading:** "Ann vs Ben", or "Ann - bye, no opponent", with "Pass N of M · Back to overview".
+  - **Score boxes:** one per archer, labelled "<name> score (0-<max>)" with the archer's own maximum. No
+    handicap is shown; the first box is autofocused; the numeric keypad is used; Enter saves. The box does
+    not filter values: decimals, negatives and out-of-range numbers go to the bridge, which answers with its
+    messages.
+  - **Tie-break** (owner decision 3 of the UI-9 review):
+    - a `Radio.Group` "Tie-break: closest to the middle", so exactly one archer can be chosen, explained as
+      "Choose that one archer: they win the pass";
+    - shown only after a `tiebreak_required` answer (yellow `Alert` with the bridge message, typed scores
+      kept) or when the saved result was decided by it, with that archer chosen;
+    - `closest` is sent only while the control is shown;
+    - the "Tick only one archer" case can't happen with radios.
+  - **After a save:**
+    - an inline "Scores saved." with "Next unscored match" (from the view's `next_unscored_match`) and "Back
+      to overview";
+    - "Save scores" becomes "Save changed scores", with the old page's note about replacing scores;
+    - the "This pass" table, with "Percentile and score were tied; decided by closest to the middle." when it
+      applies.
+  - **Layout:** two columns from `md`. The right column shows a muted hint when Graph view is off, and a
+    placeholder panel when it is on (the chart is UI-16). A bye match is single-column with one box, no
+    winner, no chart column and the old explanation.
+  - **Drafts:** typed values are saved as the draft entry `match:<pass>:<match>`, which is discarded after a
+    successful save. Matches on the final pass stay editable after completion (D11).
+- `src/scoring/PassTable.tsx`: the pass table (`_pass_table.html`): one `tbody` per match with a thick double
+  line between matches, and "Pass starting handicap" only when updating is on. It uses compact spacing, so 5
+  columns fit at 390 px. The Results Passes tab (UI-17) will reuse it.
+- `src/engine/useBridgeQuery.ts`: an optional `keepPrevious`, so a save that makes the `match` query rerun
+  doesn't unmount the form. The match page accepts a kept answer only if it is for the same match index: the
+  first version showed match 0's form under match 1 after "Next unscored match", which the test caught.
+- `e2e/seed.ts`: `fixtureSteps(scenario, command?)`. `e2e/engine.spec.ts`: the transfer counter ignores
+  requests that finish after the page closed; this race showed up once as a failure.
+- The serial engine specs (calculator, Stage 1, Stage 2) now use a 240 s timeout like the later ones: under
+  parallel load, engine start exceeded the 30 s default once.
+- Tests: `e2e/match.spec.ts`, 13 tests; screenshots of a new match and a saved match.
+
+Verification:
+- Playwright `match.spec.ts`, 13 passed, on the `tie_break` fixture's two equal archers.
+  - **Tie-break scenarios** (as in `test_event_routes.py`):
+    - no control on a fresh match or one saved by score;
+    - a tie without a choice is refused with the bridge message, the typed 90 and 90 are kept, the control
+      appears with nothing chosen, and nothing is stored;
+    - choosing Ann saves the match: winners No / Yes, the decided note shown, Ann still chosen after a reload,
+      and the overview's winner is Ann;
+    - editing a closest-decided match to untied scores drops the note and the control;
+    - a refused re-save into a tie keeps the stored 100 / 60 and shows the control.
+  - **Invalid scores:** 999 gives "Score must be between 0 and 120..."; 90.5 gives "Score must be a whole
+    number, got 90.5.".
+  - **Labels** are exactly "Ben score (0-120)" and "Ann score (0-120)", with no "handicap" text in the form.
+  - **Bye:** one input, winner "-", no chart column, no chart panel even with Graph view on.
+  - **Draft:** survives a reload.
+  - **Persistence:** saved scores survive closing the tab and opening a new one.
+  - **Completion:** saving the last match of the final pass stores status `complete`, and Home shows
+    "Complete" (moved here from UI-14). A final-pass match of a complete event can be edited and saved, and
+    the status stays `complete`.
+  - **This pass table** equals the `record_match` result's rows exactly; "Next unscored match" opens match 1
+    with an empty form.
+- Whole Playwright suite apart from screenshots: 60 passed, twice in a row; the first load is 9.7 MB. Vitest
+  100 passed; pytest 1269 passed; `tsc`, eslint and prettier are clean.
+- Screenshots of a new match and a saved match at 1440x900 and 390x844, light and dark, reviewed:
+  - desktop two-column layout with the Graph view hint on the right;
+  - on phones the hint sits below the table.
+  - Fixed: the 5-column This pass table scrolled sideways at 390 px; it is now compact and fits.
+
+Assumptions:
+1. **The tie-break is a radio pair, not two checkboxes.** UISpec 7.2 says "choose exactly one", and the owner
+   only requires that a single winner is clearly chosen. The bridge's "Tick ... then save again" wording
+   still appears in the alert.
+2. **The score box does not stop decimals or negatives,** so the bridge's messages are what the user sees
+   (UISpec: the UI never validates rules itself). Mantine's `NumberInput` still refuses letters.
+3. **Graph view on shows a placeholder panel** until UI-16 adds the chart.

@@ -14,11 +14,14 @@ export type Query<T> =
  *
  * @param command - The bridge command.
  * @param payload - Its payload, or null to wait (e.g. until the document has loaded).
+ * @param keepPrevious - While a new payload's answer is on its way, keep returning the last
+ *   successful answer instead of "loading" (so a form is not unmounted after a save).
  * @returns The query state for this payload.
  */
 export function useBridgeQuery<C extends CommandName>(
   command: C,
   payload: PayloadOf<C> | null,
+  keepPrevious = false,
 ): Query<ResultOf<C>> {
   const { engine } = useServices();
   const key = payload === null ? null : `${command}:${JSON.stringify(payload)}`;
@@ -48,5 +51,8 @@ export function useBridgeQuery<C extends CommandName>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, key]);
 
-  return answer !== null && answer.key === key ? answer.query : { state: "loading" };
+  if (answer !== null && (answer.key === key || (keepPrevious && answer.query.state === "ok"))) {
+    return answer.query;
+  }
+  return { state: "loading" };
 }

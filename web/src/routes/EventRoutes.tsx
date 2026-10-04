@@ -16,6 +16,7 @@ import type { EventDocument } from "../engine/types";
 import { Stage1 } from "../setup/Stage1";
 import { Stage2 } from "../setup/Stage2";
 import { Stage3 } from "../setup/Stage3";
+import { MatchPage } from "../scoring/MatchPage";
 import { PassOverview } from "../scoring/PassOverview";
 
 /**
@@ -151,7 +152,7 @@ export function MatchRoute() {
   const index = useParams().i ?? "";
   return (
     <Guarded view={{ kind: "match", index }}>
-      <Placeholder title={`Match ${Number(index) + 1}`} task="UI-15" />
+      <WithDocument>{(doc) => <MatchPage doc={doc} index={Number(index)} />}</WithDocument>
     </Guarded>
   );
 }

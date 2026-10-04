@@ -18,6 +18,8 @@ const ROUTES: { name: string; hash: string }[] = [
   { name: "stage3-locked", hash: "#/e/ev-run/setup/3" },
   { name: "pass", hash: "#/e/ev-run/pass" },
   { name: "pass-complete", hash: "#/e/ev-done/pass" },
+  { name: "match-new", hash: "#/e/ev-run/pass/match/0" },
+  { name: "match-saved", hash: "#/e/ev-done/pass/match/1" },
   { name: "calculator", hash: "#/calculator" },
   { name: "about", hash: "#/about" },
   { name: "not-found", hash: "#/e/missing/pass" },

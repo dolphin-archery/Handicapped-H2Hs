@@ -39,6 +39,30 @@ export function fixtureDoc(
   return { ...(data.document ?? data), ...changes };
 }
 
+/** One recorded bridge call of a fixture. */
+export interface FixtureStep {
+  command: string;
+  payload: Record<string, unknown>;
+  result: {
+    ok: boolean;
+    data?: Record<string, unknown>;
+    error?: { code: string; message: string };
+  };
+}
+
+/**
+ * A fixture's recorded steps.
+ *
+ * @param scenario - The fixture file's scenario, e.g. "simple".
+ * @param command - Only the steps of this command, if given.
+ * @returns The steps, in order.
+ */
+export function fixtureSteps(scenario: string, command?: string): FixtureStep[] {
+  const fixture = JSON.parse(readFileSync(path.join(FIXTURES, `${scenario}.json`), "utf8"));
+  const steps = fixture.steps as FixtureStep[];
+  return command === undefined ? steps : steps.filter((s) => s.command === command);
+}
+
 /**
  * Read one stored value from the app's database (e.g. "event:<id>" or "draft:<id>").
  *
