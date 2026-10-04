@@ -2416,3 +2416,128 @@ Assumptions: the function is named `draw_assignment` and the module constant kee
 The bridge (UI-4) calls `draw_assignment(schedule_for(setup), n_archers, random.Random(seed), current)`.
 
 Spec discrepancies: none.
+
+## UI-4 - Bridge commands (2026-10-04)
+
+What changed:
+- `h2h/bridge.py` gains every command of UISpec 5.4, each returning the `ok`/`error` envelope:
+  - setup: `options`, `new_document`, `apply_stage1`, `apply_stage2`, `redraw`, `pairings`, `start_event`;
+  - scoring: `overview`, `match`, `record_match`, `advance`;
+  - results: `results`, `archer_results`, `pair_chart`, `export`, `calculator`;
+  - plus `validate_document` from UI-2.
+  It also gains the error codes `tiebreak_required`, `state` and `internal`, and `call(command, payload_json)
+  -> str`, the one JSON-text entry point the worker will use (UI-7). `call` refuses NaN and turns anything
+  unexpected (an unknown command, bad arguments, a bug) into an `internal` envelope.
+  No core module was touched. The draw uses `h2h.draw.draw_assignment` with `random.Random(seed)`.
+- `tests/test_bridge.py` gains 86 command tests (142 in the file):
+  - a happy path for every command;
+  - the existing messages for Stage 1, Stage 2 (with `row`/`field`), scores, closest and the calculator;
+  - `tiebreak_required` (nothing saved; then decided by the closest archer; the stored `closest` cleared when a
+    re-save no longer ties);
+  - 16 out-of-order `state` refusals, which leave the input unchanged;
+  - D11 (`complete` on the last save of the final pass, kept on a re-save);
+  - the display text checked against `outputs`/`exports`;
+  - mutating commands return a new document, leave the input untouched, and keep `revision`/`updated_at`;
+  - every command round-trips through `call` as JSON with `allow_nan=False`, with the called set equal to the
+    UISpec 5.4 list;
+  - `call` turns failures into `internal` envelopes.
+- New `tests/test_bridge_ported.py` (138 tests). A subagent ported the logic-level assertions of
+  `test_event_routes.py` and `test_integration.py`, and I reviewed the result. Each test names its source with
+  a `# ports file::test` comment. Mapping of behaviour groups to ported tests, for UI-22:
+  - Stage 1 validation and storage, shoot byes and schedule length, stage guards;
+  - Stage 2 rows with row-numbered messages, advanced per-archer targets, the updating settings;
+  - Stage 3 pairings, redraw and start;
+  - overview and match view values (including byes, sit-outs and the percentile display rule);
+  - saving and re-saving, the full tie-break flow, advancing;
+  - per-archer maxima;
+  - simple-setup targets (indoor Compound's reduced 10, outdoor, imperial);
+  - whole events with byes shot and sat out;
+  - the leaderboard, pairwise and pass tables;
+  - archer results (a score of 0 gives "-", "bye", no completed pass);
+  - the Pass starting handicap only when updating;
+  - export file names, headers and content (PDF read with `pypdf`);
+  - the chart payload (before and after scoring, earlier scores of a pair that has not met, curves and legends
+    with and without updating).
+  Not ported, because they belong to the UI: page rendering and form controls, form refilling, HTTP status
+  codes, graph-view toggling, template, CSS and JS markup, reset and navigation links, and source scans of
+  `app.py` and the templates. The calculator route tests are covered by `test_bridge.py`.
+
+Verification:
+- `uv run pytest`: **1253 passed** (1029 + 86 + 138). It was run three times without the ported file
+  (1115, 1115, 1115) and twice with it. One run during the mutation checks had a single failure that never
+  reproduced; it most likely overlapped with the subagent's concurrent test runs. Noted in case it reappears.
+- `node web/scripts/pyodide-gate/run-gate.mjs` still prints GATE PASSED (the gate's modules are unchanged).
+- Mutation check on the commands. Each of these bugs fails at least one test:
+  - never setting `complete` (D11);
+  - winner always the second archer;
+  - `%.1f` for the entered handicap;
+  - a wrong `field` (10 failed);
+  - always storing `closest`;
+  - converting the export time to the machine's time zone;
+  - "next unscored match" including the match itself.
+  The time-zone bug was missed at first because the test's `+01:00` offset equals this machine's BST, which
+  made the conversion a no-op; the test now uses `+05:30`.
+- Every function in `bridge.py` has a numpy-style docstring (checked by script).
+
+Assumptions:
+1. **`call(command, payload_json)` was added.** It is not in the UISpec 5.4 table, but it is the JSON-string
+   boundary of UISpec 5.1 and the only place the `internal` code is produced. The worker (UI-7) calls only
+   `call`.
+2. **Parameter names** `new_document(event_id, now_iso)` and `calculator(kind, round_codename, compound, score)`
+   replace `id` and `round`, which shadow Python built-ins (`round` is used inside the function). The JSON keys
+   follow these names.
+3. **Seeds:** `apply_stage2(doc, archers, updating, seed)` and `redraw(doc, seed)` take an integer seed from
+   the browser, as the UI-4 task description says.
+4. **Form values are read as the Flask routes read them** (text or numbers, converted the same way), so every
+   message is the existing one. This includes Python's own `invalid literal for int() with base 10: 'abc'` for
+   a non-numeric Stage 1 count, which Flask also showed. UI-11's number inputs should make it rare.
+5. **Display values are strings formatted as the templates formatted them.** Examples: the entered handicap
+   with `%g`, derived handicaps to one place or "-", "59.8%", "100 - 98", "<name> wins" or "Draw". Indices
+   stay numbers, and `pair_chart` returns the raw chart payload, which Chart.js plots and the UI never
+   reformats.
+6. **What mutating commands return.** All return `{"document": new}`. `apply_stage1` adds
+   `passes_per_archer` and `n_passes`, for the Stage 2 start-weight default and summary text. `record_match`
+   adds the match view.
+7. **`apply_stage2` error rows.** `row` is the 0-based row index, and the message keeps Flask's 1-based "Row
+   n". `row` is null for the updating parameters. With several bad rows, the first problem in Flask's order is
+   reported.
+8. **`closest` is stored only when the pass was decided by it.** A re-save that no longer ties clears it.
+   Replay is unaffected, because the core uses `closest` only on a tie.
+9. **Redirects became errors.** Flask redirected for:
+   - a match index outside the pass (now `validation`);
+   - an event command before the start (now `state`, "The event has not started yet: confirm the pairings at
+     Stage 3 first.");
+   - setup commands after the start (now `state`, "The event has started, so its setup can no longer be
+     changed.").
+   Other stage refusals reuse `SessionState`'s `RuntimeError` messages. A refused advance (unscored pass, or
+   the final pass) gives `state` with the core's message.
+10. **`pair_chart` accepts any two different archers**, because the match view charts a pair before they first
+    meet. Flask's pair-history page redirected for a pair who had not met. The Results UI (UI-17) should offer
+    "View chart" only for rows of `results()["pairwise"]`.
+11. **`export` uses the clock time of `now_iso` as written**, dropping any UTC offset rather than converting,
+    because the exports say "(local time)". UI-18 must send the browser's local time, not `toISOString()`
+    (which is UTC).
+12. **A new event is named "New event"** (renamed by the UI, D12).
+
+Behaviour differences from Flask (found by the porting; not proposed as spec changes):
+- **Two archers named closest.** Flask refused two ticked boxes with "Tick only one archer as closest to the
+  middle.". The bridge takes one archer, as UISpec 7.2 says ("choose exactly one"), so a list is refused with
+  "The archer closest to the middle must be one of the two in this match." The ported test asserts this.
+  - The subagent had first added a strict-xfail test asserting Flask's text. I removed it, because the
+    difference is deliberate, and a strict xfail would read to later tasks as a known bug.
+  - If you want Flask's exact message, the bridge can return it for a list of two in about three lines.
+- **A missing Stage 1 field.** With no `n_archers` key, Flask showed the KeyError text "'n_archers'"; the bridge
+  shows the int() message for an empty value. No test covered this before.
+
+Notes for future tasks:
+- **UI-11 / UI-12: derived values.** The Stage 1 "N passes per archer" line (optional) and the Stage 2
+  start-weight default (passes per archer) must come from Python:
+  - `apply_stage1` returns them on submit, but nothing returns them for a reloaded Stage 2 page, or live
+    while Stage 1 is being edited;
+  - the obvious fix is a small read-only command, or adding them to `pairings`/`options`. Decide in UI-11/12
+    and log it; it is a presentation helper, not a rule change.
+- **The "_bridge" text check.** `test_event_routes.py::test_no_leftover_reference_to_the_old_round_mode_form_in_the_app`
+  forbids the text "_bridge" anywhere in `h2h/`. Avoid such names. UI-22 should move this check if it is still
+  wanted.
+- **`bridge.py` has not yet been imported inside Pyodide.** It is not in the UI-1 gate whitelist; UI-6 bundles
+  it and UI-7 runs the fixtures through it there.
