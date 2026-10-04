@@ -16,6 +16,7 @@ import type { EventDocument } from "../engine/types";
 import { Stage1 } from "../setup/Stage1";
 import { Stage2 } from "../setup/Stage2";
 import { Stage3 } from "../setup/Stage3";
+import { PassOverview } from "../scoring/PassOverview";
 
 /**
  * Layout for `#/e/:id/...`: waits for the stored event, then shows the view; an unknown id gives
@@ -140,7 +141,7 @@ export function SetupRoute() {
 export function PassRoute() {
   return (
     <Guarded view={{ kind: "pass" }}>
-      <Placeholder title="Current pass" task="UI-14" />
+      <WithDocument>{(doc) => <PassOverview doc={doc} />}</WithDocument>
     </Guarded>
   );
 }

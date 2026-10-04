@@ -3200,3 +3200,62 @@ Assumptions:
 1. **"Back to Stage 2" stays after the start,** linking to the read-only summary, as do the Stepper's steps.
 2. **There is no confirm modal before starting.** The button says what it does, and UISpec 7.3 asks for no
    modal here (D7's confirmation is for Advance).
+
+## UI-14: Pass overview (2026-10-04)
+
+What changed (all in `web/`):
+- `src/scoring/PassOverview.tsx`: `#/e/:id/pass`, built from the bridge `overview` command.
+  - **Heading:** "Pass N of M", with "12 arrows per pass. Open each match to enter its scores.", a `Progress`
+    bar and "x of y matches scored".
+  - **Desktop table:** Match | Score | Percentiles | Winner | Status | Actions.
+    - Match is "Ann vs Ben", or "Ann (bye - no opponent, shoots alone)", as in `rotation.html`.
+    - Score, percentiles and winner are the bridge's text, unchanged.
+    - Status is a `Badge` ("Scored" / "Not scored"); Actions is "Enter scores" or "View / edit".
+    - Clicking a row opens the match.
+  - **Phones:** below `sm`, one card per match with the same values and a full-width action button.
+  - **Sitting out:** "Sitting out this pass: ...".
+  - **Advance to next pass:** disabled until the pass is complete, with the hint "Enter scores for every
+    match in this pass first.". Clicking opens a confirm modal (D7): "Advance to pass N+1?", Advance / Stay
+    on this pass. Confirming calls `advance` and commits.
+  - **Final pass:** says "This is the final pass. Score every match to complete the event." until the stored
+    status is `complete` (D11). It then shows the "The event is complete" alert with View results, the three
+    downloads, Download backup and "This event is saved only in this browser. Download a backup to keep it
+    safe.".
+  - **"View results so far":** a link until the event is complete.
+- `src/components/exports.ts` (`downloadExport`, `localIso`, `EXPORTS`) and `src/components/ExportButtons.tsx`.
+  The completion alert's downloads already call the bridge `export` command, passing the browser's local time
+  as `now_iso` and decoding the base64 PDF to bytes, then offer the file through the existing `downloadFile`
+  (Blob and `<a download>`). UI-18 adds the Results menu and the download tests.
+- `e2e/seed.ts`: `fixtureDoc("command@n")` picks the n-th such step (-1 for the last).
+- Tests: `e2e/overview.spec.ts` (7 tests) and `tests/exports.test.ts` (1). `e2e/screenshots.spec.ts` gains a
+  complete event.
+
+Verification:
+- Playwright `overview.spec.ts`, 7 passed:
+  - **Advance before the pass is complete:** disabled with the hint at 0 and at 1 of 2 scored, enabled once
+    pass 1 is complete.
+  - **The modal:** Stay keeps pass 1 (`current_pass` 0 stored); Advance shows "Pass 2 of 3" with 0 of 2
+    scored (`current_pass` 1 stored).
+  - **Completion alert** on the final, complete pass: View results, the three downloads, Download backup and
+    the reminder, and no Advance.
+  - **Complete status:** a complete event is stored as `complete` and Home shows "Complete".
+  - **Backup:** Download backup gives `backup_<stamp>.json` containing the event.
+  - **Values:** the table's Match, Score, Percentiles and Winner equal the fixture's final `overview` output.
+  - **Row click:** opens `pass/match/1`.
+- Whole Playwright suite apart from screenshots: 47 passed. Vitest 100 passed; pytest 1269 passed; `tsc`,
+  eslint and prettier are clean.
+- Screenshots of the pass at the start and of a complete event at 1440x900 and 390x844, light and dark,
+  reviewed. Fixed two things:
+  - on phones the 6-column table scrolled sideways and hid Status and Actions, so phones now get match cards;
+  - "View results so far" duplicated "View results" once the event was complete, so it is hidden then.
+  - The completion alert reads well in both schemes (teal light variant).
+
+Assumptions:
+1. **Export downloads are wired here, not left as placeholders.** It is a thin call to the bridge, and the
+   completion alert should work at the UI-16 review. UI-18 still owns the Results menu, the fixture comparison
+   and the `pypdf` test.
+2. **The "stored status becomes `complete` after the last match is saved" test lives in UI-15.** Saving needs
+   the match view; here it is shown with the fixture's complete document (status `complete`, set by
+   `record_match`, D11).
+3. **Phones show match cards** instead of a sideways-scrolling table (UISpec 7.4: no horizontal scroll, and
+   tables of more than five columns don't fit at 390 px).

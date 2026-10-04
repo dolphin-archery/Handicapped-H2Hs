@@ -21,7 +21,7 @@ const FIXTURES = path.resolve(
  * A real event document from a fixture: the document returned by the first step of a command.
  *
  * @param command - e.g. "new_document" (stage 0), "apply_stage1" (stage 1, setting up) or
- *   "start_event" (running).
+ *   "start_event" (running); "command@n" takes the n-th such step (0-based; -1 for the last).
  * @param changes - Fields to override (id, name, updated_at...).
  * @param scenario - The fixture file's scenario (default "simple").
  * @returns The document.
@@ -32,7 +32,9 @@ export function fixtureDoc(
   scenario = "simple",
 ): Record<string, unknown> {
   const fixture = JSON.parse(readFileSync(path.join(FIXTURES, `${scenario}.json`), "utf8"));
-  const step = fixture.steps.find((s: { command: string }) => s.command === command);
+  const [name, nth = "0"] = command.split("@");
+  const steps = fixture.steps.filter((s: { command: string }) => s.command === name);
+  const step = steps.at(Number(nth));
   const data = step.result.data;
   return { ...(data.document ?? data), ...changes };
 }
