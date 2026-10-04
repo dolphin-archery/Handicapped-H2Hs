@@ -2302,3 +2302,73 @@ Notes for future tasks:
   measure the fpdf2 share (D16).
 - deploymentConstrains 4, rule 2 asks for a README note pinning the Pyodide version. It belongs with the README
   rewrite (UI-22) or earlier if the owner prefers.
+
+## UI-2 - Document and replay (2026-10-04)
+
+What changed (new files only; no core module or existing test touched):
+- `h2h/bridge.py` holds the schema-version-1 event document (described in the module docstring) and:
+  - `schedule_for(setup)`, which rebuilds the schedule as `SessionState.start_stage1` does.
+  - `rebuild_event(doc)`, the UISpec 5.3 replay: it builds the `Event` from `setup`, `archers` and
+    `assignment`, records every stored match of each pass in match order, and advances past every pass before
+    `current_pass`.
+  - `validate_document(raw)`, which returns the `ok`/`error` envelope (code `validation`, message
+    "Invalid event document: ..."). It checks the structure, types, ranges and stage consistency, drops unknown
+    keys, then replays the scores through the core. The core's own messages therefore reject a score out of
+    range, a tie with no closest archer, or an earlier pass left unscored. `status` must be `complete` exactly
+    when `Event.is_complete` (D11).
+  - The private envelope helpers `_ok`/`_error`, which UI-4 will reuse.
+- `tests/test_bridge.py` (56 tests). It plays events through the legacy `SessionState` path (Stages 1-3 with a
+  seeded draw, then `Event.record_match` and `advance`) and builds the document from the same inputs and draw. It
+  then checks the replay after a JSON round trip: `Event.results`, the current pass, the archers, `is_complete`,
+  the leaderboard and the archer results must all be identical. Scenarios:
+  - a full simple event that includes a closest-to-the-middle tie;
+  - a part-scored pass;
+  - a corrected score;
+  - five archers with byes sat out (sit-out schedule) and with byes shot;
+  - advanced per-archer targets with updating on and off (every per-pass handicap is compared too).
+  The validation tests cover valid documents at every stage (fresh, Stage 2, running, complete), returned
+  unchanged and without mutating the input, plus cleaning and 41 malformed variants.
+
+Verification:
+- `uv run pytest tests/test_bridge.py`: 56 passed. `uv run pytest`: **975 passed** (919 + 56).
+- Mutation check on `rebuild_event`. Each of these bugs fails at least one replay test:
+  - ignoring `closest` (3 failed);
+  - ignoring the assignment (7);
+  - never using the sit-out schedule (1);
+  - ignoring handicap updating (1);
+  - replaying only the first match of each pass (7).
+  The first version of the tests used draw seed 11, which shuffles 4 archers into the entry order, so the
+  4-archer tests could not catch a dropped assignment (only 2 failed). The seed is now 4 (no archer keeps their
+  place for 4 or 5 archers), and `_legacy` asserts that the draw is not the entry order.
+
+Assumptions:
+1. **Order of results within a pass.** The document keys scores by match index, not by the order they were
+   saved in: JavaScript orders integer-like object keys numerically, so saving order could not survive anyway.
+   The replay records each pass's matches in index order. If matches were saved out of order, `Event.results`
+   holds the same results in a different order within a pass. No output depends on that order (outputs sort by
+   pass, `match_results` by match order, pairwise results are sorted), and
+   `test_saving_order_within_a_pass_changes_nothing_that_is_shown` checks it. Where matches were saved in index
+   order, the results are identical lists, as UI-2 requires.
+2. **Replay calls `advance()` instead of setting `current_rotation_index`** (UISpec 5.3 says set it, then
+   advance). The effect is identical, and `advance` also checks that every earlier pass is fully scored.
+3. **`setup.stage` is 0 to 3** (0 for a new event, 3 once Stage 3 is confirmed).
+   - `status` is `setup` exactly while the stage is below 3.
+   - Below stage 2, `archers` is empty, `assignment` null and handicap updating off. This mirrors
+     `SessionState.start_stage1` clearing later stages.
+   - Handicap updating needs advanced setup, as in `SessionState.start_stage2`, which stores the effective
+     value.
+4. **Strict types.** Counts, scores' keys, `face_cm` and `revision` must be JSON integers (not booleans);
+   handicaps any finite number (normalised to float, since JSON from JavaScript turns 35.0 into 35); stored
+   scores any number, with whole-number and range checks left to the core during the replay (normalised to int
+   on success).
+5. **Status consistency is rejected, not repaired.** `complete` without a complete event, or `running` with
+   one, is a validation error rather than a silent fix. The only writer is the app itself, so a mismatch means
+   corruption.
+6. **No `(id, revision)` cache in `bridge.py`.** UISpec 5.1 forbids module-level mutable state there, so the
+   performance cache of UISpec 5.3 belongs in the worker (UI-7) if it is needed.
+
+Spec discrepancies: none beyond assumptions 1 and 2.
+
+Notes for future tasks: UI-4 adds the commands to `bridge.py` and needs `apply_stage1` to reset `archers`,
+`assignment`, updating and `stage` exactly as `validate_document` expects (assumption 3). New-document defaults:
+stage 0, 4 archers, 60 arrows, 12 per pass, simple, byes shot, 20yd / 60 cm, updating off.
