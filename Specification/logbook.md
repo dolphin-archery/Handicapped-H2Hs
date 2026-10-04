@@ -171,7 +171,7 @@ setup form (Assumption 10) would be reasonable v2 additions.
 ## Feedback 1 - Base Functionality
 
 Scope: implemented every item under `Specification/feedback.md`'s "Feedback 1"
-heading (tasks 11-14 below, added to `prd.json` per `Specification/feedbackPrompt.md`'s
+heading (tasks 11-14 below, added to `prd.json` per `Prompts/feedbackPrompt.md`'s
 process); explicitly did not touch anything under its "Future Feedback - DO NOT
 IMPLEMENT YET" heading (UI redesign, rotations/brackets, overall scoring system,
 results printouts, publication).

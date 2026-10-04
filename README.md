@@ -166,8 +166,11 @@ Specification/          Design documents driving development:
                             work progresses.
   feedback.md               Rounds of feedback on the running app.
   logbook.md                Implementation history, assumptions, and notes.
-  loopPrompt.md / feedbackPrompt.md
-                             Process instructions used to drive development.
+  UISpec.md                 Specification for the planned UI redesign.
+  deploymentConstrains.md   Hosting constraints for the static (Pyodide,
+                             GitHub Pages) deployment.
+Prompts/                Process instructions used to drive development
+                         (loopPrompt.md, feedbackPrompt.md, UILoopPrompt.md).
 Initial Testing/        Original problem write-up (ideas.md), the statistical
                          evaluation that the current design is based on
                          (idea_evaluation.md), and an exploratory notebook for
