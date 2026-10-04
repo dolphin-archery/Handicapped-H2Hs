@@ -33,7 +33,7 @@ test.describe.configure({ mode: "serial", timeout: 240_000 });
 let page: Page;
 
 test.beforeAll(async ({ browser }) => {
-  page = await browser.newPage();
+  page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.goto("./");
 });
 

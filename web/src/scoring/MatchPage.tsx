@@ -52,7 +52,7 @@ export function MatchPage({ doc, index }: { doc: EventDocument; index: number })
     return (
       <Alert color="red" title="This match cannot be opened">
         <Text size="sm">{view.error.message}</Text>
-        <Anchor component={Link} to={overview} size="sm">
+        <Anchor component={Link} to={overview} size="sm" c="inherit">
           Back to overview
         </Anchor>
       </Alert>
@@ -61,7 +61,7 @@ export function MatchPage({ doc, index }: { doc: EventDocument; index: number })
   // A kept answer from before a save is fine; one for another match (after "Next unscored
   // match") is not, since the form would show and save the wrong match.
   if (view.state === "loading" || view.data.match_index !== index || !draft.loaded) {
-    return <Loader aria-label="Loading the match" />;
+    return <Loader role="status" aria-label="Loading the match" />;
   }
   return <MatchBody key={index} doc={doc} view={view.data} draft={draft} />;
 }

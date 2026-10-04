@@ -82,7 +82,7 @@ export function Stage2({ doc }: { doc: EventDocument }) {
       </Alert>
     );
   } else if (!draft.loaded || options.state !== "ok" || info.state !== "ok") {
-    body = <Loader aria-label="Loading the form" />;
+    body = <Loader role="status" aria-label="Loading the form" />;
   } else {
     body = (
       <Stage2Form

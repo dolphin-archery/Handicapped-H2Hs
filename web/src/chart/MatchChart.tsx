@@ -115,7 +115,7 @@ export function PairChartPanel({ doc, a, b }: { doc: EventDocument; a: number; b
         checked={showPrevious}
         onChange={(event) => setShowPrevious(event.currentTarget.checked)}
       />
-      {chart.state === "loading" && <Loader aria-label="Loading the chart" />}
+      {chart.state === "loading" && <Loader role="status" aria-label="Loading the chart" />}
       {chart.state === "error" && <Alert color="red">{chart.error.message}</Alert>}
       {chart.state === "ok" && <MatchChart data={chart.data} showPrevious={showPrevious} />}
       <Accordion variant="contained">

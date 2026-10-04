@@ -28,7 +28,8 @@ const KIND_LABELS: Record<CalculatorKind, string> = { indoor: "Indoor", outdoor:
  */
 export function CalculatorForm() {
   const options = useBridgeQuery("options", {});
-  if (options.state === "loading") return <Loader aria-label="Loading the round lists" />;
+  if (options.state === "loading")
+    return <Loader role="status" aria-label="Loading the round lists" />;
   if (options.state === "error") {
     return (
       <Alert color="red" title="The calculator cannot load">

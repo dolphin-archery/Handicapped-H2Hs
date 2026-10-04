@@ -17,7 +17,9 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    // WebKit and mobile emulation projects are added in task UI-19.
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+    // A phone: iOS Safari's engine, touch, and its 390 x 664 viewport (UISpec.md 7.4).
+    { name: "mobile", use: { ...devices["iPhone 13"] } },
   ],
   webServer: {
     // Build first so the tests never run against a stale dist/.

@@ -1,5 +1,6 @@
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "./styles.css";
 
 import { MantineProvider } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
@@ -12,7 +13,7 @@ import { settingsColorSchemeManager, SettingsProvider } from "./app/settings";
 import { getEngine } from "./engine/browserEngine";
 import { getSettings } from "./storage/autosave";
 import { EventStore } from "./storage/db";
-import { theme } from "./theme";
+import { cssVariablesResolver, theme } from "./theme";
 
 const store = new EventStore();
 const engine = getEngine();
@@ -26,6 +27,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <MantineProvider
       theme={theme}
+      cssVariablesResolver={cssVariablesResolver}
       defaultColorScheme="auto"
       colorSchemeManager={settingsColorSchemeManager(store, settings.color_scheme)}
     >

@@ -22,7 +22,7 @@ export function Stage3({ doc }: { doc: EventDocument }) {
   const pairings = useBridgeQuery("pairings", { doc });
   return (
     <SetupShell doc={doc} stage={3}>
-      {pairings.state === "loading" && <Loader aria-label="Loading the pairings" />}
+      {pairings.state === "loading" && <Loader role="status" aria-label="Loading the pairings" />}
       {pairings.state === "error" && (
         <Alert color="red" title="The pairings cannot load">
           {pairings.error.message}

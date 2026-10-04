@@ -76,6 +76,7 @@ function GraphViewSwitch() {
       checked={settings.graph_view}
       onChange={(event) => update({ graph_view: event.currentTarget.checked })}
       size="sm"
+      styles={{ label: { whiteSpace: "nowrap" } }}
     />
   );
 }

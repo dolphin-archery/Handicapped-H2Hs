@@ -3503,3 +3503,73 @@ Verification:
 Assumptions:
 1. **Fixing the page clock** makes the comparison exact rather than "apart from the timestamp"; the
    timestamp itself is then checked too.
+
+## UI-19: Responsive and accessibility pass (2026-10-04)
+
+What changed:
+- Tooling:
+  - `@axe-core/playwright` 4.13.0, pinned, added as a web dev dependency (`web/package.json` only; no
+    `pyproject.toml` change);
+  - Playwright projects `webkit` (Desktop Safari) and `mobile` (iPhone 13: WebKit, touch, 390 px) beside
+    `chromium`.
+- `web/e2e/routes.ts`: the 22 review routes (with expected page titles) and `openRoute`, shared by the
+  screenshots and the new checks. `openRoute` now waits for the app shell before waiting for the engine
+  banner to go: the old order could pass before the banner had appeared (seen on WebKit).
+- `web/e2e/a11y.spec.ts`: per route, loaded once:
+  - the page title;
+  - every number field has `inputMode` numeric or decimal;
+  - an axe scan in light and in dark with zero serious or critical violations;
+  - on desktop projects, no page overflow at 1440, 1280, 768 and 390 px, and every table of at most five
+    columns fits its container at 390 px;
+  - on the mobile project, no page overflow, every interactive target at least 44 px tall (a checkbox,
+    radio or switch measured by its label row; links inside a sentence exempt) and input text at least
+    16 px.
+- Fixes in the app:
+  - `src/theme.ts`, for contrast:
+    - primary shade 8, so white text on blue buttons reaches 4.5:1;
+    - dimmed text gray 7 in light and dark 1 in dark (the defaults were 3.3:1);
+    - in the light scheme, darker text on light-variant badges, alerts and the active nav link (green
+      Complete was 3.8:1, the teal Scored badge 4.3:1, the nav description 4.1:1);
+    - links always underlined (axe link-in-text-block);
+    - modal and drawer close buttons named "Close";
+    - `respectReducedMotion`.
+  - `src/styles.css` (new):
+    - under prefers-reduced-motion, no CSS transitions or animations (UISpec 7.5);
+    - below 36em, table cell padding 5 px, so five-column tables fit at 390 px;
+    - below 48em, inputs 44 px with 16 px text, and buttons, action icons, close buttons, the burger, nav
+      links, tabs, menu items, stepper steps, checkbox, radio and switch rows, and standalone links at
+      least 44 px.
+  - Loaders have `role="status"` (an `aria-label` on a span with no role is not allowed); the Stage 1
+    slider thumb is labelled "Arrows per pass"; "Event not found" sets its page title; the link in the
+    match error alert takes the alert's colour; the header "Graph view" label no longer wraps on phones.
+- Tests adjusted: `overview.spec.ts` and `stage3.spec.ts` now open their shared page at 1440x900, like the
+  other desktop specs, because on the mobile project they correctly got the phone cards instead of the
+  tables they assert on.
+
+Verification:
+- `a11y.spec.ts` on chromium, webkit and mobile: 66 passed.
+- Full suite apart from screenshots: chromium 98 passed. WebKit and mobile: 144 passed on the first run,
+  with 2 failures from the viewport assumption above (6 more in those serial files did not run); after the
+  fix both files pass on mobile (12) and the a11y run passed on all three.
+- Vitest 109 passed; pytest 1270 passed; `tsc`, eslint and prettier clean.
+- Screenshots of all 22 routes at 1440x900, 1280x720, 768 and 390 px wide, light and dark (176) reviewed:
+  - every view fits without sideways scroll;
+  - archer and pass tables fit at 390 px;
+  - phone inputs and buttons are taller;
+  - the darker blue and captions read well in both schemes;
+  - the chart and results pages are unchanged in layout.
+  - Fixed after review: the header "Graph view" label wrapped on phones.
+  - Left as is: on phones the event-card Delete button sits on its own line under Open, Rename and
+    Download backup. It is readable and keeps the destructive action apart.
+
+Notes:
+- While the WebKit and mobile run was going, `web/node_modules` lost most of its packages (32 entries
+  left, `@playwright/test` gone), from something outside this session. `npm ci` restored it from the
+  lockfile.
+- A full run of the three projects takes about 15 minutes locally; CI (UI-21) may want to shard it, or run
+  WebKit and mobile only on `main`.
+
+Assumptions:
+1. **"Mobile" in UISpec 7.4 means below 48em (768 px)** for the 44 px and 16 px rules; at 768 px and above,
+   Mantine's default sizes stay.
+2. **The mobile project is an iPhone,** since the 16 px rule exists for iOS Safari.

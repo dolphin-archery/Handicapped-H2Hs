@@ -1,0 +1,54 @@
+/* App-wide style rules that Mantine props cannot express (UISpec.md 7.4 and 7.5). */
+
+/* Respect reduced motion: no CSS transitions or animations (Mantine's own JS transitions are
+   turned off by `respectReducedMotion` in the theme). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}
+
+/* Phones: tighter cell padding so tables of five columns fit at 390 px without scrolling. */
+@media (max-width: 36em) {
+  .mantine-Table-table {
+    --table-horizontal-spacing: 5px !important;
+  }
+}
+
+/* Phones and small tablets: touch targets at least 44 px tall and input text at 16 px, so iOS
+   Safari does not zoom into a field (UISpec.md 7.4). */
+@media (max-width: 48em) {
+  .mantine-Input-input {
+    --input-height: 44px !important;
+    --input-fz: 16px !important;
+  }
+  .mantine-Button-root {
+    --button-height: 44px !important;
+  }
+  .mantine-ActionIcon-root,
+  .mantine-CloseButton-root,
+  .mantine-Burger-root {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .mantine-NavLink-root,
+  .mantine-Tabs-tab,
+  .mantine-Menu-item,
+  .mantine-Stepper-step,
+  .mantine-Checkbox-body,
+  .mantine-Radio-body,
+  .mantine-Switch-body {
+    min-height: 44px;
+    align-items: center;
+  }
+  /* Links that stand alone in a layout (not inside a sentence). */
+  .mantine-Stack-root > .mantine-Anchor-root,
+  .mantine-Group-root > .mantine-Anchor-root {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+}

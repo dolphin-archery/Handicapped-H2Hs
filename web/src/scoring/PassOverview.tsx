@@ -47,7 +47,7 @@ function matchLabel(match: OverviewMatch): string {
 export function PassOverview({ doc }: { doc: EventDocument }) {
   const overview = useBridgeQuery("overview", { doc });
   usePageTitle(overview.state === "ok" ? `Pass ${overview.data.pass_number}` : "Current pass");
-  if (overview.state === "loading") return <Loader aria-label="Loading the pass" />;
+  if (overview.state === "loading") return <Loader role="status" aria-label="Loading the pass" />;
   if (overview.state === "error") {
     return (
       <Alert color="red" title="The pass cannot load">

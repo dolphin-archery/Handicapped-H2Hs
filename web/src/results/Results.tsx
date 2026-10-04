@@ -48,7 +48,7 @@ export function ResultsView({ doc, tab }: { doc: EventDocument; tab: ResultTab }
   usePageTitle(`Results: ${TAB_LABELS[tab]}`);
 
   if (results.state === "loading" || archers.state === "loading") {
-    return <Loader aria-label="Loading the results" />;
+    return <Loader role="status" aria-label="Loading the results" />;
   }
   if (results.state === "error" || archers.state === "error") {
     const error =

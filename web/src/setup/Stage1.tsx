@@ -122,7 +122,7 @@ export function Stage1({ doc }: { doc: EventDocument }) {
           options={options}
         />
       ) : (
-        <Loader aria-label="Loading the form" />
+        <Loader role="status" aria-label="Loading the form" />
       )}
     </SetupShell>
   );
@@ -277,6 +277,7 @@ function Stage1Fields({
             }))}
             disabled={locked}
             mb="lg"
+            thumbLabel="Arrows per pass"
             thumbProps={{ "aria-valuetext": String(divisorList[index]) }}
           />
         </div>

@@ -241,7 +241,7 @@ export function Home() {
         </Card>
       )}
 
-      {list.kind === "loading" && <Loader aria-label="Loading saved events" />}
+      {list.kind === "loading" && <Loader role="status" aria-label="Loading saved events" />}
       {list.kind === "failed" && (
         <Alert color="red" title="Saved events cannot be read">
           {list.message}

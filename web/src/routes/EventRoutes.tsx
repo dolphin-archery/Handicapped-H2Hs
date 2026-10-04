@@ -10,6 +10,7 @@ import { useCurrentEvent } from "../app/currentEvent";
 import { eventHomePath, guardEventView, type EventView, type ResultTab } from "../app/guards";
 import { useServices } from "../app/services";
 import { confirmDelete, downloadBackup } from "../components/eventActions";
+import { usePageTitle } from "../components/usePageTitle";
 import type { EventDocument } from "../engine/types";
 import { Stage1 } from "../setup/Stage1";
 import { Stage2 } from "../setup/Stage2";
@@ -29,17 +30,7 @@ export function EventLayout() {
   const { store } = useServices();
   const navigate = useNavigate();
   if (state.kind === "found" && state.id === routeId) return <Outlet />;
-  if (state.kind === "missing" && state.id === routeId) {
-    return (
-      <Stack>
-        <Title order={1}>Event not found</Title>
-        <Text>There is no saved event at this address in this browser.</Text>
-        <Anchor component={Link} to="/">
-          Go to Home
-        </Anchor>
-      </Stack>
-    );
-  }
+  if (state.kind === "missing" && state.id === routeId) return <EventNotFound />;
   if (state.kind === "corrupt" && state.id === routeId) {
     return (
       <Alert color="red" title="This saved event cannot be read">
@@ -68,7 +59,21 @@ export function EventLayout() {
       </Alert>
     );
   }
-  return <Loader aria-label="Loading the event" />;
+  return <Loader role="status" aria-label="Loading the event" />;
+}
+
+/** "Event not found", with a link Home (UISpec.md 6, rule 5). */
+function EventNotFound() {
+  usePageTitle("Event not found");
+  return (
+    <Stack>
+      <Title order={1}>Event not found</Title>
+      <Text>There is no saved event at this address in this browser.</Text>
+      <Anchor component={Link} to="/">
+        Go to Home
+      </Anchor>
+    </Stack>
+  );
 }
 
 /** Opens `#/e/:id` at the event's remembered or default view. */
