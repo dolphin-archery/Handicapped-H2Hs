@@ -22,6 +22,7 @@ import { usePageTitle } from "../components/usePageTitle";
 import { EngineError } from "../engine/client";
 import type { EventDocument, MatchView } from "../engine/types";
 import { useBridgeQuery } from "../engine/useBridgeQuery";
+import { PairChartPanel } from "../chart/MatchChart";
 import { PassTable } from "./PassTable";
 
 /** The match form's values as typed (also its draft). */
@@ -268,10 +269,8 @@ function MatchBody({
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 6 }} data-testid="chart-column">
             {settings.graph_view ? (
-              <Paper withBorder radius="md" p="md" data-testid="chart-panel">
-                <Text size="sm" c="dimmed">
-                  The score distribution chart is added in task UI-16.
-                </Text>
+              <Paper withBorder radius="md" p="md">
+                <PairChartPanel doc={doc} a={a.position} b={b.position} />
               </Paper>
             ) : (
               <Text size="sm" c="dimmed" data-testid="graph-view-off">

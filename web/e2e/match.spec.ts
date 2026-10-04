@@ -58,6 +58,12 @@ async function fillScores(doc: Doc, scores: Record<string, number | string>) {
   }
 }
 
+/** Reload the page and wait for the match to load again (the engine restarts after a reload). */
+async function reloadMatch() {
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Save/ })).toBeVisible({ timeout: 240_000 });
+}
+
 const save = () => page.getByRole("button", { name: /^Save (changed )?scores$/ }).click();
 const tiebreak = () => page.getByTestId("tiebreak");
 const stored = async (id = "ev-m") =>
@@ -79,7 +85,7 @@ test.describe("tie-break (test_event_routes.py scenarios)", () => {
     await save();
     await expect(page.getByTestId("match-saved")).toBeVisible();
     await expect(tiebreak()).toHaveCount(0);
-    await page.reload();
+    await reloadMatch();
     await expect(page.getByRole("button", { name: "Save changed scores" })).toBeVisible();
     await expect(tiebreak()).toHaveCount(0);
   });
@@ -106,7 +112,7 @@ test.describe("tie-break (test_event_routes.py scenarios)", () => {
     await expect(page.getByTestId("match-saved")).toBeVisible();
     expect(await winners()).toEqual(["No", "Yes"]);
     await expect(page.getByText(DECIDED_NOTE)).toBeVisible();
-    await page.reload();
+    await reloadMatch();
     await expect(tiebreak().getByRole("radio", { name: "Ann" })).toBeChecked();
     await expect(tiebreak().getByRole("radio", { name: "Ben" })).not.toBeChecked();
     await page.getByRole("link", { name: "Back to overview" }).first().click();

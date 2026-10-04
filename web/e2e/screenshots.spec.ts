@@ -3,11 +3,11 @@ import { fixtureDoc, seed } from "./seed";
 
 /**
  * Review screenshots (UILoopPrompt step 4): each route at 1440x900 and 390x844, light and dark,
- * with five seeded events. Skipped unless SCREENSHOT_DIR is set, e.g.
+ * with six seeded events. A `graph` route turns Graph view on and shows every pass's markers. Skipped unless SCREENSHOT_DIR is set, e.g.
  *   $env:SCREENSHOT_DIR = "C:\\temp\\shots"; npx playwright test e2e/screenshots.spec.ts
  * Later tasks add their routes to ROUTES.
  */
-const ROUTES: { name: string; hash: string }[] = [
+const ROUTES: { name: string; hash: string; graph?: boolean }[] = [
   { name: "home", hash: "" },
   { name: "stage1", hash: "#/e/ev-setup/setup/1" },
   { name: "stage1-locked", hash: "#/e/ev-run/setup/1" },
@@ -20,6 +20,7 @@ const ROUTES: { name: string; hash: string }[] = [
   { name: "pass-complete", hash: "#/e/ev-done/pass" },
   { name: "match-new", hash: "#/e/ev-run/pass/match/0" },
   { name: "match-saved", hash: "#/e/ev-done/pass/match/1" },
+  { name: "match-chart", hash: "#/e/ev-chart/pass/match/1", graph: true },
   { name: "calculator", hash: "#/calculator" },
   { name: "about", hash: "#/about" },
   { name: "not-found", hash: "#/e/missing/pass" },
@@ -47,12 +48,18 @@ for (const route of ROUTES) {
             fixtureDoc("apply_stage1", { id: "ev-adv", name: "Mixed targets" }, "advanced"),
             fixtureDoc("redraw", { id: "ev-odd", name: "Five archers" }, "byes_sat_out"),
             fixtureDoc("record_match@-1", { id: "ev-done", name: "Finished night" }),
+            fixtureDoc("record_match@4", { id: "ev-chart", name: "Chart night" }),
           ],
         });
         await page.goto(`./${route.hash}`);
         await page
           .getByText("Getting the scoring engine ready")
           .waitFor({ state: "detached", timeout: 200_000 });
+        if (route.graph) {
+          await page.getByRole("switch", { name: "Graph view" }).check();
+          await page.getByRole("checkbox", { name: "Show previous passes' scores too" }).check();
+          await page.getByTestId("pair-chart").waitFor();
+        }
         await page.screenshot({
           path: `${dir}/${route.name}-${viewport.name}-${scheme}.png`,
           fullPage: true,

@@ -3335,3 +3335,72 @@ Assumptions:
 2. **The score box does not stop decimals or negatives,** so the bridge's messages are what the user sees
    (UISpec: the UI never validates rules itself). Mantine's `NumberInput` still refuses letters.
 3. **Graph view on shows a placeholder panel** until UI-16 adds the chart.
+
+## UI-16: Chart (2026-10-04)
+
+What changed (all in `web/`):
+- `package.json`: `chart.js` 4.5.1, pinned exactly and installed from npm (D9). It is tree-shaken: only the
+  line controller, line and point elements, linear scale, filler, legend and tooltip are registered. The app
+  bundle is 877 kB (277 kB gzip), including Mantine and React.
+- `src/chart/chartSetup.ts`: the port of `h2h/static/match_chart.js`.
+  - `pairDatasets(data, all, colors)`: both curves (legend from the payload's `legend`) and one dashed marker
+    per score shot; only the current pass, or every pass with `all`.
+  - `nearestCurveX`: the custom interaction mode, with the original reasoning kept in its doc comment.
+  - `drawMarkerLabels` (the `markerLabels` plugin's `afterDatasetsDraw`): the same placement rules. Rotated
+    "P<n>" labels; the first archer prefers the left and the second the right; a side is avoided if it falls
+    outside the plot or crosses another marker line; an overlapping label moves down. The boxes are kept on
+    `chart.markerLabelBoxes`, and mirrored to the canvas's `data-marker-labels` attribute for browser tests.
+  - The only change from the old code: the left or right preference is keyed to the dataset's archer ("a" or
+    "b") rather than to its colour, since colours now follow the theme. The behaviour is the same.
+- `src/chart/MatchChart.tsx`:
+  - `MatchChart` draws the `pair_chart` payload with Chart.js. It is responsive (aspect ratio 1.6) and
+    redraws when the markers or the colour scheme change. Series colours: the Flask blue `#4c72b0` and red
+    `#c44e52` in light mode, lighter `#7a9fdc` and `#e2777a` in dark mode. Axis and grid colours follow the
+    scheme.
+  - `PairChartPanel` has the "Score distributions" heading, the "Show previous passes' scores too" checkbox,
+    the chart (data only from the bridge `pair_chart`) and "How the winner is decided" in a collapsible
+    `Accordion` (the old explanation). UI-17 will reuse it in the Pairwise modal.
+- `src/scoring/MatchPage.tsx`: the right column shows `PairChartPanel` when Graph view is on, or the muted
+  hint when it is off. On phones it sits below the inputs. A bye match has no chart.
+- Tests: `tests/chart.test.ts` (9 Vitest tests), `e2e/chart.spec.ts` (3), and a chart screenshot with Graph
+  view on and every pass shown.
+  - The stage 2 draft test and the match tests now wait up to 240 s after a reload, since the engine restarts
+    and took longer than 5 s once under parallel load.
+
+Verification:
+- Vitest 109 passed. `tests/chart.test.ts` drives the label plugin on a stand-in chart (jsdom has no canvas)
+  and checks `chart.markerLabelBoxes`:
+  - two markers one score apart, in both orders: no overlap, each label 3 px beside its own line, neither
+    crossing the other line, all inside the plot;
+  - equal scores: the first archer's label on the left, the second's on the right;
+  - markers at either edge put their label on the inside;
+  - eight clustered markers stack without overlapping and stay inside;
+  - curves and hidden markers are ignored.
+  - `pairDatasets` over every `pair_chart` payload in the UI-5 fixtures plots the payload as it is (curves are
+    the payload arrays themselves, legends, marker x equal to the scores, "P<n>", marker height `y_max`) and
+    marks only the current pass unless asked.
+- Code inspection: the chart receives `PairChart` only from `useBridgeQuery("pair_chart", ...)`. TypeScript
+  only builds Chart.js datasets and pixel positions for labels; there are no statistics in TypeScript.
+- Playwright: whole suite apart from screenshots, 63 passed, twice in a row. `chart.spec.ts`:
+  - Graph view on shows the chart and off shows the hint;
+  - the previous-passes checkbox changes the labels from P2, P2 to P1, P1, P2, P2 and back;
+  - the explanation opens.
+  - `match.spec.ts` already shows a bye has no chart, with Graph view on.
+- pytest 1269 passed; `tsc`, eslint and prettier are clean.
+- Visual check of the chart screenshots at 1440x900 and 390x844, light and dark (Cat, handicap 50, against
+  Ben, handicap 20, all passes shown):
+  - the two series are clearly distinct in both schemes, and the legend names each archer with the handicap;
+  - labels sit beside their lines inside the plot;
+  - axes are readable on dark;
+  - on phones the chart sits below the table at full width.
+  - An earlier sample with two archers of equal handicap drew identical curves (red under blue). That is the
+    data, not a fault; equal scores then put the two labels either side of the shared line, as intended.
+
+Assumptions:
+1. **The label tests drive the plugin on a stand-in chart.** Vitest under jsdom cannot create a real Chart.js
+   canvas, so the stand-in provides `chartArea`, `scales.x`, `ctx.measureText` (7 px per character) and the
+   datasets. The real chart's boxes are also checked in the browser through `data-marker-labels`.
+2. **Dark-mode series colours are lighter tints of the same blue and red,** so they read on a dark background
+   and the two archers stay distinguishable.
+3. **The axis range is the payload's `x_min` and `x_max`,** which `chart_data` already widens to include every
+   marker, as the Flask chart did.

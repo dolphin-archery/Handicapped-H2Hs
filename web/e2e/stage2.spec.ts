@@ -162,7 +162,7 @@ test("typed values survive a reload (draft restored)", async () => {
     )
     .toMatchObject([{ name: "Ann" }, { name: "Ben", handicap: 20 }]);
   await page.reload();
-  await expect(input("Name", 2)).toHaveValue("Ben");
+  await expect(input("Name", 2)).toHaveValue("Ben", { timeout: 240_000 }); // the engine restarts
   await expect(page.getByRole("combobox", { name: "Bowstyle, archer 2" })).toHaveValue("Compound");
   await expect(input("Handicap", 1)).toHaveValue("35");
 });
