@@ -3629,3 +3629,43 @@ Assumptions:
    UISpec 7.6 names. A worker crashing mid-session goes through the same failed state and banner.
 2. **"Resumes at the right route" is checked through the Resume card on a fresh tab at the bare URL,**
    UISpec 6 rule 4.
+
+## UI-21: CI and GitHub Pages, local part (2026-10-05) - IN PROGRESS, waiting for the owner
+
+What changed:
+- `.github/workflows/ci.yml`: on every push and pull request, on ubuntu-latest:
+  - `uv run --locked pytest` (setup-uv reads `.python-version`);
+  - Node 24, then `npm ci`, `typecheck`, `lint`, Vitest, `build`;
+  - Playwright browsers (chromium and webkit, with OS dependencies), then `npm run e2e` (all three projects,
+    served by `vite preview` from `/Handicapped-H2Hs/`);
+  - the Playwright report and test results are uploaded as an artifact on failure.
+  - Network access for Pyodide and its packages comes with GitHub-hosted runners (D15).
+- `.github/workflows/pages.yml`: on push to `main` (and manual dispatch), builds `web/dist` and deploys it
+  with `upload-pages-artifact` and `deploy-pages`. Both jobs carry `if: github.ref == 'refs/heads/main'`, so
+  a manual run from another branch deploys nothing.
+- Action versions pinned to the current major releases, checked against the GitHub API on 2026-10-05:
+  checkout v7, setup-node v7, setup-uv v10, configure-pages v6, upload-pages-artifact v5, deploy-pages v5,
+  upload-artifact v7.
+- Vite `base` was already relative (`./`, UI-6), and Playwright already serves the build from
+  `/Handicapped-H2Hs/`.
+- `web/e2e/full-event.spec.ts`: one event through the UI from New event:
+  - Stage 1 (4 archers, 36 arrows, 12 per pass by the slider), Stage 2 (four archers), Stage 3 confirm;
+  - every match of the three passes scored, with a reload part-way through pass 2 (the saved match is still
+    scored), Advance confirmed each time;
+  - the completion alert's three downloads (stamped names, CSVs naming every archer, the PDF starting
+    `%PDF-`);
+  - a reload of the finished event, and Home showing it Complete.
+
+Verification (local, the same commands as `ci.yml`, with `CI=1`):
+- `uv run --locked pytest` 1270 passed.
+- `npm ci`, `npm run typecheck`, `npm run lint` clean; Vitest 110 passed; `npm run build` built.
+- `npm run e2e`: 324 passed (108 tests on each of chromium, webkit and mobile; the 528 screenshot tests
+  skip without `SCREENSHOT_DIR`), in 8.8 minutes, including the full event from the `/Handicapped-H2Hs/`
+  sub-path.
+- First load, measured by `engine.spec.ts` on the local production build: 9.7 MB in 15 requests.
+
+Still to do (the owner's actions, then the remaining checks):
+1. Push `ui-redesign`; check `ci.yml` passes in GitHub Actions.
+2. In the repository settings, set Pages to deploy from "GitHub Actions".
+3. Merge to `main`; check the site at the Pages URL loads under `/Handicapped-H2Hs/`, runs a full event,
+   exports files and survives a reload; record first-load size and time here.

@@ -1,0 +1,70 @@
+# Tests on every push and pull request (UISpec.md 8, UI-21): pytest, then the web app's type
+# check, lint, Vitest, build and the Playwright suite (Chromium, WebKit and mobile emulation).
+# Pyodide and its packages are fetched from jsDelivr and PyPI at run time (decision D15), so the
+# job needs network access, which GitHub-hosted runners have.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up uv and Python (version from .python-version)
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: pytest
+        run: uv run --locked pytest
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Type check and lint
+        working-directory: web
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Vitest
+        working-directory: web
+        run: npm test
+
+      - name: Build
+        working-directory: web
+        run: npm run build
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Playwright (served from /Handicapped-H2Hs/, as on GitHub Pages)
+        working-directory: web
+        run: npm run e2e
+
+      - name: Keep the Playwright report when tests fail
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 7
