@@ -2217,3 +2217,23 @@ Assumptions made (decision numbers refer to `UISpec.md` section 3):
 Validation: `UI-prd.json` parses as JSON, every `depends_on` id exists, and every dependency points to an
 earlier task in the file, so there are no cycles. The loop's "first eligible task in file order" rule therefore
 follows file order.
+
+## UI-0 - Baseline and docs (2026-10-04)
+
+What changed: `.gitignore` gains `web/node_modules/`, `web/dist/` and `web/public/py/`. No application code
+changed.
+
+Verification:
+- `git branch --show-current` prints `ui-redesign`; `git tag --list prototype-flask` prints `prototype-flask`
+  (annotated tag on commit 6bfb59c, which is `main`'s head and an ancestor of `ui-redesign`). Both already
+  existed, so neither was recreated.
+- **Baseline: `uv run pytest` gives 919 passed, 0 failed (7.3 s), native Python 3.14.0.**
+- `git check-ignore -v` matches `web/node_modules/x`, `web/dist/x` and `web/public/py/x` to the new rules and does
+  not match `web/public/other.txt`, so other files under `web/public/` stay tracked.
+- `Specification/UISpec.md`, `deploymentConstrains.md`, `AISpec.md` and `UI-prd.json` all exist.
+
+Notes for future tasks: native Python is 3.14.0 and Pyodide v314.0.7 ships 3.14.2, so UI-1 compares across a
+patch-version difference as well as the numpy difference. `/Prompts` is git-ignored (commit 6bfb59c), so
+`Prompts/UILoopPrompt.md` is not in the repository even though `README.md` lists `Prompts/`; this is the owner's
+choice and is left alone. `uv run` warns that the shell's `VIRTUAL_ENV` points elsewhere and uses the project
+`.venv`, which is the intended behaviour.
