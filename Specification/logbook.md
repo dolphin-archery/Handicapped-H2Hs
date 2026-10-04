@@ -2660,3 +2660,87 @@ Notes for future tasks:
   (`new URL(__PY_BUNDLE__, document.baseURI)`), because a worker's relative fetch resolves against `assets/`.
 - The dev server does not watch `h2h/`: restart it after a Python change.
 - With TypeScript 6, global types must be listed in each tsconfig's `types`.
+
+## UI-7 - Engine worker and client (2026-10-04)
+
+What changed (`web/` only; no Python change):
+- `src/engine/types.ts`: TypeScript mirror of the bridge's snake_case JSON (the envelope, the event document,
+  every command's payload and result as a `Commands` table, so `call` is typed per command).
+- `src/engine/host.ts`: the engine logic, independent of where it runs. It:
+  - loads Pyodide, then numpy and micropip;
+  - installs archeryutils, then fpdf2 (timed separately for D16);
+  - unpacks the hashed bundle into `/home/pyodide/app` on `sys.path`;
+  - answers each call with `h2h.bridge.call`, JSON text both ways.
+  It reports progress (runtime, packages, pdf, app), then ready with timings, or fatal. It also holds
+  `parseRequirements`, and the pinned `PYODIDE_VERSION` and `PYODIDE_CDN`.
+- `src/engine/worker.ts`: the module Web Worker. It imports Pyodide's loader from jsDelivr v314.0.7 at run time
+  (D15; the loader and its wasm always match), and takes the requirements from `pyodide-requirements.txt`
+  (`?raw`).
+- `src/engine/client.ts`: `EngineClient`, a typed `call(command, payload)` with request ids. It:
+  - holds calls until the engine is ready;
+  - times calls out (60 s) and engine start (180 s);
+  - rejects with `EngineError` (`timeout`, `crashed` or `disposed`) when the engine crashes (worker `error`),
+    reports a fatal error, or hangs, then replaces the worker on the next call or `start()` (the Retry
+    button);
+  - reports status (idle, loading with a stage, ready with timings, failed) to subscribers.
+  `browserEngine.ts` creates the one app client and resolves `__PY_BUNDLE__` against `document.baseURI`;
+  `useEngineStatus.ts` is a React hook over the status.
+- `vite.config.ts`: `worker.format = "es"`. `.prettierrc.json`: `endOfLine: "auto"`, so `format:check` passes
+  on a CRLF Windows checkout (autocrlf is on).
+- Temporary placeholder `App.tsx`: starts the engine, shows its status, and once ready makes one `options`
+  call and shows the bowstyles. UI-9's loading banner and shell replace it.
+- Tests:
+  - `tests/engine-client.test.ts`: 10 tests with scripted stand-in workers.
+  - `tests/engine-parity.test.ts`: the real host in-process under Node Pyodide, every UI-5 fixture step sent
+    through the client.
+  - `tests/bridgeFixtures.ts`: the fixture loader, the TypeScript `pdfSummary` (fflate), `normaliseResult` and
+    `compareJson` (integers, strings, booleans and null exact; other numbers within a relative 1e-9).
+  - `tests/bridgeFixtures.test.ts`: 11 tests of the comparison rules.
+  - `e2e/engine.spec.ts`: a real browser.
+  - `e2e/screenshots.spec.ts`: the review screenshot harness. It is skipped unless `SCREENSHOT_DIR` is set;
+    later tasks add their routes.
+
+Verification:
+- **Parity (Vitest, Node Pyodide 314.0.7):** all 8 fixtures reproduce step by step through the client. **698
+  non-integer numbers compared, largest relative difference 0** (bit-identical to native, as in UI-1). The PDF
+  summaries (header, pages, drawn text) match Python's.
+- **Client (Vitest):**
+  - several calls in flight each get the answer with their own id (answered out of order);
+  - a timeout rejects and replaces the hung worker, and the next call succeeds on a new worker;
+  - a crash rejects pending calls, and the next call restarts the engine and succeeds;
+  - a fatal start (offline) fails the waiting call, and `start()` retries;
+  - a start timeout, messages from a replaced worker ignored, dispose;
+  - progress events: runtime, packages, pdf, app, ready (also checked with the real host).
+- **Real browser (Playwright, Chromium, fresh context, production build under /Handicapped-H2Hs/):** the worker
+  starts and answers `options` ("Bowstyles: Recurve, Compound, Barebow, Longbow."), with no page errors.
+- `npm run typecheck`, `lint`, `build` OK; Prettier clean for these files; `vitest` 39 passed (5 files);
+  `playwright` smoke and engine 2 passed.
+- Screenshots (1440x900 and 390x844, light and dark) reviewed: the placeholder title, status "Engine ready in
+  5.5 s" and the bowstyle line, wrapping cleanly at 390 px. Dark mode is not applied yet (the colour-scheme
+  setting is UI-9, D8).
+
+**Measurements (reported to the owner):**
+- **First-load transfer: 12.1 MB in 23 requests**, slightly over the "about 11 MB" target. The largest
+  downloads are pyodide.asm.wasm 3.44 MB, numpy 2.93 MB, python_stdlib.zip 2.51 MB, fonttools 1.12 MB, pillow
+  1.03 MB, fpdf2 0.34 MB, pyodide.asm.mjs 0.26 MB and micropip 0.11 MB; the app JS/CSS, archeryutils and the
+  45.6 kB bundle make up the rest.
+- **Engine start (desktop, fast connection):** 9.7 s on the first run and 6.3 s on a second run, each with an
+  empty browser cache, so the difference is CDN and network variation.
+  - First run: Pyodide runtime 5.2 s, numpy, micropip and archeryutils 1.5 s, fpdf2 install and import 2.8 s,
+    app bundle 0.2 s.
+  - Under Node with cached packages: 3.6 s in total, of which fpdf2 is 1.7 s.
+- **D16 (owner's decision):** fpdf2 and its dependencies (pillow, fonttools) are about 2.5 MB and 2.2-2.8 s of
+  start-up. A lazy `fpdf` import plus installing fpdf2 on the first PDF export would bring the first load to
+  about 9.6 MB, inside the target. The size and the share are now measured, as D16 asked.
+
+Assumptions:
+1. **Pyodide's loader is imported from the CDN at run time** (`import()` with `@vite-ignore`), not bundled from
+   npm. The npm package is used for its types and for the Node tests only, which avoids Vite pre-bundling
+   problems with Pyodide.
+2. **A call timeout replaces the worker.** A Python call that never returns blocks the worker, so other calls
+   in flight are rejected as `crashed`. The stored document is never involved.
+3. **Calls wait for the engine** and get their timeout only once they are sent. Engine start has its own
+   180 s limit, because a phone's first visit downloads about 12 MB.
+4. **The engine test in `npm run e2e` downloads from jsDelivr and PyPI**, as CI will (D15).
+
+Spec discrepancies: none.

@@ -12,6 +12,8 @@ export default defineConfig(async () => {
     base: "./",
     plugins: [react()],
     define: { __PY_BUNDLE__: JSON.stringify(pyBundle.url) },
+    // The engine is a module worker that imports Pyodide's loader from the CDN at run time.
+    worker: { format: "es" as const },
     test: {
       environment: "jsdom",
       globals: true,
