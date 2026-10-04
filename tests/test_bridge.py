@@ -4,12 +4,14 @@
 import ast
 import base64
 import copy
+import io
 import json
 import math
 import random
 from datetime import datetime
 from pathlib import Path
 
+import pypdf
 import pytest
 
 from h2h import bridge, chart_data, exports, models, outputs, stats
@@ -1119,6 +1121,22 @@ def test_pdf_export_is_base64_pdf_bytes():
     assert base64.b64decode(data["content"]).startswith(b"%PDF-")
     _refused(bridge.export(doc, "results_docx", NOW), "validation")
     _refused(bridge.export(doc, "results_pdf", "now"), "validation")
+
+
+def test_pdf_export_opens_with_pypdf_and_holds_the_report():
+    """pypdf reads the bridge's PDF: same text as the core's report, with the title, stamp, leaderboard and every archer."""
+    doc = _play_all(_started(), SIMPLE_SCORES)
+    pdf = base64.b64decode(_data(bridge.export(doc, "results_pdf", NOW))["content"])
+    reader = pypdf.PdfReader(io.BytesIO(pdf))
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    core = exports.results_pdf(bridge.rebuild_event(doc), datetime(2026, 10, 4, 15, 30, 12))
+    assert text == "\n".join(page.extract_text() for page in pypdf.PdfReader(io.BytesIO(core)).pages)
+    assert len(reader.pages) >= 1
+    assert "Handicapped H2H results" in text and "Exported 2026-10-04 15:30:12" in text
+    for row in _data(bridge.results(doc))["leaderboard"]:
+        assert row["name"] in text
+    for section in _data(bridge.archer_results(doc))["sections"]:
+        assert f"{section['name']} - total score {section['total_score']}" in " ".join(text.split())
 
 
 @pytest.mark.parametrize(

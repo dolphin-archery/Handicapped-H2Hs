@@ -3476,3 +3476,30 @@ Assumptions:
 2. **The archer heading splits the Flask single line** into the name as a heading and "Total score ... -
    starting handicap ... - to-date handicap ..." below it; the values are unchanged.
 3. **Passes tab items are the passes the bridge returns** in `results.passes` (the passes with scores).
+
+## UI-18: Exports (2026-10-04)
+
+What changed:
+- The downloads were already wired: the completion alert's buttons (UI-14) and the Results Download menu
+  (UI-17) both call `downloadExport`, which sends `export` with `now_iso` from the browser clock
+  (`localIso`, local time without an offset), decodes base64 PDF bytes, and downloads through a `Blob` and a
+  temporary `<a download>` link (`src/app/download.ts`). No UI code changed in this task.
+- `web/e2e/exports.spec.ts` (7 tests): each of the three files from the Results Download menu and from the
+  completion alert. The page clock is fixed (`page.clock.setFixedTime`) at the fixtures' export time,
+  2026-10-04 15:30:12 local, so the file name and contents must equal the UI-5 `export` fixture exactly:
+  - CSVs: name and text identical;
+  - PDF: starts with `%PDF-`, and its `pdfSummary` (header, page count, every text line, the same
+    normalisation as the fixtures) equals the fixture's.
+- `tests/test_bridge.py::test_pdf_export_opens_with_pypdf_and_holds_the_report`: pypdf opens the bridge's
+  PDF; its extracted text equals that of `exports.results_pdf` for the same event and time, and contains the
+  title, "Exported 2026-10-04 15:30:12", every leaderboard name and every archer heading.
+
+Verification:
+- Playwright `exports.spec.ts` 7 passed (the first PDF also exercises the lazy fpdf2 install, D16); full
+  Playwright suite apart from screenshots 76 passed.
+- pytest 1270 passed; Vitest 109 passed; `tsc`, eslint and prettier clean.
+- No screenshots: nothing the user sees changed.
+
+Assumptions:
+1. **Fixing the page clock** makes the comparison exact rather than "apart from the timestamp"; the
+   timestamp itself is then checked too.
