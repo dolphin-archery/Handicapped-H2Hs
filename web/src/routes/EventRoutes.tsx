@@ -12,6 +12,8 @@ import { eventHomePath, guardEventView, type EventView } from "../app/guards";
 import { useServices } from "../app/services";
 import { confirmDelete, downloadBackup } from "../components/eventActions";
 import { usePageTitle } from "../components/usePageTitle";
+import type { EventDocument } from "../engine/types";
+import { Stage1 } from "../setup/Stage1";
 
 /**
  * Layout for `#/e/:id/...`: waits for the stored event, then shows the view; an unknown id gives
@@ -93,6 +95,17 @@ function Guarded({ view, children }: { view: EventView; children: ReactNode }) {
 }
 
 /**
+ * Render a view with the loaded event document (EventLayout shows the view only once it is found).
+ *
+ * @param props.children - Renders the view from the document.
+ * @returns The view, or nothing while the event is not loaded.
+ */
+function WithDocument({ children }: { children: (doc: EventDocument) => ReactNode }) {
+  const { state } = useCurrentEvent();
+  return state.kind === "found" ? <>{children(state.doc)}</> : null;
+}
+
+/**
  * A view that a later task builds; for now its heading and a short note.
  *
  * @param props.title - The view's name.
@@ -116,7 +129,11 @@ export function SetupRoute() {
   const task = { 1: "UI-11", 2: "UI-12", 3: "UI-13" }[stage];
   return (
     <Guarded view={{ kind: "setup", stage }}>
-      <Placeholder title={`Stage ${stage}`} task={task} />
+      {stage === 1 ? (
+        <WithDocument>{(doc) => <Stage1 doc={doc} />}</WithDocument>
+      ) : (
+        <Placeholder title={`Stage ${stage}`} task={task} />
+      )}
     </Guarded>
   );
 }

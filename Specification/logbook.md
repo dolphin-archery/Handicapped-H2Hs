@@ -3003,3 +3003,78 @@ Notes for later tasks:
 - UI-12 opens `CalculatorDrawer` from Stage 2.
 - `options` waits for the engine. Stage 1 and 2 need its lists (distances, faces, bowstyles), so those forms
   show a loader until the engine is ready (UI-11).
+
+## UI-11: Stage 1 (2026-10-04)
+
+What changed (all in `web/`):
+- `src/setup/SetupShell.tsx`: the setup shell, used by Stages 1 to 3.
+  - A Mantine `Stepper` (Event, Archers, Pairings) whose steps can be clicked once reachable (the guard's
+    rule). The descriptions are dropped below `sm` so the steps fit a phone.
+  - A centred card at most 760 px wide, or the full width for Stage 2.
+  - After the start, a notice: "The event has started, so its setup can no longer be changed...".
+- `src/setup/Stage1.tsx`: Stage 1, with these fields and behaviours.
+  - **Fields:**
+    - number of archers and total arrows (`NumberInput`, numeric keypad, two columns on desktop);
+    - arrows per pass (`Slider` over divisor indices, with marks and the value shown in the label);
+    - Shoot byes? (`SegmentedControl` with the old explanation, shown only for an odd count of 3 or more);
+    - setup mode (Simple / Advanced);
+    - in Simple mode, distance (grouped, searchable `Select`) and face size from `options`; in Advanced mode
+      the old note.
+  - **Values** start from the draft, or else from the stored setup (the `new_document` defaults). Every change
+    is saved as a draft after 500 ms.
+  - **Continue:**
+    - calls `apply_stage1` and commits (write before show);
+    - discards the Stage 1 draft and opens Stage 2;
+    - bridge errors appear in a red `Alert`;
+    - it shows a loading state while the engine starts, and the selects show "Loading..." until `options`
+      arrives. The number fields, slider and mode work meanwhile.
+  - **Read-only after the start** (owner decision 2 of the UI-9 review): every field is `readOnly` or
+    `disabled`, and there is no Continue.
+- `src/setup/divisors.ts`: the old `stage1.html` script's rules as pure functions (`divisors`,
+  `snapToDivisor`, `controlTotal`, `byesApply`). `src/setup/stage2Draft.ts`: Stage 2's draft shape and its
+  values from a document.
+- `src/app/useFormDraft.ts`: an event's draft is now a record with one entry per form (`stage1`, `stage2`,
+  later `match:<pass>:<match>`) in the single `draft:<id>` value. The hook provides `save` (debounced),
+  `discard` (removes only this form's entry) and `keep` (stores another form's entry unless it exists).
+- `src/app/guards.ts`: `setupLocked(doc)`. `src/routes/EventRoutes.tsx`: `setup/1` renders Stage 1.
+- `e2e/seed.ts`: `fixtureDoc` reads any scenario and the `new_document` step; `readStored` reads a key; `seed`
+  now clears the database first, so tests sharing a page don't see each other's drafts.
+
+Verification:
+- Vitest 99 passed, including 6 new tests in `tests/divisors.test.ts` (divisors, `parseInt || 1`, keeping the
+  preference, nearest divisor with ties to the smaller, returning to the preference, byes rule).
+- Playwright `stage1.spec.ts`: 8 passed, on one page shared serially so the engine downloads stay cached.
+  - **Snapping:** 60 then ArrowRight gives 15, back gives 12; 50 shows 10; 4 then 48 shows 12 again.
+  - **Byes control:** shown for 3 and 5, hidden for 1, 2, 4 and 8.
+  - **Modes:** Simple shows "20 yd" and "60 cm" with Metric and Imperial groups; Advanced hides both and shows
+    the note.
+  - **Draft:** survives a reload, read back from IndexedDB.
+  - **Bridge messages:** "Need at least 2 archers, got 1." and "Arrows per pass (1) must evenly divide total
+    arrows (0).".
+  - **Valid submit:** stores stage 1 with the values, deletes the draft and opens Stage 2.
+  - **Changing after Stage 2:** see assumption 2 below.
+  - **Started event:** read-only.
+- Shell, smoke, calculator and engine tests pass (27 in all); the first load is 9.7 MB. `tsc`, eslint and
+  prettier are clean; pytest 1267 passed.
+- Screenshots of Stage 1, and of Stage 1 read-only on a started event, at 1440x900 and 390x844, light and dark,
+  reviewed. Fixed two things:
+  - the phone Stepper was clipped ("Pairings" ran off the right edge): descriptions are now hidden below `sm`;
+  - the read-only notice was a near-black box in dark mode: it is now blue.
+  - Otherwise: two columns on desktop and one on phones, slider marks readable (all divisors labelled up to
+    12 divisors, otherwise the ends only), dark mode correct.
+  - Left for UI-19: the header's "Graph view" switch label wraps onto two lines at 390 px.
+
+Assumptions:
+1. **Continue with unchanged values moves to Stage 2 without calling `apply_stage1`.** That command clears
+   Stages 2 and 3 (as `SessionState.start_stage1` did), so looking back at Stage 1 and pressing Continue would
+   otherwise wipe the archers.
+2. **Changed values after Stage 2 ask first.** A confirm modal says Stage 2's archers and the pairings will be
+   cleared; on confirm, the stored archers are kept as Stage 2's draft (unless Stage 2 already has one), so
+   nothing typed is lost. The modal is presentation only; the bridge still decides what is cleared.
+3. **The slider labels every mark only when there are at most 12 divisors.** Otherwise only the ends are
+   labelled, so marks don't overlap. The current value is always shown in the label.
+4. **A total below 1 is treated as 1 by the control.** The old script's `parseInt || 1` gave an empty slider
+   for a negative total. The bridge still rejects the value.
+5. **No derived "passes per archer" summary line is shown before submit.** UISpec calls it "welcome", and
+   `apply_stage1` returns `passes_per_archer` and `n_passes` only on submit; computing it in TypeScript would
+   duplicate logic. A read-only bridge command could add it later if the owner wants one.

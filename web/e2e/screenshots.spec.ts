@@ -9,6 +9,8 @@ import { fixtureDoc, seed } from "./seed";
  */
 const ROUTES: { name: string; hash: string }[] = [
   { name: "home", hash: "" },
+  { name: "stage1", hash: "#/e/ev-setup/setup/1" },
+  { name: "stage1-locked", hash: "#/e/ev-run/setup/1" },
   { name: "stage2", hash: "#/e/ev-setup/setup/2" },
   { name: "pass", hash: "#/e/ev-run/pass" },
   { name: "calculator", hash: "#/calculator" },

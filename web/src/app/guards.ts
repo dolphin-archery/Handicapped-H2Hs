@@ -81,3 +81,15 @@ export function guardEventView(
   }
   return { allowed: true };
 }
+
+/**
+ * Whether the event's setup can no longer be changed: it has started (status running or
+ * complete). Setup then shows read-only summaries (UISpec.md 7.3, Stage 3; owner decision after
+ * the UI-9 review).
+ *
+ * @param doc - The event document.
+ * @returns True once the event has started.
+ */
+export function setupLocked(doc: Pick<EventDocument, "status">): boolean {
+  return doc.status !== "setup";
+}

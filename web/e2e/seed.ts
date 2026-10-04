@@ -20,21 +20,50 @@ const FIXTURES = path.resolve(
 /**
  * A real event document from a fixture: the document returned by the first step of a command.
  *
- * @param command - e.g. "apply_stage1" (stage 1, setting up) or "start_event" (running).
+ * @param command - e.g. "new_document" (stage 0), "apply_stage1" (stage 1, setting up) or
+ *   "start_event" (running).
  * @param changes - Fields to override (id, name, updated_at...).
+ * @param scenario - The fixture file's scenario (default "simple").
  * @returns The document.
  */
 export function fixtureDoc(
   command: string,
   changes: Record<string, unknown> = {},
+  scenario = "simple",
 ): Record<string, unknown> {
-  const fixture = JSON.parse(readFileSync(path.join(FIXTURES, "simple.json"), "utf8"));
+  const fixture = JSON.parse(readFileSync(path.join(FIXTURES, `${scenario}.json`), "utf8"));
   const step = fixture.steps.find((s: { command: string }) => s.command === command);
-  return { ...step.result.data.document, ...changes };
+  const data = step.result.data;
+  return { ...(data.document ?? data), ...changes };
 }
 
 /**
- * Write events (and optional raw values and session routes) into the app's database, then reload.
+ * Read one stored value from the app's database (e.g. "event:<id>" or "draft:<id>").
+ *
+ * @param page - A page on the app.
+ * @param key - The key.
+ * @returns The stored value, or undefined.
+ */
+export async function readStored(page: Page, key: string): Promise<unknown> {
+  return page.evaluate(async (key) => {
+    const db: IDBDatabase = await new Promise((resolve, reject) => {
+      const request = indexedDB.open("handicapped-h2hs", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const value = await new Promise((resolve, reject) => {
+      const request = db.transaction("keyval").objectStore("keyval").get(key);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return value;
+  }, key);
+}
+
+/**
+ * Replace the app's database with these events (and optional raw values and session routes),
+ * then reload.
  *
  * @param page - A page already on the app (for its origin).
  * @param seed.events - Event documents (or raw values with an id, for corrupt ones).
@@ -60,6 +89,7 @@ export async function seed(
       });
       const tx = db.transaction("keyval", "readwrite");
       const store = tx.objectStore("keyval");
+      store.clear(); // start from an empty database, also when a page is shared between tests
       for (const doc of events) store.put(doc, `event:${doc.id}`);
       for (const [id, raw] of Object.entries(raws)) store.put(raw, `event:${id}`);
       for (const [id, route] of Object.entries(sessions)) store.put(route, `session:${id}`);
