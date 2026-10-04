@@ -3154,3 +3154,49 @@ Assumptions:
    A cleared field is stored as "" in the draft.
 3. **No "Back to Stage 1" confirmation.** Going back loses nothing: Stage 2's draft stays, and Stage 1 asks
    before clearing archers (UI-11).
+
+## UI-13: Stage 3 (2026-10-04)
+
+What changed (all in `web/`):
+- `src/setup/Stage3.tsx`: Stage 3, built from the bridge `pairings` command.
+  - **Table:** Pass | Matches | Sitting out, using the Flask page's wording: "Ann vs Ben",
+    "Ann (bye - shoots alone)", sitting-out names joined by ", " or "-". Only names are joined; nothing is
+    computed.
+  - **Redraw pairings:** calls `redraw` with a fresh `crypto.getRandomValues` seed and commits the new
+    document. The table reloads from `pairings`, because the query reruns on the new revision.
+  - **Confirm pairings and start event:** calls `start_event`, commits and opens `#/e/:id/pass`.
+  - **Back to Stage 2:** a link, always shown.
+  - **After the start:** a read-only summary ("The pairings for every pass, as drawn when the event
+    started.") with no Redraw or Confirm. Together with UI-11 and UI-12, all three setup stages are read-only
+    once the event has started.
+- `src/routes/EventRoutes.tsx`: `setup/:stage` renders Stage 1, 2 or 3; the setup placeholders are gone.
+- Tests: `e2e/stage3.spec.ts`, 5 tests on a shared page with a 240 s timeout for engine restarts after a
+  reload. `e2e/screenshots.spec.ts` seeds a five-archer event with byes sat out and adds Stage 3 and Stage 3
+  read-only.
+
+Verification:
+- Playwright `stage3.spec.ts`, 5 passed:
+  - **Redraw:** changes the table text and the stored assignment.
+  - **Reload:** shows the same draw.
+  - **Byes:**
+    - with byes shot, pass 1 shows "Ben vs Eve" and "Ann (bye - shoots alone)", with "-" sitting out;
+    - with byes sat out, pass 3 shows "Ann vs Cat" with "Ben, Dan, Eve" sitting out (the fixture's
+      `pairings` result).
+  - **Back to Stage 2:** opens the editable form.
+  - **Confirm:** stores status `running` and opens the pass overview. Stages 1 to 3 then show the read-only
+    notice: the same pairings, no Redraw or Confirm, Stage 2's name read-only, and no Continue on Stages 1
+    and 2.
+- Whole Playwright suite apart from screenshots: 40 passed. Vitest 99 passed; pytest 1269 passed; `tsc`,
+  eslint and prettier are clean.
+- Screenshots of Stage 3 (five archers, byes sat out) and Stage 3 read-only at 1440x900 and 390x844, light and
+  dark, reviewed:
+  - the table fits 390 px without scrolling;
+  - each match is on its own line within a pass;
+  - on phones the buttons wrap onto two lines, with Confirm (primary) on its own line;
+  - the dark-mode stripes are readable.
+  - Nothing to fix.
+
+Assumptions:
+1. **"Back to Stage 2" stays after the start,** linking to the read-only summary, as do the Stepper's steps.
+2. **There is no confirm modal before starting.** The button says what it does, and UISpec 7.3 asks for no
+   modal here (D7's confirmation is for Advance).

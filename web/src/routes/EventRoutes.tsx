@@ -15,6 +15,7 @@ import { usePageTitle } from "../components/usePageTitle";
 import type { EventDocument } from "../engine/types";
 import { Stage1 } from "../setup/Stage1";
 import { Stage2 } from "../setup/Stage2";
+import { Stage3 } from "../setup/Stage3";
 
 /**
  * Layout for `#/e/:id/...`: waits for the stored event, then shows the view; an unknown id gives
@@ -127,16 +128,10 @@ export function Placeholder({ title, task }: { title: string; task: string }) {
 export function SetupRoute() {
   const stage = Number(useParams().stage);
   if (stage !== 1 && stage !== 2 && stage !== 3) return <Navigate to=".." replace />;
-  const task = { 1: "UI-11", 2: "UI-12", 3: "UI-13" }[stage];
+  const View = { 1: Stage1, 2: Stage2, 3: Stage3 }[stage];
   return (
     <Guarded view={{ kind: "setup", stage }}>
-      {stage === 1 ? (
-        <WithDocument>{(doc) => <Stage1 doc={doc} />}</WithDocument>
-      ) : stage === 2 ? (
-        <WithDocument>{(doc) => <Stage2 doc={doc} />}</WithDocument>
-      ) : (
-        <Placeholder title={`Stage ${stage}`} task={task} />
-      )}
+      <WithDocument>{(doc) => <View doc={doc} />}</WithDocument>
     </Guarded>
   );
 }

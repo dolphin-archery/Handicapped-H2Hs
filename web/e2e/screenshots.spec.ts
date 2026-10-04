@@ -3,7 +3,7 @@ import { fixtureDoc, seed } from "./seed";
 
 /**
  * Review screenshots (UILoopPrompt step 4): each route at 1440x900 and 390x844, light and dark,
- * with three seeded events. Skipped unless SCREENSHOT_DIR is set, e.g.
+ * with four seeded events. Skipped unless SCREENSHOT_DIR is set, e.g.
  *   $env:SCREENSHOT_DIR = "C:\\temp\\shots"; npx playwright test e2e/screenshots.spec.ts
  * Later tasks add their routes to ROUTES.
  */
@@ -14,6 +14,8 @@ const ROUTES: { name: string; hash: string }[] = [
   { name: "stage2", hash: "#/e/ev-setup/setup/2" },
   { name: "stage2-advanced", hash: "#/e/ev-adv/setup/2" },
   { name: "stage2-locked", hash: "#/e/ev-run/setup/2" },
+  { name: "stage3", hash: "#/e/ev-odd/setup/3" },
+  { name: "stage3-locked", hash: "#/e/ev-run/setup/3" },
   { name: "pass", hash: "#/e/ev-run/pass" },
   { name: "calculator", hash: "#/calculator" },
   { name: "about", hash: "#/about" },
@@ -40,6 +42,7 @@ for (const route of ROUTES) {
             fixtureDoc("apply_stage1", { id: "ev-setup", name: "Club night 3 Oct" }),
             fixtureDoc("start_event", { id: "ev-run", name: "League round 2" }),
             fixtureDoc("apply_stage1", { id: "ev-adv", name: "Mixed targets" }, "advanced"),
+            fixtureDoc("redraw", { id: "ev-odd", name: "Five archers" }, "byes_sat_out"),
           ],
         });
         await page.goto(`./${route.hash}`);

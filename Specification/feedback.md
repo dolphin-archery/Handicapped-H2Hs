@@ -124,10 +124,46 @@ During setup stage 2 if in advanced mode have a yes/no toggle for 'Update Handic
 
 ## UI and Deployment
 - Nicer UI
-    - get existing design from online - may need something more than flask
-- Explanation of underlying maths
-- Guide for how to use
+    - Using UI library
+
+## Deployment
 - Publication to existing webpage/githubpages
+
+## Additional Features
+### Maths Explanations
+Both to use graphs where appropriate
+- Simple
+    - High level, accessible explanation of underlying concepts
+    - No equations
+- Complex
+    - Full derivation with equations and justifcations
+    - Acknowledge limitations
+        - Key limitation: unsure if differnet bowstyles shooting at same handicap level have different variations in score per pass.
+
+### Help
+- Toggle to show help on each page where the user inputs stuff
+- Explanations of what inputs mean
+
+### Single match mode
+System currently setup to run a round robin system of matches. add a single match mode for jsut two people partipating who want a one of match.
+- Compound or set system
+- Only two archers
+- Option to rematch with rolling updated handicaps
+
+### Teams
+- Set to team or individual in stage 1 setup. System currently built for individuals.
+- if team:
+    - configure how many archers and how many arrows
+    - pass score distribution needs to be computed from each archer
+    - Rename archer to team in other pages
+
+### Feature request form
+- For archers to request features
+
+## Licensing and Copyright
+- Implement both
 
 # Notes - IGNORE
 - Check if differnet bowstyles have different variations in per pass score for the same handicap.
+
+If (and only if) tool becomes popular then think about moving to login system with accounts, history, and per arrow scoring.
