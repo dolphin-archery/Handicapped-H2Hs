@@ -2821,3 +2821,114 @@ Assumptions:
    the same moment could lose one change. It is a device preference only.
 
 Spec discrepancies: none.
+
+## UI-9 - App shell (2026-10-04): complete, stopped for owner review
+
+What changed (`web/` only):
+- `src/main.tsx`:
+  - starts the engine in the background, reads settings before the first render (no colour flash), and
+    renders the providers: MantineProvider (`defaultColorScheme="auto"`, a colour-scheme manager stored in the
+    IndexedDB `settings` record, D8), Services (engine and store), Settings, ModalsProvider, Notifications;
+  - also loads the notifications CSS.
+- `src/App.tsx`: the hash router (D2) with the UISpec 7.1 routes under the `Shell` layout. Unknown hashes go to
+  `#/`, and `#/e/:id/results` goes to `leaderboard`.
+- `src/app/`:
+  - `services.tsx` (context for the engine and store);
+  - `settings.tsx` (device settings written through to IndexedDB, plus the colour-scheme manager);
+  - `currentEvent.tsx`, the event in the URL, or the last one opened. It:
+    - commits changes write-before-show;
+    - opens the two-tab conflict modal ("This event changed in another tab": Load latest / Overwrite with
+      this tab);
+    - after a storage failure, keeps the change in memory and shows the alert;
+    - records the session route and `last_event_id`;
+    - offers rename, delete and reload.
+  - `guards.ts` (pure route guards);
+  - `download.ts` (Blob plus `<a download>`).
+- `src/components/`:
+  - `Shell` (AppShell: 56 px header; 260 px navbar from `md`, burger drawer below it; content at most 1200 px);
+  - `Header`: title, an event-name menu with Rename, Download backup and Delete event; the save indicator;
+    the Graph view switch, shown once the event has started; and the colour scheme menu (light, dark,
+    automatic);
+  - `Navbar`: Home; the event's Setup (with progress), Current pass and Results, disabled with a tooltip until
+    the event starts; Handicap calculator; About; and a footer line saying data stays in this browser;
+  - `SaveIndicator`: "Saved HH:MM", "Saving..." or "Not saved", with `aria-live`;
+  - `StorageFailureAlert`: the persistent red "This event is NOT being saved", with Download backup of the
+    in-memory event;
+  - `EngineBanner`: progress while Python loads (non-blocking), and a failure message with Retry and
+    Reload;
+  - `eventActions`: rename modal, delete confirmation naming the event, backup download;
+  - `usePageTitle` (per-route `<title>`), and inline SVG icons (no icon package).
+- `src/routes/`:
+  - `Home`: New event (through the engine's `new_document`, stored, then Stage 1), Import backup (validated by
+    the engine, with a replace confirmation for existing ids), the Resume card for the most recently updated
+    in-progress event (D13; restores the session route), the saved-event cards (Open, Rename, Download backup,
+    Delete), corrupt-value recovery cards (download what can be read, then delete), and an empty state;
+  - `EventRoutes`: the event layout ("Event not found" with a link Home; corrupt-value recovery), the guard
+    wrapper (redirect plus a notification), and placeholder views for the stages, the pass, a match, results
+    and the calculator, naming the task that builds each;
+  - `About`.
+- `public/404.html`: a friendly page linking to `/Handicapped-H2Hs/`.
+- Tests:
+  - `tests/guards.test.ts` (12 tests);
+  - `tests/App.test.tsx`, rewritten for the shell;
+  - `e2e/seed.ts`, which seeds IndexedDB with real UI-5 fixture documents so shell tests need no engine;
+  - `e2e/shell.spec.ts` (10 tests);
+  - `e2e/engine.spec.ts`, now New event through the real engine;
+  - `e2e/screenshots.spec.ts`, routes added;
+  - `e2e/smoke.spec.ts`, new heading.
+
+Verification:
+- `npx tsc -b`, `eslint .`, `prettier --check .` and `npm run build`: clean. `npx vitest run`: 93 passed.
+  `uv run pytest`: 1266 passed.
+- Playwright (Chromium, production build under `/Handicapped-H2Hs/`): smoke plus shell, 12 passed. The engine
+  test passed: New event goes through the real engine to Stage 1, Resume appears afterwards, and the first load
+  was 12.2 MB. The shell tests cover:
+  - a guarded route redirects (`setup/3` to `setup/2` with "Complete Stage 2 first."; `pass` before the start
+    shows the not-started message);
+  - an unknown id shows "Event not found" with a link Home; an unknown hash goes to `#/`; the empty state;
+  - with two in-progress events, Resume shows the more recent and both are listed;
+  - Resume after closing and reopening the tab restores the last route;
+  - rename from Home and from the header shows in both places after a reload, with "Saved HH:MM";
+  - a corrupt stored event offers download (`backup_<stamp>.json`) and delete while the other event still
+    works;
+  - delete needs confirmation in a modal naming the event (Keep it / Delete event);
+  - navbar items not yet reachable are disabled;
+  - `404.html` is served with its link.
+- Screenshots: Home, Stage 2, Current pass, About and Event not found, each at 1440x900 and 390x844, light and
+  dark, 20 in all. Home, pass, Stage 2 and About reviewed:
+  - light and dark both apply;
+  - the desktop navbar shows the event section and disabled items;
+  - on phones the burger drawer and a truncated event name in the header work, cards stack in one column, and
+    there is no horizontal scroll;
+  - Graph view is shown only for a started event.
+  - Cosmetic: the Delete button wraps onto its own line inside the event cards. Left for UI-19.
+- A jsdom App test could not see Home's IndexedDB-driven empty state (fake-indexeddb under jsdom). That check
+  lives in Playwright instead, against real IndexedDB.
+
+Assumptions:
+1. **Setup routes stay reachable after the start.** The UISpec 7.1 table says `setup/3` needs "not started",
+   but 7.3 makes Stages 1-3 read-only summaries after confirmation, so the guard allows them and UI-11 to
+   UI-13 lock editing. Pass, match and results need status running or complete.
+2. **The navbar's event section shows the event in the URL, or else the last one opened.** The header's event
+   menu and the Graph view switch appear only on event routes.
+3. **After a storage failure the change is kept in memory and shown** (with the persistent alert and Download
+   backup) rather than blocked, so a scorer in a private window can carry on and keep a backup. Creating a new
+   event while storage is unavailable is refused with a notification; UI-20 covers storage-disabled mode end
+   to end.
+4. **The match index's range is checked by the bridge's `match` command in UI-15**; the guard checks only
+   that it is a whole number.
+5. **The colour scheme is stored in the IndexedDB `settings` record** through a custom Mantine manager, not
+   Mantine's localStorage key (UISpec 6).
+6. **Lint exemptions with reasons:** react-refresh in the context and action modules, and set-state-in-effect
+   in the event loader and Home's refresh, both of which mirror IndexedDB.
+
+Spec discrepancies:
+- UISpec 7.1's `setup/3` guard ("not started") conflicts with 7.3's read-only summaries after the start;
+  handled as in assumption 1.
+- `404.html` lives in `web/public/` (see UI-6).
+
+For the owner's review (UI-9 has `needs_review`), run from `web/`:
+- `npm run build`, then `npm run preview -- --base /Handicapped-H2Hs/`, and open
+  http://localhost:4173/Handicapped-H2Hs/ (or use `npm run dev`).
+- Try New event, rename, delete, Download and Import backup, the colour scheme and resize to phone width.
+- Stage, pass, results and calculator views are placeholders until UI-10 to UI-17.

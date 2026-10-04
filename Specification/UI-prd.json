@@ -187,7 +187,7 @@
     ],
     "gate": false,
     "needs_review": true,
-    "completed": false
+    "completed": true
   },
   {
     "id": "UI-10",
