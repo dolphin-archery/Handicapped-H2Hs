@@ -13,13 +13,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .draw import draw_assignment, pairings_signature
 from .models import DEFAULT_TARGET_SETUP, Archer, Event, TargetSetup
 from .rotation import Rotation, build_schedule, build_sit_out_schedule
-
-# How many fresh random draws a redraw may try to find pairings that differ from the
-# current ones, before accepting whatever it last drew (e.g. with only 2 archers there
-# is nothing different to find).
-_MAX_REDRAW_ATTEMPTS = 50
 
 # The two setup modes (AISpec.md section 5.1).
 SIMPLE = "simple"
@@ -222,7 +218,7 @@ class SessionState:
 
         Two assignments with the same signature give the scorer the same
         pairings, even if they differ in (say) which archer is listed first
-        in a pair.
+        in a pair. Delegates to `h2h.draw.pairings_signature`.
 
         Parameters
         ----------
@@ -234,22 +230,16 @@ class SessionState:
         tuple
             One `(pairs, bye archer, sitting-out archers)` entry per rotation.
         """
-        return tuple(
-            (
-                frozenset(frozenset((assignment[a], assignment[b])) for a, b in rotation.pairs),
-                None if rotation.bye is None else assignment[rotation.bye],
-                frozenset(assignment[i] for i in rotation.sitting_out),
-            )
-            for rotation in self.schedule
-        )
+        return pairings_signature(self.schedule, assignment)
 
     def redraw_pairings(self) -> None:
         """Draw a fresh random assignment of the entered archers to schedule positions.
 
         A draw whose pairings differ from the current ones is preferred (so
-        pressing "Redraw" visibly changes something), trying up to
-        `_MAX_REDRAW_ATTEMPTS` times; if none is found (e.g. with only two
-        archers) the last draw is kept.
+        pressing "Redraw" visibly changes something), trying up to a fixed
+        number of times; if none is found (e.g. with only two archers) the last
+        draw is kept. The draw is `h2h.draw.draw_assignment`, made with this
+        session's `rng`.
 
         Raises
         ------
@@ -260,13 +250,9 @@ class SessionState:
             msg = "Stage 2 must be completed before pairings can be drawn."
             raise RuntimeError(msg)
 
-        previous = None if self.assignment is None else self._pairings_signature(self.assignment)
-        for _ in range(_MAX_REDRAW_ATTEMPTS):
-            order = list(range(len(self.pending_archers)))
-            self.rng.shuffle(order)
-            if previous is None or self._pairings_signature(order) != previous:
-                break
-        self.assignment = order
+        self.assignment = draw_assignment(
+            self.schedule, len(self.pending_archers), self.rng, self.assignment
+        )
 
     def assigned_archers(self) -> list[Archer]:
         """list[Archer]: the entered archers in schedule-position order, per the current draw.

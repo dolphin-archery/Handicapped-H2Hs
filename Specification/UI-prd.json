@@ -69,7 +69,7 @@
     ],
     "gate": false,
     "needs_review": false,
-    "completed": false
+    "completed": true
   },
   {
     "id": "UI-4",

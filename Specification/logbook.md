@@ -2372,3 +2372,47 @@ Spec discrepancies: none beyond assumptions 1 and 2.
 Notes for future tasks: UI-4 adds the commands to `bridge.py` and needs `apply_stage1` to reset `archers`,
 `assignment`, updating and `stage` exactly as `validate_document` expects (assumption 3). New-document defaults:
 stage 0, 4 archers, 60 arrows, 12 per pass, simple, byes shot, 20yd / 60 cm, updating off.
+
+## UI-3 - Draw refactor (2026-10-04)
+
+What changed:
+- New `h2h/draw.py` (decision D17), with no Flask and no state. It holds:
+  - `pairings_signature(schedule, assignment)`;
+  - `draw_assignment(schedule, n_archers, rng, current=None)`, which returns the new assignment and prefers
+    pairings that differ from `current`, up to `_MAX_REDRAW_ATTEMPTS` (50) tries;
+  - the `_MAX_REDRAW_ATTEMPTS` constant.
+  This is the code moved out of `SessionState`, unchanged.
+- `h2h/state.py` (surgical, +10/-24 lines):
+  - `redraw_pairings` now calls `draw_assignment(self.schedule, len(self.pending_archers), self.rng,
+    self.assignment)`;
+  - `_pairings_signature` stays as a one-line delegate, because `tests/test_state.py` calls it;
+  - the now-unused `_MAX_REDRAW_ATTEMPTS` moved to `draw.py`;
+  - docstrings updated.
+- New `tests/test_draw.py` (54 tests) tests the function directly, so the draw stays covered after
+  `test_state.py` is retired (UI-22). It checks:
+  - the result is a permutation (2 to 11 archers, several seeds);
+  - the first draw is one shuffle;
+  - redraws change the pairings for 4 and 6 archers, 5 with byes shot and 5 sitting out (25 redraws each);
+  - two archers stop after exactly 50 attempts with a valid draw;
+  - the signature ignores the order within a pair but not who meets whom;
+  - the same seed gives identical draws and redraws through `SessionState` and through `draw_assignment`
+    (5 setups, 3 seeds);
+  - `draw.py` imports neither Flask nor `state`.
+
+Verification:
+- `uv run pytest tests/test_draw.py`: 54 passed.
+- `test_state.py`, `test_app.py`, `test_event_routes.py`, `test_integration.py` and `test_handicap_calculator.py`
+  are unmodified (`git status` shows only `h2h/state.py` changed): 301 passed.
+- `uv run pytest`: **1029 passed** (975 + 54).
+- Behaviour unchanged: the pre-refactor `state.py` (from `git show HEAD`, loaded as a temporary module and then
+  deleted) and the new one gave identical first draws, four redraws and the random source's state afterwards for
+  1400 combinations (200 seeds; 2, 3, 4, 5, 7 and 12 archers; byes shot and sat out).
+- Mutation check on `draw.py`. Two bugs fail tests: dropping the preference for new pairings (2 failed) and
+  one extra attempt (1 failed). Ignoring the bye in the signature is not caught, and cannot be by any input: in a
+  rotation everyone not in a pair has the bye or sits out, so equal pairs already mean an equal bye. That part of
+  the signature is redundant (moved code, kept as it was), and the related test was renamed to say what it checks.
+
+Assumptions: the function is named `draw_assignment` and the module constant keeps its original private name.
+The bridge (UI-4) calls `draw_assignment(schedule_for(setup), n_archers, random.Random(seed), current)`.
+
+Spec discrepancies: none.
