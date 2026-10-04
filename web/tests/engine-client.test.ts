@@ -75,8 +75,7 @@ describe("EngineClient", () => {
     client.start(); // already starting: no second worker
     expect(workers).toHaveLength(1);
     expect(workers[0].received).toEqual([{ type: "init", bundleUrl: BUNDLE }]);
-    for (const stage of ["packages", "app"] as const)
-      workers[0].emit({ type: "progress", stage });
+    for (const stage of ["packages", "app"] as const) workers[0].emit({ type: "progress", stage });
     workers[0].emit({ type: "ready", timings: TIMINGS });
     expect(seen).toEqual([
       { state: "loading", stage: "runtime" },
