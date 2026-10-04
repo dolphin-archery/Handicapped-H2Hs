@@ -65,7 +65,7 @@ These are assumptions; each is easy to reverse and the owner may overrule them.
 | D13 | When more than one event is in progress (status `setup` or `running`), the Resume card shows the most recently updated one; the others are listed on Home. | Section 6, rule 4 assumed a single in-progress event. |
 | D14 | Completed events are kept until the user deletes them; no auto-archive. | Closes the open question in section 11; the simplest behaviour, and backups cover eviction. |
 | D15 | Pyodide (runtime and its numpy) is loaded from jsDelivr pinned to `v314.0.7`, and `archeryutils` and `fpdf2` from PyPI via `micropip`; Pyodide is not self-hosted. CI uses network access for these. | Matches the verified smoke test (deploymentConstrains 2) and keeps the repository small. The requests carry no user data. |
-| D16 | No dependency changes to `pyproject.toml` and no lazy `fpdf` import in this plan. UI-7 records how much of engine start-up is spent loading fpdf2 so the owner can decide later. | Both need owner approval (section 11, section 12). |
+| D16 | No dependency changes to `pyproject.toml` in this plan. The `fpdf` import in `exports.py` is lazy (inside `results_pdf`, approved by the owner after the UI-9 review): the engine host installs fpdf2 on the first `export` with kind `results_pdf`, not at start-up. | Dependency changes need owner approval (section 11, section 12). The lazy import cuts the first load by about 2.5 MB at the cost of a few seconds on the first PDF export. |
 | D17 | The Stage 3 draw moves into a new module `h2h/draw.py` (whitelisted for the browser) that both `state.py` and `bridge.py` import. | Keeps the core modules (`stats`, `models`, `outputs`, `rotation`) untouched, keeps the draw available after `state.py` is retired (UI-22), and lets UI-2 and UI-3 edit different files. |
 | D18 | Backup import rejects files larger than 10 MB. | Section 6, rule 7 asked for a size limit without a value; one event document is a few tens of kB, so 10 MB holds hundreds of events. |
 
@@ -130,7 +130,7 @@ tests/                    existing pytest suite + new test_bridge.py, test_draw.
 - Do not `micropip.install` this project from `pyproject.toml` (its pins exceed Pyodide's numpy). Instead the build script zips only these modules into a bundle that the worker fetches and unpacks into the Pyodide filesystem: `__init__.py`, `stats.py`, `rotation.py`, `models.py`, `outputs.py`, `exports.py`, `chart_data.py`, `draw.py`, `bridge.py`. Exclude `app.py`, `state.py`, `templates/`, `static/`.
 - Add `web/pyodide-requirements.txt` with loose bounds for the browser (`archeryutils>=3.0.0`, `fpdf2>=2.8.9`); numpy comes from Pyodide.
 - Stamp the bundle file name with a content hash so a deployment always loads matching code.
-- Not in this plan (decision D16): `exports.py` imports `fpdf` at the top; making that import lazy (inside `results_pdf`) would let fpdf2, pillow and fonttools (about 2 MB) load on the first PDF export instead of at startup. UI-7 measures the time this would save; the owner decides whether to make the one-line change later.
+- Decision D16: `exports.py` imports `fpdf` inside `results_pdf`, so fpdf2, pillow and fonttools (about 2.5 MB) are installed by the engine host on the first PDF export instead of at start-up; importing `h2h.bridge` does not import `fpdf` (tested). The first load is about 9.7 MB.
 
 ## 5. The Python bridge (`h2h/bridge.py`) and the event document
 
@@ -201,6 +201,7 @@ All take the document (except where noted) and return `ok/data` or `ok/error`.
 | `apply_stage1(doc, form)` | Validates; sets `setup`; builds the schedule to check it; clears later stages | `session.start_stage1` and `stage1_submit` |
 | `apply_stage2(doc, archers, updating)` | Validates every archer and the updating parameters (row-numbered messages); stores them; draws the first assignment | `stage2_submit`, `session.start_stage2` |
 | `redraw(doc, seed)` | New assignment, preferring one whose pairings differ from the current one | `session.redraw_pairings` |
+| `stage2_info(doc)` | Read-only Stage 2 defaults derived from `setup`: the default start weight (passes per archer) and the target description | New (UI-12) |
 | `pairings(doc)` | Per pass: matches by name, byes, sitting out | `stage3` |
 | `start_event(doc)` | Builds the event, sets status `running` | `session.start_event` |
 | `overview(doc)` | Current pass: per match names, scored flag, scores, percentile text, winner; sitting out; complete / is_last | `event_rotation` |
@@ -230,7 +231,7 @@ Storage layout in IndexedDB (one database, keyed values):
 Rules:
 
 1. **Write before you show.** After every command that changes the document (stage submit, redraw, record_match, advance, rename), write to IndexedDB first, then update the screen. If the write fails, show a persistent red alert (not a toast): "This event is NOT being saved" with a "Download backup" button.
-2. **Atomic and revisioned.** Each write is a single transaction that replaces the whole document and increments `revision`. Before writing, check the stored `revision` equals the one the UI loaded; if not (another tab changed it), show a modal: "This event changed in another tab", with "Load latest" and "Overwrite with this tab".
+2. **Atomic and revisioned.** Each write is a single transaction that replaces the whole document and increments `revision`. Before writing, check the stored `revision` equals the one the UI loaded; if not (another tab changed it), show a modal: "This event changed in another tab", with "Load latest" and "Overwrite with this tab". Running the same event in several tabs or windows at once is not supported; this check is only a safety net against losing data.
 3. **Save indicator** in the header: "Saved HH:MM", "Saving...", or the error state.
 4. **Startup:** if the app is opened at its bare URL (no hash) and an in-progress event exists, show a "Resume event" card (event name, stage, pass) and a "Start new event" option; never silently discard an event. Resume restores `last route` for that event. With several in-progress events, the card shows the most recently updated one (decision D13).
 5. **Route guards:** each event route checks the document's `setup.stage` and `status`; if not allowed, redirect to the correct earlier route with a short Mantine notification. Unknown event id gives a friendly "Event not found" view with a link Home.
@@ -416,7 +417,7 @@ Each task lists **Verify** criteria; a task is complete only when they pass.
 
 ## 12. Out of scope and rules for the agent
 
-- Do not change statistics, rules or output wording. If a UI need seems to require changing `stats.py`, `models.py`, `outputs.py` or `rotation.py`, stop and ask. No core module edits are planned: UI-3 changes only `state.py` and adds `draw.py` (D17), and the lazy `fpdf` import is deferred to the owner (D16).
+- Do not change statistics, rules or output wording. If a UI need seems to require changing `stats.py`, `models.py`, `outputs.py` or `rotation.py`, stop and ask. No core module edits are planned: UI-3 changes only `state.py` and adds `draw.py` (D17), and `exports.py` imports `fpdf` lazily (D16, approved by the owner).
 - Do not add a server, accounts, analytics, error-reporting services, or third-party scripts and fonts that transmit user data.
 - Do not add features not in `AISpec.md` or this document (for example name uniqueness rules, new scoring modes, charts beyond the pair chart).
 - Do not use `pip` or `conda`; do not commit `node_modules`, build output, or the generated Python bundle.

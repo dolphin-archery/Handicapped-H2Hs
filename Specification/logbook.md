@@ -3404,3 +3404,15 @@ Assumptions:
    and the two archers stay distinguishable.
 3. **The axis range is the payload's `x_min` and `x_max`,** which `chart_data` already widens to include every
    marker, as the Flask chart did.
+
+## 2026-10-04 Owner review of UI-10 to UI-16 and spec update
+
+The owner accepted every assumption in the UI-16 report and asked for the spec to be updated to match their
+UI-9 review decisions. Changes to `Specification/UISpec.md`, made at the owner's request:
+- D16 and section 4.3: the `fpdf` import is lazy and fpdf2 is installed on the first PDF export; first load is
+  about 9.7 MB. The closing rules (section 12) say the same.
+- Section 5.4: a `stage2_info(doc)` row (read-only Stage 2 defaults, added in UI-12).
+- Section 6, rule 2: running the same event in several tabs at once is not supported; the conflict modal is
+  a safety net only.
+Already in the spec and unchanged: setup is read-only after the start (7.3, Stage 3) and the tie-break picks
+exactly one archer (7.1, Match page).
