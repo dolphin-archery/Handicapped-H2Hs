@@ -330,7 +330,8 @@ export class EventStore {
 
   /**
    * The shared write path of save and rename: check the revision, write, update the index and
-   * the status, all-or-nothing.
+   * the status, all-or-nothing. A failed write leaves the document it was writing in the failed
+   * status (`unsaved`).
    *
    * @param id - The event id.
    * @param expectedRevision - The revision the UI loaded, or null for a brand-new event.
@@ -360,7 +361,10 @@ export class EventStore {
       return { status: "saved", document };
     });
     if (!outcome.ok) {
-      this.status.set({ state: "failed", ...outcome.failure });
+      // Keep what could not be written, for "Download backup" (a rename needs the stored copy,
+      // so it has none).
+      const unsaved = change(null) ?? undefined;
+      this.status.set({ state: "failed", ...outcome.failure, unsaved });
       return { status: "failed", failure: outcome.failure };
     }
     if (outcome.value.status === "saved") {

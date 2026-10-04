@@ -3573,3 +3573,59 @@ Assumptions:
 1. **"Mobile" in UISpec 7.4 means below 48em (768 px)** for the 44 px and 16 px rules; at 768 px and above,
    Mantine's default sizes stay.
 2. **The mobile project is an iPhone,** since the 16 px rule exists for iOS Safari.
+
+## UI-20: Resilience tests (2026-10-04)
+
+What changed:
+- `web/e2e/resilience.spec.ts` (9 tests, each in its own browser context):
+  - an engine that cannot start (Pyodide's CDN blocked on a first visit): the "The scoring engine could not
+    start" alert with Retry and "Reload the page"; the stored event is byte-for-byte unchanged; back online,
+    Retry starts the engine and the pass view loads;
+  - close and reopen the tab at Stage 1, Stage 2, Stage 3 and mid-score: a new tab at the bare URL shows the
+    Resume card; Resume returns to the same route with the typed value restored from its draft (Stage 3:
+    the same pairings and assignment), and no saved score changes;
+  - a forced reload straight after pressing Save: the earlier saved score is intact, the new match is
+    either fully saved or not at all, and the stored event still opens through the engine;
+  - two tabs on one match: the second tab's save shows "This event changed in another tab" with "Load
+    latest" and "Overwrite with this tab"; each choice is tested and the stored scores are those chosen;
+  - storage unavailable (IndexedDB refusing to open, as in a private window): New event shows the
+    persistent "This event is NOT being saved" alert, whose Download backup gives a JSON backup holding the
+    new event.
+- Behaviour fixed (UISpec 6 and 7.6):
+  - **The storage alert had no Download backup when nothing could be stored.** It only backed up the
+    loaded event, and with storage unavailable no event ever loads. The storage layer now keeps the
+    document a failed save was writing on the failed status (`unsaved`, `src/storage/status.ts` and
+    `db.ts`), and `StorageFailureAlert` backs that up, or else the loaded event. For a failed save of a
+    loaded event this is also more useful: the backup now holds the change that was not saved, not only
+    the last stored version. Vitest covers both (a quota failure and no IndexedDB).
+  - **Retry did not bring a view back.** A view whose bridge query failed because the engine failed
+    stayed on its error after Retry restarted the engine. `useBridgeQuery` now runs the command again once
+    the engine is ready, if its answer was an engine failure (not a refusal by the command).
+  - Long unbroken text in alerts (the engine error names the CDN URL) wraps instead of overflowing on
+    phones (`styles.css`).
+
+Verification:
+- `resilience.spec.ts` 9 passed on chromium, webkit and mobile (each run on its own).
+- Full suite apart from screenshots: chromium 107, webkit 107, mobile 107 passed.
+- Vitest 110 passed; pytest 1270 passed; `tsc`, eslint and prettier clean.
+- Screenshots of the storage-unavailable alert and the engine failure at 1440x900 and 390x844, light and
+  dark: both alerts read clearly; Retry and Reload are visible; fixed the URL overflowing the alert on
+  phones.
+- No scenario lost a saved score.
+
+Issues and notes:
+- **WebKit, many engine starts in one browser:** when one context opened and closed many tabs (each tab
+  starts its own Pyodide), WebKit eventually failed to start the engine within the 180 s limit ("The engine
+  took too long to start"). With a context per test this did not recur. Separately, the engine-failure test
+  timed out on WebKit only when it ran after the other tests in the same browser, and passed on its own
+  (including 3 repeats); it now runs first in the file. I take both to be resource limits of WebKit under
+  Playwright on Windows rather than app faults, but a real Safari check (deploymentConstrains 8, item 4)
+  should include a Retry after an offline first visit.
+- Running the same event in two tabs is not supported (owner decision); the conflict modal is the safety
+  net and is what these tests check.
+
+Assumptions:
+1. **"Engine failure" is simulated as a first visit with no network to the Pyodide CDN,** the case
+   UISpec 7.6 names. A worker crashing mid-session goes through the same failed state and banner.
+2. **"Resumes at the right route" is checked through the Resume card on a fresh tab at the bare URL,**
+   UISpec 6 rule 4.

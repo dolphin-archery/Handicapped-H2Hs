@@ -5,6 +5,7 @@
  *
  * React reads it with `useSyncExternalStore(status.subscribe, status.getSnapshot)`.
  */
+import type { EventDocument } from "../engine/types";
 
 /** Why storage failed: no IndexedDB (e.g. a private window), a full quota, or anything else. */
 export type StorageFailureReason = "unavailable" | "quota" | "error";
@@ -20,7 +21,11 @@ export type StorageStatus =
   | { state: "saving" }
   /** `savedAt` is the ISO time passed to the save, as written to `updated_at`. */
   | { state: "saved"; savedAt: string }
-  | ({ state: "failed" } & StorageFailure);
+  /**
+   * `unsaved` is the document a failed save was writing, kept so "Download backup" can offer it
+   * even when nothing could be stored (for example a new event in a private window).
+   */
+  | ({ state: "failed"; unsaved?: EventDocument } & StorageFailure);
 
 export class StatusStore {
   private snapshot: StorageStatus = { state: "idle" };

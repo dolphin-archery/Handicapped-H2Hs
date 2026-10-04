@@ -52,3 +52,8 @@
     align-items: center;
   }
 }
+
+/* Long unbroken text in an alert (an engine error naming a URL) wraps instead of overflowing. */
+.mantine-Alert-message {
+  overflow-wrap: anywhere;
+}

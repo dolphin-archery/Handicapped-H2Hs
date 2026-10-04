@@ -306,6 +306,28 @@ describe("failures", () => {
     },
   );
 
+  it("a failed save keeps the document it was writing on the status, for the backup", async () => {
+    const good = await saveNew(store, makeDoc());
+    failPutFor(
+      eventKey("e1"),
+      new DOMException("The quota has been exceeded.", "QuotaExceededError"),
+    );
+    const changed = { ...good, name: "Not stored" };
+    await store.saveEvent(changed, good.revision, T1);
+    expect(store.status.getSnapshot()).toMatchObject({ state: "failed", unsaved: changed });
+    vi.restoreAllMocks();
+    vi.stubGlobal("indexedDB", undefined);
+    // With no IndexedDB at all, a new event's first save is kept the same way.
+    const fresh = makeDoc("e2");
+    const offline = new EventStore();
+    await offline.saveEvent(fresh, null, T0);
+    expect(offline.status.getSnapshot()).toMatchObject({
+      state: "failed",
+      reason: "unavailable",
+      unsaved: fresh,
+    });
+  });
+
   it("any other write error sets an error failure and keeps the previous document", async () => {
     const good = await saveNew(store, makeDoc());
     failPutFor(eventKey("e1"), new Error("disk on fire"));
