@@ -2599,3 +2599,64 @@ normalisation above. Fixture files are LF; `read_text` handles a CRLF checkout.
 
 Process note: UI-6 (web scaffold) was built by a subagent in parallel with UI-5, in `web/` only, because it
 does not depend on UI-5. It is committed after UI-5, keeping file order.
+
+## UI-6 - Web scaffold (2026-10-04)
+
+Built by a subagent in parallel with UI-5 (in `web/` only); I reviewed the files and re-ran every check.
+
+What changed:
+- **Stack**, pinned exactly (`web/.npmrc` has `save-exact=true`; lockfile committed):
+  - Vite 8.3.2, React 19.3.0, TypeScript 6.0.3, Mantine 9.6.3 (core, hooks, form, notifications, modals),
+    react-router 8.4.0;
+  - ESLint 10 (flat config, typescript-eslint, react-hooks, react-refresh) and Prettier 3.9 (print width 100);
+  - Vitest 5 (jsdom, Mantine's test setup mocks) with Testing Library, Playwright 1.63 (Chromium), fflate.
+  - Mantine's Vite setup came from mantine.dev: the Mantine MCP server indexes only components.
+- **Files:**
+  - `index.html` (lang en);
+  - `vite.config.ts` with relative base `./` (deploymentConstrains 3, rule 7);
+  - three TypeScript projects (app, node, test), all strict;
+  - `src/main.tsx` (MantineProvider plus the core styles), placeholder `src/App.tsx`, `src/theme.ts`;
+  - `src/env.d.ts`, `pyodide-requirements.txt`;
+  - `tests/` (setup, a render helper, App test, bundle tests) and `e2e/smoke.spec.ts`.
+  - The root `.gitignore` now also ignores `web/test-results/` and `web/playwright-report/`.
+- **Scripts:** `dev`, `build` (Python bundle, then `tsc -b`, then `vite build`), `preview`, `typecheck`,
+  `lint`, `format`, `format:check`, `test`, `e2e`, `gate` (the UI-1 gate).
+- **Python bundle** (`scripts/build-py-bundle.mjs`):
+  - It zips exactly the 9 whitelisted modules as `h2h/<module>` into `public/py/h2h-<hash>.zip`.
+  - The hash is the first 12 hex characters of SHA-256 over names and LF-normalised contents. A CRLF Windows
+    checkout and LF Linux CI therefore give byte-identical zips (also checked across four time zones).
+  - Older bundles are removed.
+  - `vite.config.ts` awaits the build and compiles the URL in as `__PY_BUNDLE__` ("py/h2h-<hash>.zip",
+    relative to `index.html`). No runtime manifest can go stale. Current bundle: `h2h-74af6b56ce98.zip`, 45.6 kB.
+
+Verification (I re-ran each after the subagent's clean `npm ci` run):
+- `npm run build`, `typecheck`, `lint` and `format:check` all OK. Production JS is 263.5 kB (82.2 kB gzip),
+  CSS 233.9 kB (34.2 kB gzip).
+- `npm test`: 7 passed. The App renders its title. The bundle holds exactly the 9 modules and excludes decoy
+  `app.py`, `state.py`, `templates/` and `static/`. The hash is stable, the same for CRLF and LF, and changes
+  when a module changes. Old bundles are removed.
+- `npm run e2e`: 1 passed. The production build is served under `/Handicapped-H2Hs/`, so relative URLs work on
+  a sub-path.
+- The UI-1 gate still passes.
+- Screenshot reviewed (1440x900, light): the placeholder title and text, no console errors. A full screenshot
+  matrix starts with the first real view (UI-9).
+
+Assumptions:
+1. **TypeScript 6.0.3 rather than 7.** typescript-eslint 8.71 requires `<6.1`, and Vite's react-ts template
+   pins `~6.0`.
+2. **MantineProvider lives in `main.tsx`.** Tests wrap components with `tests/render.tsx` in `env="test"`.
+3. **Vitest runs `web/tests/**/*.test.{ts,tsx}`.** A Node-environment test opts in with
+   `// @vitest-environment node`.
+4. **`scripts/pyodide-gate/` is excluded from Prettier**, so the committed UI-1 gate files stay byte for byte.
+5. **CI should use Node 24.** react-router 8.4 and Vitest 5 need Node 22.12 or later.
+
+Spec discrepancies:
+- **`404.html`.** UISpec 4.1 places it at the `web/` root, but Vite copies only `public/` into the build. The
+  safest reading is `web/public/404.html` (served at the site root, as deploymentConstrains 3, rule 7 intends);
+  UI-9 will do that.
+
+Notes for future tasks:
+- The worker must receive the bundle URL already resolved on the main thread
+  (`new URL(__PY_BUNDLE__, document.baseURI)`), because a worker's relative fetch resolves against `assets/`.
+- The dev server does not watch `h2h/`: restart it after a Python change.
+- With TypeScript 6, global types must be listed in each tsconfig's `types`.

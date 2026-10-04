@@ -7,3 +7,5 @@ __pycache__/
 web/node_modules/
 web/dist/
 web/public/py/
+web/test-results/
+web/playwright-report/
