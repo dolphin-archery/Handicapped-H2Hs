@@ -26,7 +26,7 @@ Then:
 5. **Record progress** in `Specification/logbook.md`: a brief entry with the task id, what changed, how it was verified (commands run and results, screenshots reviewed), any issues, assumptions, and notes for future tasks. Log any discrepancy you find between UISpec and the real code under a "Spec discrepancies" heading, with the safest interpretation you took. Do not silently edit `UISpec.md`, `deploymentConstrains.md` or `AISpec.md`; propose changes to me instead.
 6. **Update `UI-prd.json`**: set `completed` to true for the task only once everything in steps 4 and 5 is done.
 7. **Commit** this task's work with a short, informative message that starts with the task id (for example `UI-11: Stage 1 form with divisor-snapping slider`). Commit regularly within a task if it is large. Do not commit `node_modules`, `web/dist`, or the generated Python bundle.
-8. **Compact** the conversation to avoid stored context becoming large and costly to usage limits over large runs.
+8. **Compact** the conversation using the `/compact` skill to avoid stored context becoming large and costly to usage limits over large runs.
 
 ## When to stop (finish the current iteration cleanly, then stop and report)
 
