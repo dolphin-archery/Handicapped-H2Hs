@@ -1076,6 +1076,41 @@ _TARGET_FIELDS = (
 )
 
 
+def stage2_info(doc: dict) -> dict:
+    """The values the Stage 2 page shows from Stage 1 (read-only; owner decision after UI-9).
+
+    The Flask page received these from its route: the shared target in simple setup and the
+    default start weight, which is the number of passes per archer.
+
+    Parameters
+    ----------
+    doc : dict
+        The event document; Stage 1 must be complete (it may have started, for the read-only
+        summary).
+
+    Returns
+    -------
+    dict
+        Envelope whose data is `{"n_archers": int, "setup_mode": "simple" | "advanced",
+        "target": {"distance_label": e.g. "20 yd", "face_cm": int, "indoor": bool},
+        "default_start_weight": int (passes per archer), "default_n_lookback": int}`, or a
+        `state` error before Stage 1.
+    """
+    setup = doc["setup"]
+    if setup["stage"] < 1:
+        return _error(STATE, STAGE1_FIRST)
+    target = TargetSetup.parse(setup["target"]["distance_key"], setup["target"]["face_cm"])
+    return _ok(
+        {
+            "n_archers": setup["n_archers"],
+            "setup_mode": setup["setup_mode"],
+            "target": {"distance_label": target.distance_label, "face_cm": target.face_cm, "indoor": target.indoor},
+            "default_start_weight": setup["total_arrows"] // setup["n_pass"],
+            "default_n_lookback": DEFAULT_N_LOOKBACK,
+        }
+    )
+
+
 def apply_stage2(doc: dict, archers: list, updating: dict, seed: int) -> dict:
     """Submit Stage 2: validate and store the archers, then draw their first assignment.
 
@@ -1780,6 +1815,7 @@ _COMMANDS = {
     "options": options,
     "new_document": new_document,
     "apply_stage1": apply_stage1,
+    "stage2_info": stage2_info,
     "apply_stage2": apply_stage2,
     "redraw": redraw,
     "pairings": pairings,

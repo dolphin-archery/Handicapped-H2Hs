@@ -700,6 +700,26 @@ def test_apply_stage1_refuses_invalid_input_with_the_existing_messages(changes, 
     _refused(result, "validation", message)
 
 
+def test_stage2_info_gives_the_flask_page_values():
+    """Stage 2's target sentence and default start weight, as the Flask route passed them."""
+    info = _data(bridge.stage2_info(_at_stage1()))
+    assert info == {
+        "n_archers": 4,
+        "setup_mode": "simple",
+        "target": {"distance_label": "20 yd", "face_cm": 60, "indoor": True},
+        "default_start_weight": 5,  # 60 arrows // 12 per pass
+        "default_n_lookback": models.DEFAULT_N_LOOKBACK,
+    }
+    outdoor = _data(bridge.stage2_info(_at_stage1({**SIMPLE_FORM, "distance": "50m", "face_cm": "122"})))
+    assert outdoor["target"] == {"distance_label": "50 m", "face_cm": 122, "indoor": False}
+
+
+def test_stage2_info_needs_stage1_and_still_answers_after_the_start():
+    """Refused before Stage 1; answered for a started event (the read-only summary)."""
+    _refused(bridge.stage2_info(_data(bridge.new_document("e1", NOW))), "state", bridge.STAGE1_FIRST)
+    assert bridge.stage2_info(_running_simple_document())["ok"]
+
+
 def test_apply_stage2_stores_the_archers_and_draws_as_the_session_would():
     """Stage 2 stores the cleaned rows and draws the same assignment SessionState draws for the seed."""
     rows = [{**row, "name": f"  {row['name']} ", "handicap": str(row["handicap"])} for row in SIMPLE_ROWS]
@@ -1172,6 +1192,7 @@ def test_every_command_round_trips_through_call_as_json():
     call("validate_document", raw=doc)
     call("options")
     doc = call("apply_stage1", doc=doc, form=SIMPLE_FORM)["data"]["document"]
+    call("stage2_info", doc=doc)
     doc = call("apply_stage2", doc=doc, archers=SIMPLE_ROWS, updating=NO_UPDATING, seed=4)["data"]["document"]
     doc = call("redraw", doc=doc, seed=5)["data"]["document"]
     call("pairings", doc=doc)
@@ -1192,6 +1213,7 @@ def test_every_command_round_trips_through_call_as_json():
         "match", "record_match", "advance", "results", "archer_results", "pair_chart", "export", "calculator",
         "validate_document",
     }  # every command of UISpec.md 5.4
+    spec_commands.add("stage2_info")  # added at the owner's request after the UI-9 review
     assert called == set(bridge._COMMANDS) == spec_commands
 
 

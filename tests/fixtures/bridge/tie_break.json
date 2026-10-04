@@ -120,6 +120,53 @@
    }
   },
   {
+   "command": "stage2_info",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 1,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "n_archers": 2,
+     "setup_mode": "simple",
+     "target": {
+      "distance_label": "20 yd",
+      "face_cm": 60,
+      "indoor": true
+     },
+     "default_start_weight": 3,
+     "default_n_lookback": 4
+    }
+   }
+  },
+  {
    "command": "apply_stage2",
    "payload": {
     "doc": {

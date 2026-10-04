@@ -14,6 +14,7 @@ import { confirmDelete, downloadBackup } from "../components/eventActions";
 import { usePageTitle } from "../components/usePageTitle";
 import type { EventDocument } from "../engine/types";
 import { Stage1 } from "../setup/Stage1";
+import { Stage2 } from "../setup/Stage2";
 
 /**
  * Layout for `#/e/:id/...`: waits for the stored event, then shows the view; an unknown id gives
@@ -131,6 +132,8 @@ export function SetupRoute() {
     <Guarded view={{ kind: "setup", stage }}>
       {stage === 1 ? (
         <WithDocument>{(doc) => <Stage1 doc={doc} />}</WithDocument>
+      ) : stage === 2 ? (
+        <WithDocument>{(doc) => <Stage2 doc={doc} />}</WithDocument>
       ) : (
         <Placeholder title={`Stage ${stage}`} task={task} />
       )}

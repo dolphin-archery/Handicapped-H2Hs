@@ -160,7 +160,8 @@ def _peek(command: str, **payload: object) -> dict:
 
 
 def _start(rec: _Recorder, name: str, form: dict, rows: list[dict], updating: dict = NO_UPDATING) -> dict:
-    """Record Stages 1 to 3 of an event: new document, both forms, a redraw, the pairings and the start.
+    """Record Stages 1 to 3 of an event: new document, both forms (with Stage 2's values), a redraw, the
+    pairings and the start.
 
     Parameters
     ----------
@@ -182,6 +183,7 @@ def _start(rec: _Recorder, name: str, form: dict, rows: list[dict], updating: di
     """
     doc = rec("new_document", event_id=f"fixture-{name}", now_iso=NOW)["data"]
     doc = rec("apply_stage1", doc=doc, form=form)["data"]["document"]
+    rec("stage2_info", doc=doc)
     doc = rec("apply_stage2", doc=doc, archers=rows, updating=updating, seed=SEED)["data"]["document"]
     doc = rec("redraw", doc=doc, seed=SEED + 1)["data"]["document"]
     rec("pairings", doc=doc)

@@ -169,6 +169,17 @@ export interface Stage1Result extends DocumentResult {
   n_passes: number;
 }
 
+/** Stage 2's values from Stage 1 (`stage2_info`, the Flask page's route values). */
+export interface Stage2Info {
+  n_archers: number;
+  setup_mode: SetupMode;
+  /** The shared target (simple setup). */
+  target: { distance_label: string; face_cm: number; indoor: boolean };
+  /** Passes per archer: the start weight's default. */
+  default_start_weight: number;
+  default_n_lookback: number;
+}
+
 export interface Pairings {
   passes: {
     pass_number: number;
@@ -335,6 +346,7 @@ export interface Commands {
   options: { payload: Record<string, never>; result: Options };
   new_document: { payload: { event_id: string; now_iso: string }; result: EventDocument };
   apply_stage1: { payload: { doc: EventDocument; form: Stage1Form }; result: Stage1Result };
+  stage2_info: { payload: { doc: EventDocument }; result: Stage2Info };
   apply_stage2: {
     payload: { doc: EventDocument; archers: Stage2Row[]; updating: UpdatingForm; seed: number };
     result: DocumentResult;

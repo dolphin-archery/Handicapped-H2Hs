@@ -3078,3 +3078,79 @@ Assumptions:
 5. **No derived "passes per archer" summary line is shown before submit.** UISpec calls it "welcome", and
    `apply_stage1` returns `passes_per_archer` and `n_passes` only on submit; computing it in TypeScript would
    duplicate logic. A read-only bridge command could add it later if the owner wants one.
+
+## UI-12: Stage 2 (2026-10-04)
+
+What changed:
+- **New bridge command `stage2_info(doc)`** (owner decision 4 of the UI-9 review). It is read-only and needs
+  Stage 1; it still answers after the start, for the summary. It returns what the Flask route passed to the
+  Stage 2 page:
+  - `n_archers` and `setup_mode`;
+  - the shared target's `distance_label`, `face_cm` and `indoor`, from `TargetSetup`;
+  - `default_start_weight`, which is passes per archer (`total_arrows // n_pass`, as the route's
+    `default_passes`);
+  - `default_n_lookback`.
+  - Python changes:
+    - `h2h/bridge.py`: the command, registered in `_COMMANDS`;
+    - `tests/test_bridge.py`: 2 new tests, and the every-command test calls it (its expected set is the 5.4
+      commands plus `stage2_info`);
+    - `tests/bridge_fixtures.py`: records it after `apply_stage1` in every scenario, so the fixtures still use
+      every command. The fixtures were regenerated: insertions only, nothing else changed.
+- `web/src/setup/Stage2.tsx`: the Stage 2 view.
+  - **Layout:** a table with one row per archer (#, Name, Bowstyle, Handicap; Advanced adds Face type, Face
+    size and Distance) in a `Table.ScrollContainer`, or one card per archer below `sm` (`useMatches`, so only
+    one of them is rendered). The intro text matches the Flask page (in Simple mode it states the target and
+    whether it counts as indoor). Enter in a name moves to the next row's name.
+  - **Advanced mode:** an "Update handicaps during matches" No / Yes control, with the old explanation,
+    reveals Lookback (default 4) and Start weight (default passes per archer from `stage2_info`). Untouched
+    advanced fields take the Flask form's defaults (face type `10_zone`, 60 cm, 20 yd); a cleared select is
+    sent empty, so the bridge rejects it.
+  - **Errors:** the bridge message in a red `Alert`. The row named by the bridge's `row` is highlighted (light
+    red background, red outline, `data-invalid`), and the field named by `field` gets the error style. Errors
+    in the updating parameters mark those inputs.
+  - **Calculator:** a "Handicap calculator" button opens the UI-10 drawer. The drawer is rendered outside the
+    `<form>`: React events bubble through portals, so the calculator's submit would otherwise submit Stage 2.
+  - **Continue:** calls `apply_stage2` with a seed from `crypto.getRandomValues`, commits, discards the draft
+    and opens Stage 3. The draft is saved as the user types. The values start from the draft, else the stored
+    archers, else empty rows, always one row per archer.
+  - **Read-only after the start:** fields are read-only, there is no Continue and no calculator; "Back to
+    Stage 1" stays.
+- `web/src/setup/drawSeed.ts`, shared with Stage 3's Redraw. `web/src/engine/types.ts` gains `Stage2Info`.
+  The `setup/2` route renders Stage 2.
+- Tests: `web/e2e/stage2.spec.ts`, 8 tests on a shared page. `e2e/screenshots.spec.ts` seeds an advanced event
+  and adds Stage 2 (simple, advanced, read-only).
+
+Verification:
+- pytest 1269 passed. After regenerating the fixtures and the bundle, Vitest 99 passed, including the
+  Node-Pyodide parity run over all the fixture steps (now with `stage2_info`).
+- Playwright `stage2.spec.ts`, 8 passed:
+  - **Rejected submit:** row 3's handicap of 200 shows "Row 3: handicap must be between ... got 200.". Every
+    typed name, bowstyle and handicap is still there, row 3 has `data-invalid` and its handicap is
+    `aria-invalid`.
+  - **Enter:** moves to the next name.
+  - **Advanced mode:** clearing archer 2's face type, archer 3's face size or archer 4's distance is each
+    refused with a "Row N:" message and that row highlighted.
+  - **Updating parameters:** the control is absent in Simple mode; Lookback 4 and Start weight 3 (18 arrows /
+    6) appear only for Yes.
+  - **Layout:** a table at 1440 px and cards ("Archer 1" to "Archer 4") at 390 px.
+  - **Draft:** survives a reload.
+  - **Calculator drawer:** gives 41.4 for Portsmouth 550, and closing it keeps the typed archers without
+    submitting Stage 2.
+  - **Valid submit:** stores stage 2, the archers and a permutation assignment, deletes the draft and opens
+    Stage 3.
+- Shell, smoke, calculator and Stage 1 tests pass (34 in all). `tsc`, eslint and prettier are clean.
+- Screenshots of Stage 2 simple, advanced and read-only at 1440x900 and 390x844, light and dark, reviewed:
+  - the advanced table fits 1440 px without scrolling (the face-type select shows its full label);
+  - phone cards stack with visible labels;
+  - the read-only summary shows the stored archers;
+  - dark mode is correct.
+  - Noted, not changed: the read-only summary keeps the "Enter each of the 4 archers..." intro, since it also
+    states the target. Phone input font size is left to UI-19.
+
+Assumptions:
+1. **Inputs in the desktop table are labelled by `aria-label`** ("Name, archer 1"), with the column header as
+   the visible label. Cards use visible labels.
+2. **Advanced defaults are not stored until submit:** an untouched field shows and sends the Flask default.
+   A cleared field is stored as "" in the draft.
+3. **No "Back to Stage 1" confirmation.** Going back loses nothing: Stage 2's draft stays, and Stage 1 asks
+   before clearing archers (UI-11).
