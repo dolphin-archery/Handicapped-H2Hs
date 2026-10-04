@@ -1,21 +1,20 @@
 /**
  * The event routes (UISpec.md 7.1): the layout that loads the event in the URL (or shows "Event
- * not found"), the guard wrapper, and placeholder views until their tasks (UI-10 to UI-17) build
- * them.
+ * not found"), the guard wrapper, and the views.
  */
 import { Alert, Anchor, Button, Group, Loader, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useEffect, type ReactNode } from "react";
 import { Link, Navigate, Outlet, useNavigate, useParams } from "react-router";
 import { useCurrentEvent } from "../app/currentEvent";
-import { eventHomePath, guardEventView, type EventView } from "../app/guards";
+import { eventHomePath, guardEventView, type EventView, type ResultTab } from "../app/guards";
 import { useServices } from "../app/services";
 import { confirmDelete, downloadBackup } from "../components/eventActions";
-import { usePageTitle } from "../components/usePageTitle";
 import type { EventDocument } from "../engine/types";
 import { Stage1 } from "../setup/Stage1";
 import { Stage2 } from "../setup/Stage2";
 import { Stage3 } from "../setup/Stage3";
+import { ResultsView } from "../results/Results";
 import { MatchPage } from "../scoring/MatchPage";
 import { PassOverview } from "../scoring/PassOverview";
 
@@ -109,23 +108,6 @@ function WithDocument({ children }: { children: (doc: EventDocument) => ReactNod
   return state.kind === "found" ? <>{children(state.doc)}</> : null;
 }
 
-/**
- * A view that a later task builds; for now its heading and a short note.
- *
- * @param props.title - The view's name.
- * @param props.task - The task that builds it.
- * @returns The placeholder.
- */
-export function Placeholder({ title, task }: { title: string; task: string }) {
-  usePageTitle(title);
-  return (
-    <Stack>
-      <Title order={1}>{title}</Title>
-      <Text c="dimmed">This view is built in task {task}.</Text>
-    </Stack>
-  );
-}
-
 /** `#/e/:id/setup/:stage`. */
 export function SetupRoute() {
   const stage = Number(useParams().stage);
@@ -162,7 +144,7 @@ export function ResultsRoute() {
   const tab = useParams().tab ?? "";
   return (
     <Guarded view={{ kind: "results", tab }}>
-      <Placeholder title="Results" task="UI-17" />
+      <WithDocument>{(doc) => <ResultsView doc={doc} tab={tab as ResultTab} />}</WithDocument>
     </Guarded>
   );
 }

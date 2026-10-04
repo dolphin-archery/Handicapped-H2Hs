@@ -1,4 +1,4 @@
-import { Button, Group } from "@mantine/core";
+import { Button, Group, Menu } from "@mantine/core";
 import { useState } from "react";
 import { useServices } from "../app/services";
 import type { EventDocument, ExportKind } from "../engine/types";
@@ -30,5 +30,38 @@ export function ExportButtons({ doc }: { doc: EventDocument }) {
         </Button>
       ))}
     </Group>
+  );
+}
+
+/**
+ * The "Download" menu of the Results view (UISpec.md 7.3, Results): the same three exports.
+ *
+ * @param props.doc - The event document.
+ * @returns The menu.
+ */
+export function DownloadMenu({ doc }: { doc: EventDocument }) {
+  const { engine } = useServices();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <Button variant="default" loading={busy}>
+          Download
+        </Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {EXPORTS.map(({ kind, label }) => (
+          <Menu.Item
+            key={kind}
+            onClick={() => {
+              setBusy(true);
+              void downloadExport(engine, doc, kind).finally(() => setBusy(false));
+            }}
+          >
+            {label}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }

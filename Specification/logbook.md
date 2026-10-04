@@ -3416,3 +3416,63 @@ UI-9 review decisions. Changes to `Specification/UISpec.md`, made at the owner's
   a safety net only.
 Already in the spec and unchanged: setup is read-only after the start (7.3, Stage 3) and the tie-break picks
 exactly one archer (7.1, Match page).
+
+## UI-17: Results tabs (2026-10-04)
+
+What changed:
+- `web/src/results/Results.tsx`: `ResultsView` at `#/e/:id/results/:tab` with Mantine `Tabs` (Leaderboard,
+  Pairwise, Passes, Archers); changing tab changes the hash route. Data from the bridge `results` and
+  `archer_results`, shown as the bridge's text.
+  - Header: "Event results", then "Event complete." or a "Continue scoring (pass n of N)" link, and a
+    Download `Menu`.
+  - Leaderboard: the Flask explanation with completed passes, and the six-column table.
+  - Pairwise: the Flask text and table; with Graph view on, a "View chart" button per row opens the UI-16
+    `PairChartPanel` in a `Modal`. "No pairs have shared a rotation yet." when empty.
+  - Passes: an `Accordion` with one item per pass in `results.passes`, the latest open; each uses `PassTable`
+    (thick double line between matches). "No pass has been scored yet." when empty.
+  - Archers: the Flask explanation, the "No pass has been completed yet..." text when no pass is complete,
+    one `Card` per archer (name, then "Total score - starting handicap - to-date handicap"), and the passes
+    table with a bold Average row, or "No completed pass for <name> yet."
+  - Page titles "Results: <tab>".
+- `web/src/components/ExportButtons.tsx`: `DownloadMenu` (the three exports, through the existing
+  `downloadExport`). UI-18 adds the download tests.
+- `web/src/routes/EventRoutes.tsx`: the results route renders `ResultsView`; the now-unused `Placeholder`
+  is removed (every view is built).
+- Tables at phone width: minimum widths lowered so headers wrap instead of forcing a scroll
+  (`PassTable` too).
+- Tests: `web/e2e/results.spec.ts` (6); results routes added to `e2e/screenshots.spec.ts` (with an
+  `openChart` flag and a short wait so the modal is captured after it fades in).
+
+Verification:
+- Playwright `results.spec.ts`, 6 passed:
+  - simple and handicap_updating scenarios: every cell of every tab (leaderboard, pairwise, every pass table,
+    every archer table with its Average row, archer headings, captions) equals the recorded bridge
+    `results` / `archer_results` output exactly; the handicap_updating run covers the "Pass starting
+    handicap" column;
+  - each tab opens from its hash route, selected, with its page title;
+  - the Passes tab opens the latest pass only, and an earlier one opens on click;
+  - "View chart" is absent with Graph view off, one per row with it on, and opens the chart for that pair
+    in a dialog that closes with Escape;
+  - before any completed pass the Archers tab shows the "No pass has been completed yet..." text, and Passes
+    says no pass has been scored.
+- Code inspection: the results components only place bridge strings in cells; there is no number
+  formatting or statistics in TypeScript (the only numbers interpolated are counts the bridge returns,
+  `completed_passes`, `n_passes`, `current_pass_number`).
+- Full Playwright suite apart from screenshots: 69 passed. Vitest 109 passed. pytest 1269 passed. `tsc`,
+  eslint and prettier clean.
+- Screenshots reviewed at 1440x900 and 390x844, light and dark, for every tab, the pairwise chart modal,
+  and the Archers tab before any completed pass:
+  - desktop: the tabs fill the width, tables are readable, the modal chart is clear in dark mode;
+  - fixed: a second Download button on the Leaderboard tab duplicated the header's; now only the header has
+    it;
+  - fixed: the modal screenshot was taken mid-fade (screenshot spec now waits);
+  - fixed in part: tables forced sideways scroll on phones through fixed minimum widths; with those lowered
+    the headers wrap, but the five-column pass and archer tables still overflow by about 20 px at 390 px.
+    UI-19 has a test for exactly this and will fix it (smaller spacing or font on phones).
+
+Assumptions:
+1. **One Download menu, in the view header,** rather than also on the Leaderboard tab (UISpec 7.3 lists
+   both; the leaderboard is the default tab, so they appeared side by side).
+2. **The archer heading splits the Flask single line** into the name as a heading and "Total score ... -
+   starting handicap ... - to-date handicap ..." below it; the values are unchanged.
+3. **Passes tab items are the passes the bridge returns** in `results.passes` (the passes with scores).

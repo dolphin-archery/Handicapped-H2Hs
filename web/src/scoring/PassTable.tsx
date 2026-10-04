@@ -21,7 +21,7 @@ export function PassTable({
   showStartHandicap: boolean;
 }) {
   return (
-    <Table.ScrollContainer minWidth={showStartHandicap ? 480 : 300}>
+    <Table.ScrollContainer minWidth={300}>
       <Table data-testid="pass-table" verticalSpacing="xs" horizontalSpacing="xs">
         <Table.Thead>
           <Table.Tr>

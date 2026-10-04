@@ -1,13 +1,14 @@
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { fixtureDoc, seed } from "./seed";
 
 /**
  * Review screenshots (UILoopPrompt step 4): each route at 1440x900 and 390x844, light and dark,
- * with six seeded events. A `graph` route turns Graph view on and shows every pass's markers. Skipped unless SCREENSHOT_DIR is set, e.g.
+ * with six seeded events. A `graph` route turns Graph view on and shows every pass's markers
+ * (`openChart` first opens the first pairwise chart). Skipped unless SCREENSHOT_DIR is set, e.g.
  *   $env:SCREENSHOT_DIR = "C:\\temp\\shots"; npx playwright test e2e/screenshots.spec.ts
  * Later tasks add their routes to ROUTES.
  */
-const ROUTES: { name: string; hash: string; graph?: boolean }[] = [
+const ROUTES: { name: string; hash: string; graph?: boolean; openChart?: boolean }[] = [
   { name: "home", hash: "" },
   { name: "stage1", hash: "#/e/ev-setup/setup/1" },
   { name: "stage1-locked", hash: "#/e/ev-run/setup/1" },
@@ -21,6 +22,17 @@ const ROUTES: { name: string; hash: string; graph?: boolean }[] = [
   { name: "match-new", hash: "#/e/ev-run/pass/match/0" },
   { name: "match-saved", hash: "#/e/ev-done/pass/match/1" },
   { name: "match-chart", hash: "#/e/ev-chart/pass/match/1", graph: true },
+  { name: "results-leaderboard", hash: "#/e/ev-done/results/leaderboard" },
+  { name: "results-pairwise", hash: "#/e/ev-done/results/pairwise" },
+  {
+    name: "results-pairwise-chart",
+    hash: "#/e/ev-done/results/pairwise",
+    graph: true,
+    openChart: true,
+  },
+  { name: "results-passes", hash: "#/e/ev-done/results/passes" },
+  { name: "results-archers", hash: "#/e/ev-done/results/archers" },
+  { name: "results-archers-none", hash: "#/e/ev-run/results/archers" },
   { name: "calculator", hash: "#/calculator" },
   { name: "about", hash: "#/about" },
   { name: "not-found", hash: "#/e/missing/pass" },
@@ -55,10 +67,17 @@ for (const route of ROUTES) {
         await page
           .getByText("Getting the scoring engine ready")
           .waitFor({ state: "detached", timeout: 200_000 });
+        await expect(page.locator('[aria-label^="Loading"]')).toHaveCount(0, { timeout: 60_000 });
         if (route.graph) {
           await page.getByRole("switch", { name: "Graph view" }).check();
+          if (route.openChart)
+            await page
+              .getByRole("button", { name: /^View chart/ })
+              .first()
+              .click();
           await page.getByRole("checkbox", { name: "Show previous passes' scores too" }).check();
           await page.getByTestId("pair-chart").waitFor();
+          await page.waitForTimeout(500); // let a modal finish fading in
         }
         await page.screenshot({
           path: `${dir}/${route.name}-${viewport.name}-${scheme}.png`,
