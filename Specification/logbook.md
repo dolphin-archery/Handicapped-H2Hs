@@ -2541,3 +2541,61 @@ Notes for future tasks:
   wanted.
 - **`bridge.py` has not yet been imported inside Pyodide.** It is not in the UI-1 gate whitelist; UI-6 bundles
   it and UI-7 runs the fixtures through it there.
+
+## UI-5 - Parity fixtures (2026-10-04)
+
+What changed (tests only; no `h2h/` change):
+- `tests/bridge_fixtures.py` is the generator. Each scenario drives an event through `bridge.call`, exactly as
+  the browser will (JSON text in and out), with draw seed 4 (a redraw uses 5) and the fixed time
+  `2026-10-04T15:30:12`. Every step is recorded as `{"command", "payload", "result"}`. Regenerate with
+  `uv run python -m tests.bridge_fixtures`.
+- `tests/fixtures/bridge/*.json`, eight files (about 780 kB):
+  - `simple`: 4 archers, 3 passes, includes a tie;
+  - `advanced`: per-archer 10 zone, 6 ring, 5 zone and Worcester faces;
+  - `byes_shot` and `byes_sat_out`: 5 archers; the sat-out version uses the 3-pass sit-out schedule;
+  - `handicap_updating`: 5 passes, lookback 4, start weight 5, with a score of 0;
+  - `tie_break`: a refused tie, a closest archer outside the match, a decided tie, a re-save that clears it,
+    and an unneeded closest archer;
+  - `complete_event`: 5 passes, with refusals of every code along the way (not started, bad Stage 1, row 2
+    handicap, unscored advance, out-of-range score, final-pass advance), completion, a re-save after
+    completion and `validate_document`;
+  - `calculator`: `options`, then indoor, indoor compound, outdoor and invalid input.
+  Every event scenario ends with `results`, `archer_results`, one `pair_chart` and all three exports.
+- `tests/test_bridge_fixtures.py` (13 tests):
+  - each scenario regenerates to exactly the committed file (data and text);
+  - no stale or missing files;
+  - together the fixtures call all 17 commands and see the error codes `validation`, `tiebreak_required` and
+    `state`;
+  - each scenario contains what its name says;
+  - the exports carry the fixed time;
+  - the PDF summary ignores the creation time and unescapes text.
+
+**One normalisation, which UI-7 and UI-18 must apply too.** A successful `export` of kind `results_pdf` has
+its base64 `content` replaced by `pdf_summary(pdf)`:
+`{"header": first 8 bytes, "pages": count of /Type /Page, "text": [every string drawn with Tj, in order]}`.
+To compute the text:
+- inflate each `stream ... endstream` (or keep it raw if it is not zlib);
+- match `\(((?:\\.|[^\\)])*)\)\s*Tj`;
+- unescape `\(`, `\)`, `\\` and `\r`;
+- decode as Latin-1.
+The raw PDF bytes cannot be compared: fpdf2 stamps its own creation time (`datetime.now`, UTC) in the info
+dictionary, and compressed streams depend on the zlib build.
+
+Verification:
+- `uv run pytest tests/test_bridge_fixtures.py`: 13 passed. `uv run pytest`: **1266 passed**.
+- Mutation check: changing derived handicaps to two decimal places in `bridge.py` failed 7 of the 13 tests (the
+  six scenarios that show such handicaps, plus the text comparison); restored, no diff.
+
+Assumptions:
+1. **Each scenario is a complete event** ending in every output and export, so the fixture list's "final
+   complete event" is `complete_event`, which adds the refusals and the after-completion re-save.
+2. **Payloads are what a browser would send**: form values as text, the document from the previous step.
+   Results are recorded after the JSON round trip of `call`.
+3. **The calculator fixtures also hold `options`**, the round lists UI-10 needs.
+
+Notes for future tasks: UI-7 replays every step's `command` and `payload` through the engine client and
+compares with `result`: integers and strings exactly, floats within a relative 1e-9, and PDF results after the
+normalisation above. Fixture files are LF; `read_text` handles a CRLF checkout.
+
+Process note: UI-6 (web scaffold) was built by a subagent in parallel with UI-5, in `web/` only, because it
+does not depend on UI-5. It is committed after UI-5, keeping file order.

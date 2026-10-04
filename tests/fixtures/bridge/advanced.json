@@ -1,0 +1,5549 @@
+{
+ "scenario": "advanced",
+ "description": "Advanced setup: per-archer face types, sizes and distances, 18 arrows in 6-arrow passes, no updating.",
+ "now_iso": "2026-10-04T15:30:12",
+ "seed": 4,
+ "steps": [
+  {
+   "command": "new_document",
+   "payload": {
+    "event_id": "fixture-advanced",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 0,
+      "n_archers": 4,
+      "total_arrows": 60,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    }
+   }
+  },
+  {
+   "command": "apply_stage1",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 0,
+      "n_archers": 4,
+      "total_arrows": 60,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    },
+    "form": {
+     "n_archers": "4",
+     "total_arrows": "18",
+     "n_pass": "6",
+     "setup_mode": "advanced",
+     "distance": "20yd",
+     "face_cm": "60",
+     "shoot_byes": true
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "setup",
+      "setup": {
+       "stage": 1,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [],
+      "assignment": null,
+      "scores": {},
+      "current_pass": 0
+     },
+     "passes_per_archer": 3,
+     "n_passes": 3
+    }
+   }
+  },
+  {
+   "command": "apply_stage2",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 1,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    },
+    "archers": [
+     {
+      "name": "Ann",
+      "bowstyle": "Recurve",
+      "handicap": "40",
+      "distance": "70m",
+      "face_cm": "122",
+      "face_type": "10_zone"
+     },
+     {
+      "name": "Ben",
+      "bowstyle": "Compound",
+      "handicap": "25",
+      "distance": "50m",
+      "face_cm": "80",
+      "face_type": "10_zone_6_ring"
+     },
+     {
+      "name": "Cat",
+      "bowstyle": "Longbow",
+      "handicap": "70",
+      "distance": "60yd",
+      "face_cm": "122",
+      "face_type": "5_zone"
+     },
+     {
+      "name": "Dan",
+      "bowstyle": "Barebow",
+      "handicap": "55",
+      "distance": "20yd",
+      "face_cm": "40",
+      "face_type": "Worcester"
+     }
+    ],
+    "updating": {
+     "update_handicaps": false
+    },
+    "seed": 4
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "setup",
+      "setup": {
+       "stage": 2,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       2,
+       0,
+       3,
+       1
+      ],
+      "scores": {},
+      "current_pass": 0
+     }
+    }
+   }
+  },
+  {
+   "command": "redraw",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 2,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      2,
+      0,
+      3,
+      1
+     ],
+     "scores": {},
+     "current_pass": 0
+    },
+    "seed": 5
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "setup",
+      "setup": {
+       "stage": 2,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {},
+      "current_pass": 0
+     }
+    }
+   }
+  },
+  {
+   "command": "pairings",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 2,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {},
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "passes": [
+      {
+       "pass_number": 1,
+       "matches": [
+        {
+         "a": "Ann",
+         "b": "Cat"
+        },
+        {
+         "a": "Ben",
+         "b": "Dan"
+        }
+       ],
+       "sitting_out": []
+      },
+      {
+       "pass_number": 2,
+       "matches": [
+        {
+         "a": "Ann",
+         "b": "Dan"
+        },
+        {
+         "a": "Cat",
+         "b": "Ben"
+        }
+       ],
+       "sitting_out": []
+      },
+      {
+       "pass_number": 3,
+       "matches": [
+        {
+         "a": "Ann",
+         "b": "Ben"
+        },
+        {
+         "a": "Dan",
+         "b": "Cat"
+        }
+       ],
+       "sitting_out": []
+      }
+     ],
+     "started": false
+    }
+   }
+  },
+  {
+   "command": "start_event",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 2,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {},
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {},
+      "current_pass": 0
+     }
+    }
+   }
+  },
+  {
+   "command": "overview",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {},
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 0,
+     "pass_number": 1,
+     "n_passes": 3,
+     "n_pass": 6,
+     "matches": [
+      {
+       "index": 0,
+       "names": [
+        "Ann",
+        "Cat"
+       ],
+       "bye": false,
+       "scored": false,
+       "score": "-",
+       "percentiles": "-",
+       "winner": "-"
+      },
+      {
+       "index": 1,
+       "names": [
+        "Ben",
+        "Dan"
+       ],
+       "bye": false,
+       "scored": false,
+       "score": "-",
+       "percentiles": "-",
+       "winner": "-"
+      }
+     ],
+     "sitting_out": [],
+     "scored_count": 0,
+     "match_count": 2,
+     "pass_complete": false,
+     "is_last": false,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {},
+     "current_pass": 0
+    },
+    "match_index": 0
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 0,
+     "pass_number": 1,
+     "n_passes": 3,
+     "match_index": 0,
+     "bye": false,
+     "archers": [
+      {
+       "position": 0,
+       "name": "Ann",
+       "max_score": 60,
+       "score": null
+      },
+      {
+       "position": 3,
+       "name": "Cat",
+       "max_score": 54,
+       "score": null
+      }
+     ],
+     "scored": false,
+     "rows": [],
+     "show_start_handicap": false,
+     "decided_by_closest": false,
+     "closest": null,
+     "next_unscored_match": 1,
+     "pass_complete": false,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {},
+     "current_pass": 0
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 44,
+     "3": 30
+    },
+    "closest": null
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 0
+     },
+     "match": {
+      "pass_index": 0,
+      "pass_number": 1,
+      "n_passes": 3,
+      "match_index": 0,
+      "bye": false,
+      "archers": [
+       {
+        "position": 0,
+        "name": "Ann",
+        "max_score": 60,
+        "score": 44
+       },
+       {
+        "position": 3,
+        "name": "Cat",
+        "max_score": 54,
+        "score": 30
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ann",
+        "score": "44",
+        "percentile": "52.2%",
+        "start_handicap": "40.0",
+        "handicap": "40.1",
+        "winner": "No"
+       },
+       {
+        "archer": "Cat",
+        "score": "30",
+        "percentile": "87.0%",
+        "start_handicap": "70.0",
+        "handicap": "62.4",
+        "winner": "Yes"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": 1,
+      "pass_complete": false,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 0
+    },
+    "match_index": 1,
+    "scores": {
+     "1": 52,
+     "2": 21
+    },
+    "closest": null
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "1": 52,
+          "2": 21
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 0
+     },
+     "match": {
+      "pass_index": 0,
+      "pass_number": 1,
+      "n_passes": 3,
+      "match_index": 1,
+      "bye": false,
+      "archers": [
+       {
+        "position": 1,
+        "name": "Ben",
+        "max_score": 60,
+        "score": 52
+       },
+       {
+        "position": 2,
+        "name": "Dan",
+        "max_score": 30,
+        "score": 21
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ben",
+        "score": "52",
+        "percentile": "59.2%",
+        "start_handicap": "25.0",
+        "handicap": "24.5",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Dan",
+        "score": "21",
+        "percentile": "24.4%",
+        "start_handicap": "55.0",
+        "handicap": "60.2",
+        "winner": "No"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": null,
+      "pass_complete": true,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "advance",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "1": 52,
+          "2": 21
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 1
+     }
+    }
+   }
+  },
+  {
+   "command": "overview",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 1
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 1,
+     "pass_number": 2,
+     "n_passes": 3,
+     "n_pass": 6,
+     "matches": [
+      {
+       "index": 0,
+       "names": [
+        "Ann",
+        "Dan"
+       ],
+       "bye": false,
+       "scored": false,
+       "score": "-",
+       "percentiles": "-",
+       "winner": "-"
+      },
+      {
+       "index": 1,
+       "names": [
+        "Cat",
+        "Ben"
+       ],
+       "bye": false,
+       "scored": false,
+       "score": "-",
+       "percentiles": "-",
+       "winner": "-"
+      }
+     ],
+     "sitting_out": [],
+     "scored_count": 0,
+     "match_count": 2,
+     "pass_complete": false,
+     "is_last": false,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 1
+    },
+    "match_index": 0
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 1,
+     "pass_number": 2,
+     "n_passes": 3,
+     "match_index": 0,
+     "bye": false,
+     "archers": [
+      {
+       "position": 0,
+       "name": "Ann",
+       "max_score": 60,
+       "score": null
+      },
+      {
+       "position": 2,
+       "name": "Dan",
+       "max_score": 30,
+       "score": null
+      }
+     ],
+     "scored": false,
+     "rows": [],
+     "show_start_handicap": false,
+     "decided_by_closest": false,
+     "closest": null,
+     "next_unscored_match": 1,
+     "pass_complete": false,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 1
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 40,
+     "2": 0
+    },
+    "closest": null
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "1": 52,
+          "2": 21
+         },
+         "closest": null
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 40,
+          "2": 0
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 1
+     },
+     "match": {
+      "pass_index": 1,
+      "pass_number": 2,
+      "n_passes": 3,
+      "match_index": 0,
+      "bye": false,
+      "archers": [
+       {
+        "position": 0,
+        "name": "Ann",
+        "max_score": 60,
+        "score": 40
+       },
+       {
+        "position": 2,
+        "name": "Dan",
+        "max_score": 30,
+        "score": 0
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ann",
+        "score": "40",
+        "percentile": "19.0%",
+        "start_handicap": "40.0",
+        "handicap": "45.6",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Dan",
+        "score": "0",
+        "percentile": "0.0%",
+        "start_handicap": "55.0",
+        "handicap": "-",
+        "winner": "No"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": 1,
+      "pass_complete": false,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 1
+    },
+    "match_index": 1,
+    "scores": {
+     "3": 33,
+     "1": 55
+    },
+    "closest": null
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "1": 52,
+          "2": 21
+         },
+         "closest": null
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 40,
+          "2": 0
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "3": 33,
+          "1": 55
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 1
+     },
+     "match": {
+      "pass_index": 1,
+      "pass_number": 2,
+      "n_passes": 3,
+      "match_index": 1,
+      "bye": false,
+      "archers": [
+       {
+        "position": 3,
+        "name": "Cat",
+        "max_score": 54,
+        "score": 33
+       },
+       {
+        "position": 1,
+        "name": "Ben",
+        "max_score": 60,
+        "score": 55
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Cat",
+        "score": "33",
+        "percentile": "93.35%",
+        "start_handicap": "70.0",
+        "handicap": "59.1",
+        "winner": "No"
+       },
+       {
+        "archer": "Ben",
+        "score": "55",
+        "percentile": "93.43%",
+        "start_handicap": "25.0",
+        "handicap": "15.6",
+        "winner": "Yes"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": null,
+      "pass_complete": true,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "advance",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 1
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "1": 52,
+          "2": 21
+         },
+         "closest": null
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 40,
+          "2": 0
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "3": 33,
+          "1": 55
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 2
+     }
+    }
+   }
+  },
+  {
+   "command": "overview",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 2,
+     "pass_number": 3,
+     "n_passes": 3,
+     "n_pass": 6,
+     "matches": [
+      {
+       "index": 0,
+       "names": [
+        "Ann",
+        "Ben"
+       ],
+       "bye": false,
+       "scored": false,
+       "score": "-",
+       "percentiles": "-",
+       "winner": "-"
+      },
+      {
+       "index": 1,
+       "names": [
+        "Dan",
+        "Cat"
+       ],
+       "bye": false,
+       "scored": false,
+       "score": "-",
+       "percentiles": "-",
+       "winner": "-"
+      }
+     ],
+     "sitting_out": [],
+     "scored_count": 0,
+     "match_count": 2,
+     "pass_complete": false,
+     "is_last": true,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "match_index": 0
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 2,
+     "pass_number": 3,
+     "n_passes": 3,
+     "match_index": 0,
+     "bye": false,
+     "archers": [
+      {
+       "position": 0,
+       "name": "Ann",
+       "max_score": 60,
+       "score": null
+      },
+      {
+       "position": 1,
+       "name": "Ben",
+       "max_score": 60,
+       "score": null
+      }
+     ],
+     "scored": false,
+     "rows": [],
+     "show_start_handicap": false,
+     "decided_by_closest": false,
+     "closest": null,
+     "next_unscored_match": 1,
+     "pass_complete": false,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 47,
+     "1": 50
+    },
+    "closest": null
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "1": 52,
+          "2": 21
+         },
+         "closest": null
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 40,
+          "2": 0
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "3": 33,
+          "1": 55
+         },
+         "closest": null
+        }
+       },
+       "2": {
+        "0": {
+         "scores": {
+          "0": 47,
+          "1": 50
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 2
+     },
+     "match": {
+      "pass_index": 2,
+      "pass_number": 3,
+      "n_passes": 3,
+      "match_index": 0,
+      "bye": false,
+      "archers": [
+       {
+        "position": 0,
+        "name": "Ann",
+        "max_score": 60,
+        "score": 47
+       },
+       {
+        "position": 1,
+        "name": "Ben",
+        "max_score": 60,
+        "score": 50
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ann",
+        "score": "47",
+        "percentile": "79.0%",
+        "start_handicap": "40.0",
+        "handicap": "35.2",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Ben",
+        "score": "50",
+        "percentile": "29.4%",
+        "start_handicap": "25.0",
+        "handicap": "29.1",
+        "winner": "No"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": 1,
+      "pass_complete": false,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "match_index": 1,
+    "scores": {
+     "2": 19,
+     "3": 28
+    },
+    "closest": null
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-advanced",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "complete",
+      "setup": {
+       "stage": 3,
+       "n_archers": 4,
+       "total_arrows": 18,
+       "n_pass": 6,
+       "setup_mode": "advanced",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 40.0,
+        "target": {
+         "distance_key": "70m",
+         "face_cm": 122,
+         "face_type": "10_zone"
+        }
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Compound",
+        "handicap": 25.0,
+        "target": {
+         "distance_key": "50m",
+         "face_cm": 80,
+         "face_type": "10_zone_6_ring"
+        }
+       },
+       {
+        "name": "Cat",
+        "bowstyle": "Longbow",
+        "handicap": 70.0,
+        "target": {
+         "distance_key": "60yd",
+         "face_cm": 122,
+         "face_type": "5_zone"
+        }
+       },
+       {
+        "name": "Dan",
+        "bowstyle": "Barebow",
+        "handicap": 55.0,
+        "target": {
+         "distance_key": "20yd",
+         "face_cm": 40,
+         "face_type": "Worcester"
+        }
+       }
+      ],
+      "assignment": [
+       0,
+       1,
+       3,
+       2
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 44,
+          "3": 30
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "1": 52,
+          "2": 21
+         },
+         "closest": null
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 40,
+          "2": 0
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "3": 33,
+          "1": 55
+         },
+         "closest": null
+        }
+       },
+       "2": {
+        "0": {
+         "scores": {
+          "0": 47,
+          "1": 50
+         },
+         "closest": null
+        },
+        "1": {
+         "scores": {
+          "2": 19,
+          "3": 28
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 2
+     },
+     "match": {
+      "pass_index": 2,
+      "pass_number": 3,
+      "n_passes": 3,
+      "match_index": 1,
+      "bye": false,
+      "archers": [
+       {
+        "position": 2,
+        "name": "Dan",
+        "max_score": 30,
+        "score": 19
+       },
+       {
+        "position": 3,
+        "name": "Cat",
+        "max_score": 54,
+        "score": 28
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Dan",
+        "score": "19",
+        "percentile": "6.9%",
+        "start_handicap": "55.0",
+        "handicap": "64.6",
+        "winner": "No"
+       },
+       {
+        "archer": "Cat",
+        "score": "28",
+        "percentile": "79.7%",
+        "start_handicap": "70.0",
+        "handicap": "64.5",
+        "winner": "Yes"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": null,
+      "pass_complete": true,
+      "event_complete": true
+     }
+    }
+   }
+  },
+  {
+   "command": "overview",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "2": 19,
+         "3": 28
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 2,
+     "pass_number": 3,
+     "n_passes": 3,
+     "n_pass": 6,
+     "matches": [
+      {
+       "index": 0,
+       "names": [
+        "Ann",
+        "Ben"
+       ],
+       "bye": false,
+       "scored": true,
+       "score": "47 - 50",
+       "percentiles": "79.0% - 29.4%",
+       "winner": "Ann"
+      },
+      {
+       "index": 1,
+       "names": [
+        "Dan",
+        "Cat"
+       ],
+       "bye": false,
+       "scored": true,
+       "score": "19 - 28",
+       "percentiles": "6.9% - 79.7%",
+       "winner": "Cat"
+      }
+     ],
+     "sitting_out": [],
+     "scored_count": 2,
+     "match_count": 2,
+     "pass_complete": true,
+     "is_last": true,
+     "event_complete": true
+    }
+   }
+  },
+  {
+   "command": "results",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "2": 19,
+         "3": 28
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "leaderboard": [
+      {
+       "archer_index": 0,
+       "rank": "1",
+       "name": "Ann",
+       "points": "2",
+       "passes_decided": "3",
+       "starting_handicap": "40",
+       "to_date_handicap": "40.6"
+      },
+      {
+       "archer_index": 1,
+       "rank": "1",
+       "name": "Ben",
+       "points": "2",
+       "passes_decided": "3",
+       "starting_handicap": "25",
+       "to_date_handicap": "23.6"
+      },
+      {
+       "archer_index": 3,
+       "rank": "1",
+       "name": "Cat",
+       "points": "2",
+       "passes_decided": "3",
+       "starting_handicap": "70",
+       "to_date_handicap": "62.1"
+      },
+      {
+       "archer_index": 2,
+       "rank": "4",
+       "name": "Dan",
+       "points": "0",
+       "passes_decided": "3",
+       "starting_handicap": "55",
+       "to_date_handicap": "75.4"
+      }
+     ],
+     "pairwise": [
+      {
+       "archer_a": 0,
+       "archer_b": 1,
+       "name_a": "Ann",
+       "name_b": "Ben",
+       "wins_a": "1",
+       "wins_b": "0",
+       "draw": false,
+       "result": "Ann wins"
+      },
+      {
+       "archer_a": 0,
+       "archer_b": 2,
+       "name_a": "Ann",
+       "name_b": "Dan",
+       "wins_a": "1",
+       "wins_b": "0",
+       "draw": false,
+       "result": "Ann wins"
+      },
+      {
+       "archer_a": 0,
+       "archer_b": 3,
+       "name_a": "Ann",
+       "name_b": "Cat",
+       "wins_a": "0",
+       "wins_b": "1",
+       "draw": false,
+       "result": "Cat wins"
+      },
+      {
+       "archer_a": 1,
+       "archer_b": 2,
+       "name_a": "Ben",
+       "name_b": "Dan",
+       "wins_a": "1",
+       "wins_b": "0",
+       "draw": false,
+       "result": "Ben wins"
+      },
+      {
+       "archer_a": 1,
+       "archer_b": 3,
+       "name_a": "Ben",
+       "name_b": "Cat",
+       "wins_a": "1",
+       "wins_b": "0",
+       "draw": false,
+       "result": "Ben wins"
+      },
+      {
+       "archer_a": 2,
+       "archer_b": 3,
+       "name_a": "Dan",
+       "name_b": "Cat",
+       "wins_a": "0",
+       "wins_b": "1",
+       "draw": false,
+       "result": "Cat wins"
+      }
+     ],
+     "passes": [
+      {
+       "pass_index": 0,
+       "pass_number": 1,
+       "groups": [
+        [
+         {
+          "archer": "Ann",
+          "score": "44",
+          "percentile": "52.2%",
+          "start_handicap": "40.0",
+          "handicap": "40.1",
+          "winner": "No"
+         },
+         {
+          "archer": "Cat",
+          "score": "30",
+          "percentile": "87.0%",
+          "start_handicap": "70.0",
+          "handicap": "62.4",
+          "winner": "Yes"
+         }
+        ],
+        [
+         {
+          "archer": "Ben",
+          "score": "52",
+          "percentile": "59.2%",
+          "start_handicap": "25.0",
+          "handicap": "24.5",
+          "winner": "Yes"
+         },
+         {
+          "archer": "Dan",
+          "score": "21",
+          "percentile": "24.4%",
+          "start_handicap": "55.0",
+          "handicap": "60.2",
+          "winner": "No"
+         }
+        ]
+       ]
+      },
+      {
+       "pass_index": 1,
+       "pass_number": 2,
+       "groups": [
+        [
+         {
+          "archer": "Ann",
+          "score": "40",
+          "percentile": "19.0%",
+          "start_handicap": "40.0",
+          "handicap": "45.6",
+          "winner": "Yes"
+         },
+         {
+          "archer": "Dan",
+          "score": "0",
+          "percentile": "0.0%",
+          "start_handicap": "55.0",
+          "handicap": "-",
+          "winner": "No"
+         }
+        ],
+        [
+         {
+          "archer": "Cat",
+          "score": "33",
+          "percentile": "93.35%",
+          "start_handicap": "70.0",
+          "handicap": "59.1",
+          "winner": "No"
+         },
+         {
+          "archer": "Ben",
+          "score": "55",
+          "percentile": "93.43%",
+          "start_handicap": "25.0",
+          "handicap": "15.6",
+          "winner": "Yes"
+         }
+        ]
+       ]
+      },
+      {
+       "pass_index": 2,
+       "pass_number": 3,
+       "groups": [
+        [
+         {
+          "archer": "Ann",
+          "score": "47",
+          "percentile": "79.0%",
+          "start_handicap": "40.0",
+          "handicap": "35.2",
+          "winner": "Yes"
+         },
+         {
+          "archer": "Ben",
+          "score": "50",
+          "percentile": "29.4%",
+          "start_handicap": "25.0",
+          "handicap": "29.1",
+          "winner": "No"
+         }
+        ],
+        [
+         {
+          "archer": "Dan",
+          "score": "19",
+          "percentile": "6.9%",
+          "start_handicap": "55.0",
+          "handicap": "64.6",
+          "winner": "No"
+         },
+         {
+          "archer": "Cat",
+          "score": "28",
+          "percentile": "79.7%",
+          "start_handicap": "70.0",
+          "handicap": "64.5",
+          "winner": "Yes"
+         }
+        ]
+       ]
+      }
+     ],
+     "completed_passes": 3,
+     "n_passes": 3,
+     "current_pass_number": 3,
+     "event_complete": true,
+     "show_start_handicap": false
+    }
+   }
+  },
+  {
+   "command": "archer_results",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "2": 19,
+         "3": 28
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "sections": [
+      {
+       "archer_index": 0,
+       "name": "Ann",
+       "total_score": "131",
+       "starting_handicap": "40",
+       "to_date_handicap": "40.6",
+       "rows": [
+        {
+         "pass_number": "1",
+         "opponent": "Cat",
+         "score": "44",
+         "percentile": "52.2%",
+         "start_handicap": "40.0",
+         "handicap": "40.1"
+        },
+        {
+         "pass_number": "2",
+         "opponent": "Dan",
+         "score": "40",
+         "percentile": "19.0%",
+         "start_handicap": "40.0",
+         "handicap": "45.6"
+        },
+        {
+         "pass_number": "3",
+         "opponent": "Ben",
+         "score": "47",
+         "percentile": "79.0%",
+         "start_handicap": "40.0",
+         "handicap": "35.2"
+        }
+       ],
+       "average": {
+        "score": "43.7",
+        "percentile": "50.1%",
+        "start_handicap": "40.0",
+        "handicap": "40.3"
+       }
+      },
+      {
+       "archer_index": 1,
+       "name": "Ben",
+       "total_score": "157",
+       "starting_handicap": "25",
+       "to_date_handicap": "23.6",
+       "rows": [
+        {
+         "pass_number": "1",
+         "opponent": "Dan",
+         "score": "52",
+         "percentile": "59.2%",
+         "start_handicap": "25.0",
+         "handicap": "24.5"
+        },
+        {
+         "pass_number": "2",
+         "opponent": "Cat",
+         "score": "55",
+         "percentile": "93.4%",
+         "start_handicap": "25.0",
+         "handicap": "15.6"
+        },
+        {
+         "pass_number": "3",
+         "opponent": "Ann",
+         "score": "50",
+         "percentile": "29.4%",
+         "start_handicap": "25.0",
+         "handicap": "29.1"
+        }
+       ],
+       "average": {
+        "score": "52.3",
+        "percentile": "60.7%",
+        "start_handicap": "25.0",
+        "handicap": "23.0"
+       }
+      },
+      {
+       "archer_index": 2,
+       "name": "Dan",
+       "total_score": "40",
+       "starting_handicap": "55",
+       "to_date_handicap": "75.4",
+       "rows": [
+        {
+         "pass_number": "1",
+         "opponent": "Ben",
+         "score": "21",
+         "percentile": "24.4%",
+         "start_handicap": "55.0",
+         "handicap": "60.2"
+        },
+        {
+         "pass_number": "2",
+         "opponent": "Ann",
+         "score": "0",
+         "percentile": "0.0%",
+         "start_handicap": "55.0",
+         "handicap": "-"
+        },
+        {
+         "pass_number": "3",
+         "opponent": "Cat",
+         "score": "19",
+         "percentile": "6.9%",
+         "start_handicap": "55.0",
+         "handicap": "64.6"
+        }
+       ],
+       "average": {
+        "score": "13.3",
+        "percentile": "10.4%",
+        "start_handicap": "55.0",
+        "handicap": "62.4"
+       }
+      },
+      {
+       "archer_index": 3,
+       "name": "Cat",
+       "total_score": "91",
+       "starting_handicap": "70",
+       "to_date_handicap": "62.1",
+       "rows": [
+        {
+         "pass_number": "1",
+         "opponent": "Ann",
+         "score": "30",
+         "percentile": "87.0%",
+         "start_handicap": "70.0",
+         "handicap": "62.4"
+        },
+        {
+         "pass_number": "2",
+         "opponent": "Ben",
+         "score": "33",
+         "percentile": "93.4%",
+         "start_handicap": "70.0",
+         "handicap": "59.1"
+        },
+        {
+         "pass_number": "3",
+         "opponent": "Dan",
+         "score": "28",
+         "percentile": "79.7%",
+         "start_handicap": "70.0",
+         "handicap": "64.5"
+        }
+       ],
+       "average": {
+        "score": "30.3",
+        "percentile": "86.7%",
+        "start_handicap": "70.0",
+        "handicap": "62.0"
+       }
+      }
+     ],
+     "completed_passes": 3,
+     "n_passes": 3,
+     "show_start_handicap": false
+    }
+   }
+  },
+  {
+   "command": "pair_chart",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "2": 19,
+         "3": 28
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "a": 1,
+    "b": 2
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "archer_a": {
+      "name": "Ben",
+      "legend": "Ben (handicap 25)",
+      "passes": [
+       {
+        "index": 0,
+        "score": 52
+       },
+       {
+        "index": 1,
+        "score": 55
+       },
+       {
+        "index": 2,
+        "score": 50
+       }
+      ]
+     },
+     "archer_b": {
+      "name": "Dan",
+      "legend": "Dan (handicap 55)",
+      "passes": [
+       {
+        "index": 0,
+        "score": 21
+       },
+       {
+        "index": 1,
+        "score": 0
+       },
+       {
+        "index": 2,
+        "score": 19
+       }
+      ]
+     },
+     "distribution_a": [
+      {
+       "x": 0,
+       "y": 6.173529430849801e-21
+      },
+      {
+       "x": 1,
+       "y": 0.0
+      },
+      {
+       "x": 2,
+       "y": 0.0
+      },
+      {
+       "x": 3,
+       "y": 0.0
+      },
+      {
+       "x": 4,
+       "y": 0.0
+      },
+      {
+       "x": 5,
+       "y": 3.495565741619761e-19
+      },
+      {
+       "x": 6,
+       "y": 2.261444209674554e-18
+      },
+      {
+       "x": 7,
+       "y": 9.255642115548715e-18
+      },
+      {
+       "x": 8,
+       "y": 2.3214246157854546e-17
+      },
+      {
+       "x": 9,
+       "y": 3.287557351493883e-17
+      },
+      {
+       "x": 10,
+       "y": 2.673607521012694e-17
+      },
+      {
+       "x": 11,
+       "y": 1.0670593694238693e-16
+      },
+      {
+       "x": 12,
+       "y": 7.81891403072496e-16
+      },
+      {
+       "x": 13,
+       "y": 3.920746221571806e-15
+      },
+      {
+       "x": 14,
+       "y": 1.4419500234728675e-14
+      },
+      {
+       "x": 15,
+       "y": 4.001503299910996e-14
+      },
+      {
+       "x": 16,
+       "y": 8.51035765542312e-14
+      },
+      {
+       "x": 17,
+       "y": 1.473898857938632e-13
+      },
+      {
+       "x": 18,
+       "y": 2.8630684625133865e-13
+      },
+      {
+       "x": 19,
+       "y": 9.420692731858595e-13
+      },
+      {
+       "x": 20,
+       "y": 3.791170180909155e-12
+      },
+      {
+       "x": 21,
+       "y": 1.3390019302899869e-11
+      },
+      {
+       "x": 22,
+       "y": 3.9119280961456455e-11
+      },
+      {
+       "x": 23,
+       "y": 9.512001428117611e-11
+      },
+      {
+       "x": 24,
+       "y": 1.9816928153644756e-10
+      },
+      {
+       "x": 25,
+       "y": 3.874035054786266e-10
+      },
+      {
+       "x": 26,
+       "y": 8.595000010522047e-10
+      },
+      {
+       "x": 27,
+       "y": 2.4255531475374886e-09
+      },
+      {
+       "x": 28,
+       "y": 7.563441581199936e-09
+      },
+      {
+       "x": 29,
+       "y": 2.2154260287899744e-08
+      },
+      {
+       "x": 30,
+       "y": 5.734540530274734e-08
+      },
+      {
+       "x": 31,
+       "y": 1.305147620495935e-07
+      },
+      {
+       "x": 32,
+       "y": 2.680894375622119e-07
+      },
+      {
+       "x": 33,
+       "y": 5.311889240751093e-07
+      },
+      {
+       "x": 34,
+       "y": 1.1287425614433711e-06
+      },
+      {
+       "x": 35,
+       "y": 2.742201783006728e-06
+      },
+      {
+       "x": 36,
+       "y": 7.201500311698615e-06
+      },
+      {
+       "x": 37,
+       "y": 1.8514129820678353e-05
+      },
+      {
+       "x": 38,
+       "y": 4.3906648796985106e-05
+      },
+      {
+       "x": 39,
+       "y": 9.434400827866842e-05
+      },
+      {
+       "x": 40,
+       "y": 0.00018535591888540977
+      },
+      {
+       "x": 41,
+       "y": 0.000344719733912215
+      },
+      {
+       "x": 42,
+       "y": 0.0006458189420436704
+      },
+      {
+       "x": 43,
+       "y": 0.0012997266481484047
+      },
+      {
+       "x": 44,
+       "y": 0.002836538043312628
+      },
+      {
+       "x": 45,
+       "y": 0.006355898599146526
+      },
+      {
+       "x": 46,
+       "y": 0.013705619586282707
+      },
+      {
+       "x": 47,
+       "y": 0.0272864439144797
+      },
+      {
+       "x": 48,
+       "y": 0.0491167249345176
+      },
+      {
+       "x": 49,
+       "y": 0.07906445977170103
+      },
+      {
+       "x": 50,
+       "y": 0.11292761596861807
+      },
+      {
+       "x": 51,
+       "y": 0.14198044567051304
+      },
+      {
+       "x": 52,
+       "y": 0.15563181713798538
+      },
+      {
+       "x": 53,
+       "y": 0.14693508431731897
+      },
+      {
+       "x": 54,
+       "y": 0.11761829480881549
+      },
+      {
+       "x": 55,
+       "y": 0.07818074225406853
+      },
+      {
+       "x": 56,
+       "y": 0.04193655666766566
+      },
+      {
+       "x": 57,
+       "y": 0.017417510558166347
+      },
+      {
+       "x": 58,
+       "y": 0.005247602803860191
+      },
+      {
+       "x": 59,
+       "y": 0.0010186813973107817
+      },
+      {
+       "x": 60,
+       "y": 9.548421189747221e-05
+      }
+     ],
+     "distribution_b": [
+      {
+       "x": 0,
+       "y": 6.630182800751493e-18
+      },
+      {
+       "x": 1,
+       "y": 3.67138673893906e-16
+      },
+      {
+       "x": 2,
+       "y": 1.0579134329237274e-14
+      },
+      {
+       "x": 3,
+       "y": 2.0840502231610491e-13
+      },
+      {
+       "x": 4,
+       "y": 3.125890752514887e-12
+      },
+      {
+       "x": 5,
+       "y": 3.778487366647959e-11
+      },
+      {
+       "x": 6,
+       "y": 3.809826058727036e-10
+      },
+      {
+       "x": 7,
+       "y": 3.2777106387935577e-09
+      },
+      {
+       "x": 8,
+       "y": 2.4439808269730877e-08
+      },
+      {
+       "x": 9,
+       "y": 1.5969504283840623e-07
+      },
+      {
+       "x": 10,
+       "y": 9.216863659195463e-07
+      },
+      {
+       "x": 11,
+       "y": 4.724923384490212e-06
+      },
+      {
+       "x": 12,
+       "y": 2.1595588071174346e-05
+      },
+      {
+       "x": 13,
+       "y": 8.82051878925493e-05
+      },
+      {
+       "x": 14,
+       "y": 0.0003222811409497043
+      },
+      {
+       "x": 15,
+       "y": 0.0010532886329801812
+      },
+      {
+       "x": 16,
+       "y": 0.0030755732128714196
+      },
+      {
+       "x": 17,
+       "y": 0.008005788166364096
+      },
+      {
+       "x": 18,
+       "y": 0.018515548143886337
+      },
+      {
+       "x": 19,
+       "y": 0.037875717826610006
+      },
+      {
+       "x": 20,
+       "y": 0.06812852761779772
+      },
+      {
+       "x": 21,
+       "y": 0.10695517707083826
+      },
+      {
+       "x": 22,
+       "y": 0.14517327473537123
+      },
+      {
+       "x": 23,
+       "y": 0.1683396908589785
+      },
+      {
+       "x": 24,
+       "y": 0.1642108389015987
+      },
+      {
+       "x": 25,
+       "y": 0.13203008041087438
+      },
+      {
+       "x": 26,
+       "y": 0.08507977040298878
+      },
+      {
+       "x": 27,
+       "y": 0.04218598896479886
+      },
+      {
+       "x": 28,
+       "y": 0.01508984641010797
+      },
+      {
+       "x": 29,
+       "y": 0.003461173424159429
+      },
+      {
+       "x": 30,
+       "y": 0.0003817988584359417
+      },
+      {
+       "x": 31,
+       "y": 0.0
+      },
+      {
+       "x": 32,
+       "y": 0.0
+      },
+      {
+       "x": 33,
+       "y": 0.0
+      },
+      {
+       "x": 34,
+       "y": 0.0
+      },
+      {
+       "x": 35,
+       "y": 0.0
+      },
+      {
+       "x": 36,
+       "y": 0.0
+      },
+      {
+       "x": 37,
+       "y": 0.0
+      },
+      {
+       "x": 38,
+       "y": 0.0
+      },
+      {
+       "x": 39,
+       "y": 0.0
+      },
+      {
+       "x": 40,
+       "y": 0.0
+      },
+      {
+       "x": 41,
+       "y": 0.0
+      },
+      {
+       "x": 42,
+       "y": 0.0
+      },
+      {
+       "x": 43,
+       "y": 0.0
+      },
+      {
+       "x": 44,
+       "y": 0.0
+      },
+      {
+       "x": 45,
+       "y": 0.0
+      },
+      {
+       "x": 46,
+       "y": 0.0
+      },
+      {
+       "x": 47,
+       "y": 0.0
+      },
+      {
+       "x": 48,
+       "y": 0.0
+      },
+      {
+       "x": 49,
+       "y": 0.0
+      },
+      {
+       "x": 50,
+       "y": 0.0
+      },
+      {
+       "x": 51,
+       "y": 0.0
+      },
+      {
+       "x": 52,
+       "y": 0.0
+      },
+      {
+       "x": 53,
+       "y": 0.0
+      },
+      {
+       "x": 54,
+       "y": 0.0
+      },
+      {
+       "x": 55,
+       "y": 0.0
+      },
+      {
+       "x": 56,
+       "y": 0.0
+      },
+      {
+       "x": 57,
+       "y": 0.0
+      },
+      {
+       "x": 58,
+       "y": 0.0
+      },
+      {
+       "x": 59,
+       "y": 0.0
+      },
+      {
+       "x": 60,
+       "y": 0.0
+      }
+     ],
+     "x_min": 0,
+     "x_max": 60,
+     "y_max": 0.1935906444878253,
+     "current_pass": 2
+    }
+   }
+  },
+  {
+   "command": "export",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "2": 19,
+         "3": 28
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "kind": "leaderboard_csv",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "filename": "leaderboard_20261004-153012.csv",
+     "mime_type": "text/csv",
+     "encoding": "utf-8",
+     "content": "Rank,Archer,Points,Passes decided,Starting handicap,To-date handicap,Exported\r\n1,Ann,2,3,40,40.6,2026-10-04 15:30:12\r\n1,Ben,2,3,25,23.6,2026-10-04 15:30:12\r\n1,Cat,2,3,70,62.1,2026-10-04 15:30:12\r\n4,Dan,0,3,55,75.4,2026-10-04 15:30:12\r\n"
+    }
+   }
+  },
+  {
+   "command": "export",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "2": 19,
+         "3": 28
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "kind": "archer_results_csv",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "filename": "archer-results_20261004-153012.csv",
+     "mime_type": "text/csv",
+     "encoding": "utf-8",
+     "content": "Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),Handicap of score,Exported\r\nAnn,40,40.6,1,Cat,44,52.2,40.1,2026-10-04 15:30:12\r\nAnn,40,40.6,2,Dan,40,19.0,45.6,2026-10-04 15:30:12\r\nAnn,40,40.6,3,Ben,47,79.0,35.2,2026-10-04 15:30:12\r\nBen,25,23.6,1,Dan,52,59.2,24.5,2026-10-04 15:30:12\r\nBen,25,23.6,2,Cat,55,93.4,15.6,2026-10-04 15:30:12\r\nBen,25,23.6,3,Ann,50,29.4,29.1,2026-10-04 15:30:12\r\nDan,55,75.4,1,Ben,21,24.4,60.2,2026-10-04 15:30:12\r\nDan,55,75.4,2,Ann,0,0.0,,2026-10-04 15:30:12\r\nDan,55,75.4,3,Cat,19,6.9,64.6,2026-10-04 15:30:12\r\nCat,70,62.1,1,Ann,30,87.0,62.4,2026-10-04 15:30:12\r\nCat,70,62.1,2,Ben,33,93.4,59.1,2026-10-04 15:30:12\r\nCat,70,62.1,3,Dan,28,79.7,64.5,2026-10-04 15:30:12\r\n"
+    }
+   }
+  },
+  {
+   "command": "export",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-advanced",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 4,
+      "total_arrows": 18,
+      "n_pass": 6,
+      "setup_mode": "advanced",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 40.0,
+       "target": {
+        "distance_key": "70m",
+        "face_cm": 122,
+        "face_type": "10_zone"
+       }
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Compound",
+       "handicap": 25.0,
+       "target": {
+        "distance_key": "50m",
+        "face_cm": 80,
+        "face_type": "10_zone_6_ring"
+       }
+      },
+      {
+       "name": "Cat",
+       "bowstyle": "Longbow",
+       "handicap": 70.0,
+       "target": {
+        "distance_key": "60yd",
+        "face_cm": 122,
+        "face_type": "5_zone"
+       }
+      },
+      {
+       "name": "Dan",
+       "bowstyle": "Barebow",
+       "handicap": 55.0,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 40,
+        "face_type": "Worcester"
+       }
+      }
+     ],
+     "assignment": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 44,
+         "3": 30
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "1": 52,
+         "2": 21
+        },
+        "closest": null
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 40,
+         "2": 0
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "3": 33,
+         "1": 55
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 47,
+         "1": 50
+        },
+        "closest": null
+       },
+       "1": {
+        "scores": {
+         "2": 19,
+         "3": 28
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "kind": "results_pdf",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "filename": "results_20261004-153012.pdf",
+     "mime_type": "application/pdf",
+     "encoding": "base64",
+     "content": {
+      "header": "%PDF-1.3",
+      "pages": 1,
+      "text": [
+       "Handicapped H2H results",
+       "Exported 2026-10-04 15:30:12 (local time)",
+       "4 archers, 6 arrows per pass. 3 of 3 passes completed (only completed passes are counted).",
+       "Leaderboard",
+       "Rank",
+       "Archer",
+       "Points",
+       "Passes decided",
+       "Starting",
+       "handicap",
+       "To-date handicap",
+       "1",
+       "Ann",
+       "2",
+       "3",
+       "40",
+       "40.6",
+       "1",
+       "Ben",
+       "2",
+       "3",
+       "25",
+       "23.6",
+       "1",
+       "Cat",
+       "2",
+       "3",
+       "70",
+       "62.1",
+       "4",
+       "Dan",
+       "0",
+       "3",
+       "55",
+       "75.4",
+       "Ann - total score 131 - starting handicap 40 - to-date handicap 40.6",
+       "Pass",
+       "Opponent",
+       "Score",
+       "Percentile",
+       "Handicap",
+       "1",
+       "Cat",
+       "44",
+       "52.2%",
+       "40.1",
+       "2",
+       "Dan",
+       "40",
+       "19.0%",
+       "45.6",
+       "3",
+       "Ben",
+       "47",
+       "79.0%",
+       "35.2",
+       "Average",
+       "43.7",
+       "50.1%",
+       "40.3",
+       "Ben - total score 157 - starting handicap 25 - to-date handicap 23.6",
+       "Pass",
+       "Opponent",
+       "Score",
+       "Percentile",
+       "Handicap",
+       "1",
+       "Dan",
+       "52",
+       "59.2%",
+       "24.5",
+       "2",
+       "Cat",
+       "55",
+       "93.4%",
+       "15.6",
+       "3",
+       "Ann",
+       "50",
+       "29.4%",
+       "29.1",
+       "Average",
+       "52.3",
+       "60.7%",
+       "23.0",
+       "Dan - total score 40 - starting handicap 55 - to-date handicap 75.4",
+       "Pass",
+       "Opponent",
+       "Score",
+       "Percentile",
+       "Handicap",
+       "1",
+       "Ben",
+       "21",
+       "24.4%",
+       "60.2",
+       "2",
+       "Ann",
+       "0",
+       "0.0%",
+       "-",
+       "3",
+       "Cat",
+       "19",
+       "6.9%",
+       "64.6",
+       "Average",
+       "13.3",
+       "10.4%",
+       "62.4",
+       "Cat - total score 91 - starting handicap 70 - to-date handicap 62.1",
+       "Pass",
+       "Opponent",
+       "Score",
+       "Percentile",
+       "Handicap",
+       "1",
+       "Ann",
+       "30",
+       "87.0%",
+       "62.4",
+       "2",
+       "Ben",
+       "33",
+       "93.4%",
+       "59.1",
+       "3",
+       "Dan",
+       "28",
+       "79.7%",
+       "64.5",
+       "Average",
+       "30.3",
+       "86.7%",
+       "62.0"
+      ]
+     }
+    }
+   }
+  }
+ ]
+}
