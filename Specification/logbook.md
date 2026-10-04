@@ -2157,3 +2157,63 @@ the confirmation, and a consequence you may want to know about: the markers of e
 the current pass's curve, not the curve each was judged against (I have not changed this); **55** the feedback
 list's numbering (1, 2, 2, 3) is read as four items. Not touched: everything under "Future Plans - DO NOT
 IMPLEMENT YET". Final suite: 919 tests passing.
+
+## UI redesign planning - `UI-prd.json` created and section 8 gaps closed (2026-10-04)
+
+Scope: `Specification/UI-prd.json` was created from `Specification/UISpec.md` section 8 (tasks UI-0 to UI-22,
+with `phase`, `depends_on`, `gate`, `needs_review` and `completed` fields; `gate` only on UI-1, `needs_review`
+on UI-9, UI-16 and UI-20). Reviewing it found twelve gaps or ambiguities in section 8. Each one was closed with an
+assumption in both `UISpec.md` (new decisions D11-D18 in section 3, plus the affected sections) and
+`UI-prd.json`. No code was changed and no implementation was started. `prd.json` is unchanged.
+
+Assumptions made (decision numbers refer to `UISpec.md` section 3):
+1. **UI-0 already partly done.** The `ui-redesign` branch and the `prototype-flask` tag already exist, so UI-0
+   checks them and does not recreate them. "Docs present" means `UISpec.md`, `deploymentConstrains.md`,
+   `AISpec.md` and `UI-prd.json`.
+2. **Gate scope.** Every task after UI-1 depends on the gate, including the Python-only tasks UI-2 to UI-5
+   (UISpec section 2 now says "before any further work").
+3. **UI-1 tooling.** UI-1 creates only `web/package.json` (pinned `pyodide`) and `web/scripts/pyodide-gate/`
+   (`scenario.py`, `run-gate.mjs`, committed `golden.json`), and the Vite scaffold moves to UI-6. The one
+   `scenario.py` runs both natively and in Pyodide and drives the existing modules directly, because `bridge.py`
+   does not exist yet.
+4. **Draw function location (D17).** The draw moves to a new whitelisted module, `h2h/draw.py`, which both
+   `state.py` and `bridge.py` import. The core modules stay untouched, the draw survives the retirement of
+   `state.py` in UI-22, and UI-2 and UI-3 edit different files. UI-3 adds `tests/test_draw.py`. As a result,
+   UI-6 now also depends on UI-3, and the bundle whitelist includes `draw.py`.
+5. **Items with no owning task.** Each now has an owner:
+   - Rename and `events:index` upkeep go in UI-8 (storage) and UI-9 (Home and header).
+   - The corrupt-value recovery goes in UI-9.
+   - The backup prompt on completion goes in UI-14: the completion alert has "Download backup" and a reminder,
+     to meet deploymentConstrains 3, rule 4.
+   - Two related gaps were also closed:
+     - **D11:** no command set `status: complete`. `record_match` now sets it when `Event.is_complete`. The
+       match route guard also allows `complete`, so final-pass matches stay editable as in the Flask app.
+     - **D12:** document fields have owners. The storage layer sets `revision` and `updated_at`, the UI may
+       change only `name`, and the bridge changes everything else.
+   - **D13:** with several in-progress events, the Resume card shows the most recently updated one.
+   - **D18:** the import size limit is 10 MB.
+6. **Calculator fixtures.** UI-5 now includes `calculator` cases (indoor, indoor with compound, outdoor, one
+   invalid input), and UI-10 checks against them.
+7. **`markerLabelBoxes`.** No existing test uses it (it appears only in `h2h/static/match_chart.js`). UI-16
+   writes new Vitest tests: labels do not overlap, sit beside their marker, and stay inside the chart area.
+8. **Accessibility threshold.** The UI-19 scan (`@axe-core/playwright`) requires zero serious and zero critical
+   violations.
+9. **Phase 6 review ordering.** UI-20 depends on UI-19, so the Phase 6 review always covers both tasks. This is
+   a phase-ordering dependency, not a code dependency.
+10. **Deployment (UI-21).** UI-21 depends on UI-20, so it runs after the Phase 6 review. CI uses network access
+    for Pyodide (D15: Pyodide comes from jsDelivr pinned `v314.0.7`, not self-hosted). The agent first verifies
+    locally: the CI commands, and the production build served from a `/Handicapped-H2Hs/` sub-path. It then
+    stops and asks the owner to push and merge, which the loop prompt forbids the agent to do itself.
+11. **Retiring Flask (UI-22).** "Move or delete" becomes delete (the tag and git history keep the files). The
+    files are named explicitly. In `test_handicap_calculator.py` only the Flask route tests go, and the pure
+    lookup tests stay. Before each test file is deleted, the logbook must map it to the tests that cover its
+    behaviours. UI-2's legacy-comparison tests in `test_bridge.py` are rewritten to build the reference `Event`
+    directly.
+12. **Open items in UISpec section 11.**
+    - **D14:** completed events are kept until the user deletes them.
+    - **D16:** `pyproject.toml` is unchanged and the lazy `fpdf` import is not part of this plan. UI-7 records
+      the start-up time spent on fpdf2 so the owner can decide later.
+
+Validation: `UI-prd.json` parses as JSON, every `depends_on` id exists, and every dependency points to an
+earlier task in the file, so there are no cycles. The loop's "first eligible task in file order" rule therefore
+follows file order.

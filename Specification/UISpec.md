@@ -7,7 +7,7 @@ Companion documents (read first, in this order):
 2. `Specification/AISpec.md` section 5 (functional requirements). **This is the authority on behaviour.** This document specifies presentation and architecture; it must never be used to change what the app computes or enforces.
 3. `README.md` and the latest entries of `Specification/logbook.md`.
 
-Follow the repository's existing working conventions: small commits, a logbook entry per task, tasks recorded in `prd.json` format (id, name, description, tests, completed). The tasks in section 8 are written so they can be converted directly into `prd.json` entries.
+Follow the repository's existing working conventions: small commits, a logbook entry per task, tasks recorded in `prd.json` format (id, name, description, tests, completed). The tasks in section 8 are converted into `Specification/UI-prd.json`, which adds `phase`, `depends_on`, `gate` and `needs_review` fields.
 
 Python rules from the owner: package management with `uv` only (never `pip` or `conda`), numpy-style docstrings (purpose, arguments, returns) on every function added or changed, minimal and surgical changes to existing code.
 
@@ -42,7 +42,7 @@ Read from the repository, not assumed:
 | Tests | About 16,000 lines in the repo; the pure-core tests (`test_stats`, `test_event`, `test_rotation`, `test_pair_chart_data`, `test_target_resolution` and others) are Flask-free. `test_app`, `test_event_routes` (2,544 lines), `test_integration`, `test_handicap_calculator` and `tests/helpers.py` use Flask; `test_state` tests `SessionState`. | Keep every existing test passing throughout. The Flask route tests are an excellent catalogue of behaviours to port to the new UI tests. |
 | Python version | `requires-python >= 3.14`, and Pyodide `v314.0.7` ships Python 3.14.2. | No version conflict. Pyodide's numpy (2.4.6 when tested) is older than the local pin (`>=2.5.3`); see constraints section 4.3. |
 
-Already verified in a browser (see `deploymentConstrains.md` section 2): Pyodide v314.0.7 loads numpy, installs `archeryutils` 3.0.0 and `fpdf2` 2.8.9 with `micropip`, runs handicap calculations, and builds a PDF and CSV in memory. **Not yet verified: the app's own modules (`stats.py` and friends) running in Pyodide.** Task UI-1 is a gate that proves this before any UI work.
+Already verified in a browser (see `deploymentConstrains.md` section 2): Pyodide v314.0.7 loads numpy, installs `archeryutils` 3.0.0 and `fpdf2` 2.8.9 with `micropip`, runs handicap calculations, and builds a PDF and CSV in memory. **Not yet verified: the app's own modules (`stats.py` and friends) running in Pyodide.** Task UI-1 is a gate that proves this before any further work: every later task depends on it, including the Python-only tasks UI-2 to UI-5.
 
 ## 3. Decisions made in this specification
 
@@ -60,6 +60,14 @@ These are assumptions; each is easy to reverse and the owner may overrule them.
 | D8 | Light, dark and automatic colour schemes via Mantine. | Nearly free with Mantine. |
 | D9 | Chart.js is installed from npm and tree-shaken, not loaded from a CDN. | Fewer third-party requests; consistent with the privacy rule. |
 | D10 | Names are not checked for uniqueness. | Not in AISpec; do not add rules to the specification. Raise as an open question if it causes confusion. |
+| D11 | `record_match` sets `status` to `complete` when `Event.is_complete` is true (final pass reached and every match in it scored), otherwise leaves it `running`. Matches on the final pass stay editable after completion. | No command in section 5.4 set `complete`. The Flask app never blocks editing the final pass, and "saving again replaces scores until the event advances" applies (the final pass never advances). |
+| D12 | Field ownership in the event document: the storage layer sets `revision` and `updated_at` on every write; the UI may change `name` directly (rename); every other field changes only through a bridge command. | Rename is a label change with no rules, so a bridge round trip adds nothing; everything else keeps Python as the authority. |
+| D13 | When more than one event is in progress (status `setup` or `running`), the Resume card shows the most recently updated one; the others are listed on Home. | Section 6, rule 4 assumed a single in-progress event. |
+| D14 | Completed events are kept until the user deletes them; no auto-archive. | Closes the open question in section 11; the simplest behaviour, and backups cover eviction. |
+| D15 | Pyodide (runtime and its numpy) is loaded from jsDelivr pinned to `v314.0.7`, and `archeryutils` and `fpdf2` from PyPI via `micropip`; Pyodide is not self-hosted. CI uses network access for these. | Matches the verified smoke test (deploymentConstrains 2) and keeps the repository small. The requests carry no user data. |
+| D16 | No dependency changes to `pyproject.toml` and no lazy `fpdf` import in this plan. UI-7 records how much of engine start-up is spent loading fpdf2 so the owner can decide later. | Both need owner approval (section 11, section 12). |
+| D17 | The Stage 3 draw moves into a new module `h2h/draw.py` (whitelisted for the browser) that both `state.py` and `bridge.py` import. | Keeps the core modules (`stats`, `models`, `outputs`, `rotation`) untouched, keeps the draw available after `state.py` is retired (UI-22), and lets UI-2 and UI-3 edit different files. |
+| D18 | Backup import rejects files larger than 10 MB. | Section 6, rule 7 asked for a size limit without a value; one event document is a few tens of kB, so 10 MB holds hundreds of events. |
 
 ## 4. Target architecture
 
@@ -80,14 +88,16 @@ The UI holds the event document (section 5) as its single source of truth and mi
 ### 4.1 Repository layout
 
 ```
-h2h/                      existing core (unchanged apart from tasks UI-2, UI-3)
+h2h/                      existing core (core modules unchanged; new files from UI-2, UI-3, UI-4)
   bridge.py               NEW: pure functions, JSON in / JSON out (section 5)
-  app.py, state.py, templates/, static/   legacy Flask; leave working until UI-22
+  draw.py                 NEW: pure Stage 3 draw function (UI-3, decision D17)
+  app.py, state.py, templates/, static/   legacy Flask; leave working until UI-22 (state.py calls draw.py after UI-3)
 web/                      NEW: the front end
   index.html  404.html
   package.json  vite.config.ts  tsconfig.json  postcss.config.cjs
   public/py/              generated Python bundle (git-ignored, built by a script)
   scripts/build-py-bundle.mjs   zips whitelisted h2h modules into public/py
+  scripts/pyodide-gate/   UI-1 gate: scenario.py, run-gate.mjs, golden.json
   src/
     main.tsx  App.tsx  theme.ts
     engine/               worker.ts, client.ts (typed request/response wrapper), types.ts
@@ -96,7 +106,7 @@ web/                      NEW: the front end
     components/           shared pieces (PassTable, DistanceSelect, SaveIndicator ...)
     chart/                MatchChart.tsx and the ported plugin code
   tests/                  Vitest unit tests; Playwright e2e in web/e2e/
-tests/                    existing pytest suite + new tests/test_bridge.py
+tests/                    existing pytest suite + new test_bridge.py, test_draw.py, fixtures/ (UI-5)
 .github/workflows/        ci.yml (tests) and pages.yml (deploy)
 ```
 
@@ -117,10 +127,10 @@ tests/                    existing pytest suite + new tests/test_bridge.py
 ### 4.3 Python packaging for the browser
 
 - Browser runtime Python packages: **numpy** (Pyodide package), **archeryutils** and **fpdf2** (via `micropip`; fpdf2 pulls in pillow and fonttools, which are available). Nothing else.
-- Do not `micropip.install` this project from `pyproject.toml` (its pins exceed Pyodide's numpy). Instead the build script zips only these modules into a bundle that the worker fetches and unpacks into the Pyodide filesystem: `__init__.py`, `stats.py`, `rotation.py`, `models.py`, `outputs.py`, `exports.py`, `chart_data.py`, `bridge.py`. Exclude `app.py`, `state.py`, `templates/`, `static/`.
+- Do not `micropip.install` this project from `pyproject.toml` (its pins exceed Pyodide's numpy). Instead the build script zips only these modules into a bundle that the worker fetches and unpacks into the Pyodide filesystem: `__init__.py`, `stats.py`, `rotation.py`, `models.py`, `outputs.py`, `exports.py`, `chart_data.py`, `draw.py`, `bridge.py`. Exclude `app.py`, `state.py`, `templates/`, `static/`.
 - Add `web/pyodide-requirements.txt` with loose bounds for the browser (`archeryutils>=3.0.0`, `fpdf2>=2.8.9`); numpy comes from Pyodide.
 - Stamp the bundle file name with a content hash so a deployment always loads matching code.
-- Optional, only after measuring: `exports.py` imports `fpdf` at the top; making that import lazy (inside `results_pdf`) would let fpdf2, pillow and fonttools (about 2 MB) load on the first PDF export instead of at startup. Do this only if startup time matters, and keep it a one-line, behaviour-preserving change with existing tests green.
+- Not in this plan (decision D16): `exports.py` imports `fpdf` at the top; making that import lazy (inside `results_pdf`) would let fpdf2, pillow and fonttools (about 2 MB) load on the first PDF export instead of at startup. UI-7 measures the time this would save; the owner decides whether to make the one-line change later.
 
 ## 5. The Python bridge (`h2h/bridge.py`) and the event document
 
@@ -195,7 +205,7 @@ All take the document (except where noted) and return `ok/data` or `ok/error`.
 | `start_event(doc)` | Builds the event, sets status `running` | `session.start_event` |
 | `overview(doc)` | Current pass: per match names, scored flag, scores, percentile text, winner; sitting out; complete / is_last | `event_rotation` |
 | `match(doc, match_index)` | Names, per-archer score maximum, existing scores, pass table rows, tie-break flag | `event_match` |
-| `record_match(doc, match_index, scores, closest)` | Validates and records; returns the new document plus the match view; `tiebreak_required` error if tied | `event_match_submit` |
+| `record_match(doc, match_index, scores, closest)` | Validates and records; sets `status` to `complete` when the event is complete (D11); returns the new document plus the match view; `tiebreak_required` error if tied | `event_match_submit` |
 | `advance(doc)` | Moves to the next pass; refuses if incomplete or last | `event_advance` |
 | `results(doc)` | Leaderboard, pairwise, per-pass groups, completed pass count | `event_results` |
 | `archer_results(doc)` | Per-archer sections | `archer_results` |
@@ -206,7 +216,7 @@ All take the document (except where noted) and return `ok/data` or `ok/error`.
 
 Pass the export time in as an ISO string from JavaScript (`now_iso`); do not rely on `datetime.now()` in the browser. Use the repository's `exports.filename_stamp` and timestamp helpers unchanged.
 
-The Stage 3 draw randomness comes from a seed supplied by JavaScript (`crypto.getRandomValues`); the bridge uses `random.Random(seed)`. To keep behaviour identical, move the draw logic out of `SessionState.redraw_pairings` into a small pure function that both `SessionState` and the bridge call (task UI-3); `SessionState` behaviour and `test_state.py` must be unchanged.
+The Stage 3 draw randomness comes from a seed supplied by JavaScript (`crypto.getRandomValues`); the bridge uses `random.Random(seed)`. To keep behaviour identical, move the draw logic out of `SessionState.redraw_pairings` into a small pure function in `h2h/draw.py` (decision D17) that takes the schedule, the number of archers, a `random.Random` and the current assignment, and that both `SessionState` (passing its own `rng`) and the bridge call (task UI-3); `SessionState` behaviour and `test_state.py` must be unchanged.
 
 ## 6. Persistence, autosave and resume (implements constraints section 3, rule 4)
 
@@ -222,12 +232,12 @@ Rules:
 1. **Write before you show.** After every command that changes the document (stage submit, redraw, record_match, advance, rename), write to IndexedDB first, then update the screen. If the write fails, show a persistent red alert (not a toast): "This event is NOT being saved" with a "Download backup" button.
 2. **Atomic and revisioned.** Each write is a single transaction that replaces the whole document and increments `revision`. Before writing, check the stored `revision` equals the one the UI loaded; if not (another tab changed it), show a modal: "This event changed in another tab", with "Load latest" and "Overwrite with this tab".
 3. **Save indicator** in the header: "Saved HH:MM", "Saving...", or the error state.
-4. **Startup:** if the app is opened at its bare URL (no hash) and an in-progress event exists, show a "Resume event" card (event name, stage, pass) and a "Start new event" option; never silently discard an event. Resume restores `last route` for that event.
+4. **Startup:** if the app is opened at its bare URL (no hash) and an in-progress event exists, show a "Resume event" card (event name, stage, pass) and a "Start new event" option; never silently discard an event. Resume restores `last route` for that event. With several in-progress events, the card shows the most recently updated one (decision D13).
 5. **Route guards:** each event route checks the document's `setup.stage` and `status`; if not allowed, redirect to the correct earlier route with a short Mantine notification. Unknown event id gives a friendly "Event not found" view with a link Home.
 6. **Persistent storage:** call `navigator.storage.persist()` after the first successful save; do not depend on the result.
-7. **Backup and restore:** "Download backup" exports one or all events as JSON; "Import backup" passes the file through `validate_document` (size limit, schema check, migration) before storing; it never overwrites an existing event with the same id without asking.
+7. **Backup and restore:** "Download backup" exports one or all events as JSON; "Import backup" passes the file through `validate_document` (size limit of 10 MB per decision D18, schema check, migration) before storing; it never overwrites an existing event with the same id without asking. When an event becomes complete, the completion alert on the pass overview reminds the user that data stays only in this browser and offers "Download backup" (deploymentConstrains 3, rule 4).
 8. **Drafts:** drafts are discarded when the corresponding command succeeds.
-9. **Schema migrations** live in `bridge.validate_document` (Python knows the semantics); the UI never edits stored documents by hand.
+9. **Schema migrations** live in `bridge.validate_document` (Python knows the semantics); the UI never edits stored documents by hand, except for the fields listed in decision D12 (`name`, set by the UI; `revision` and `updated_at`, set by the storage layer).
 
 Failure modes to handle explicitly: IndexedDB unavailable (private mode), quota exceeded, a corrupt stored value (offer to export what can be read, then delete), and the Python engine crashing (stored data is unaffected; show a Reload button).
 
@@ -250,7 +260,7 @@ Footer / About: one line stating that all data stays in this browser, and a back
 | `#/e/:id/setup/2` | Stage 2 | stage 1 done |
 | `#/e/:id/setup/3` | Stage 3 | stage 2 done and not started |
 | `#/e/:id/pass` | Current pass overview | status running or complete |
-| `#/e/:id/pass/match/:i` | Match scoring | running; `:i` valid |
+| `#/e/:id/pass/match/:i` | Match scoring | running or complete (D11); `:i` valid |
 | `#/e/:id/results/:tab` | Results tabs: `leaderboard`, `pairwise`, `passes`, `archers` | running or complete |
 | `#/calculator` | Standalone handicap calculator | none |
 | `#/about` | Privacy, storage, backup help | none |
@@ -284,11 +294,11 @@ All views: Mantine components, no custom CSS beyond theme tokens and small utili
 
 **Stage 3.** A `Table` of passes (Pass | Matches | Sitting out). Buttons: "Redraw pairings" (secondary) and "Confirm pairings and start event" (primary). Back to Stage 2 stays available until confirmation; after confirmation Stage 1-3 are read-only summaries in the Setup menu (the old app redirected away).
 
-**Current pass (overview).** Header "Pass 3 of 5" with a `Progress` bar showing matches scored. `Table`: Match, Score (A - B), Percentiles (A - B), Winner, status `Badge`, action `Button` ("Enter scores" or "View / edit"). Clicking a row also opens the match. Sitting-out note. "Advance to next pass" (primary, disabled until complete, with a hint); on click, confirm modal (D7). On the final pass and complete: a success `Alert` with "View results" and download buttons.
+**Current pass (overview).** Header "Pass 3 of 5" with a `Progress` bar showing matches scored. `Table`: Match, Score (A - B), Percentiles (A - B), Winner, status `Badge`, action `Button` ("Enter scores" or "View / edit"). Clicking a row also opens the match. Sitting-out note. "Advance to next pass" (primary, disabled until complete, with a hint); on click, confirm modal (D7). On the final pass and complete: a success `Alert` with "View results", the export download buttons, and a "Download backup" button with a one-line reminder that data stays only in this browser (section 6, rule 7).
 
 **Match.** Desktop: two columns. Left column: a card with a score `NumberInput` per archer (label "<name> score (0-<max>)", `inputMode="numeric"`, integers only, first field autofocused, Enter saves), the tie-break control when required, and a Save button; below it the "This pass" results table when scores exist. Right column: the distribution chart panel when Graph view is on, or a muted hint that Graph view is off. Mobile: single column, chart below. After a successful save show an inline confirmation and two buttons: "Next unscored match" and "Back to overview". On a refused tie, keep the typed scores, show the tie-break control and an `Alert` with the existing message. A bye match shows one input and no chart.
 
-**Chart component.** Port `match_chart.js` into `MatchChart.tsx` using Chart.js directly, keeping `nearestCurveX`, the label-placement plugin and all behaviours (and `chart.markerLabelBoxes` if tests use it). Source colours from the theme for dark mode but keep the two series clearly distinct (current blue `#4c72b0` and red `#c44e52`; colour-blind safe). Responsive container, redraws on theme change. Includes the "Show previous passes' scores too" checkbox and the "How the winner is decided" explanation in a collapsible `Accordion` or `Collapse` below the chart.
+**Chart component.** Port `match_chart.js` into `MatchChart.tsx` using Chart.js directly, keeping `nearestCurveX`, the label-placement plugin and all behaviours, including `chart.markerLabelBoxes` (the placed label boxes, kept for tests; no existing test uses it, so UI-16 writes new ones). Source colours from the theme for dark mode but keep the two series clearly distinct (current blue `#4c72b0` and red `#c44e52`; colour-blind safe). Responsive container, redraws on theme change. Includes the "Show previous passes' scores too" checkbox and the "How the winner is decided" explanation in a collapsible `Accordion` or `Collapse` below the chart.
 
 **Results (tabs).**
 - Leaderboard: `Table` with rank, archer, points, passes decided, starting handicap, to-date handicap; a caption stating how many passes are completed; a "Download" `Menu` (Leaderboard CSV, Archer results CSV, Full report PDF).
@@ -328,35 +338,35 @@ Each task lists **Verify** criteria; a task is complete only when they pass.
 
 **Phase 0 - Baseline**
 
-- **UI-0 Baseline and docs.** Create the branch and tag. Run `uv run pytest`; record the pass count in the logbook. Add `.gitignore` entries for `web/node_modules`, `web/dist`, `web/public/py`. Verify: baseline green; docs present in `Specification/`.
+- **UI-0 Baseline and docs.** Create the branch and tag if they do not already exist (both existed on 2026-10-04: check rather than recreate). Run `uv run pytest`; record the pass count in the logbook. Add `.gitignore` entries for `web/node_modules`, `web/dist`, `web/public/py`. Verify: baseline green; `UISpec.md`, `deploymentConstrains.md`, `AISpec.md` and `UI-prd.json` present in `Specification/`.
 
 **Phase 1 - Python in the browser, no UI**
 
-- **UI-1 Pyodide compatibility gate.** Create the minimal `web/` Vite project and a throwaway Node script (using the `pyodide` npm package) that loads numpy, installs `archeryutils` and `fpdf2`, unpacks the whitelisted h2h modules, and runs a scripted 4-archer event end to end (stage setup, record_match, advance, leaderboard, both CSVs, the PDF, one chart payload). Compare against golden JSON produced by native Python for the same script. Verify: all values match (ints and strings exactly, floats within a relative tolerance of 1e-9; record any larger numeric differences caused by the older Pyodide numpy and report them before continuing). **Stop and report to the owner if this gate fails.**
+- **UI-1 Pyodide compatibility gate.** Create a minimal `web/package.json` (only the pinned `pyodide` npm package; the Vite scaffold is UI-6) and, in `web/scripts/pyodide-gate/`, a Python scenario `scenario.py` plus a Node runner `run-gate.mjs`. The runner loads numpy, installs `archeryutils` and `fpdf2`, unpacks the existing whitelisted h2h modules (`bridge.py` and `draw.py` do not exist yet), and runs `scenario.py`: a scripted 4-archer event end to end using the existing modules directly (`rotation` schedule, `models.Event`, `record_match`, `advance`, the leaderboard builder, both CSVs, the PDF, one `chart_data` payload), printing one JSON result. The same `scenario.py` run natively with `uv run` produces `golden.json`; compare the two. Keep these files (they are not deleted without owner approval). Verify: all values match (ints and strings exactly, floats within a relative tolerance of 1e-9; record any larger numeric differences caused by the older Pyodide numpy and report them before continuing). **Stop and report to the owner if this gate fails.**
 - **UI-2 Document and replay.** Implement the event document schema, `rebuild_event`, and `validate_document` in `h2h/bridge.py`. Verify: pytest golden tests: an event built through the legacy `SessionState` path and the same inputs replayed from a document produce identical `Event.results`; replay after correcting a score, after sit-out schedules, with and without handicap updating.
-- **UI-3 Draw refactor.** Extract the Stage 3 draw logic from `SessionState.redraw_pairings` into a pure function called by both. Verify: `tests/test_state.py` and the Flask tests unchanged and green.
+- **UI-3 Draw refactor.** Extract the Stage 3 draw logic (including the pairings-signature comparison) from `SessionState.redraw_pairings` into a pure function in the new module `h2h/draw.py` (decision D17), called by `SessionState` now and by the bridge in UI-4. Add `tests/test_draw.py` testing the function directly, so the draw stays covered after `test_state.py` is retired in UI-22. Verify: `tests/test_state.py` and the Flask tests unchanged and green; `tests/test_draw.py` green; the same seed gives the same assignment through `SessionState` and through the function.
 - **UI-4 Bridge commands.** Implement every command in section 5.4 with the `ok/error` envelope. Verify: new `tests/test_bridge.py` covers each command (happy path, validation errors with the existing messages, `tiebreak_required`, state errors) and asserts every output passes `json.dumps(..., allow_nan=False)`. Port relevant assertions from `tests/test_event_routes.py` and `tests/test_integration.py` as bridge-level tests.
-- **UI-5 Parity fixtures.** Generate golden outputs for several scripted scenarios (simple and advanced setup, odd archers with byes shot and not shot, handicap updating, a tie-break, a final complete event) from native Python. Verify: committed fixtures; a pytest test regenerates and compares them.
+- **UI-5 Parity fixtures.** Generate golden outputs for several scripted scenarios (simple and advanced setup, odd archers with byes shot and not shot, handicap updating, a tie-break, a final complete event) from native Python, plus a set of `calculator` cases (indoor with and without compound, outdoor, and one invalid input) used by UI-10. Use a fixed draw seed and a fixed `now_iso`. Verify: committed fixtures; a pytest test regenerates and compares them.
 
 **Phase 2 - Front-end foundation**
 
 - **UI-6 Web scaffold.** Vite + React + TypeScript + Mantine with the official setup, ESLint, Prettier, Vitest, Playwright. Build script for the Python bundle. Verify: `npm run build` succeeds from a clean checkout; bundle contains only the whitelisted modules.
-- **UI-7 Engine worker and client.** Module Web Worker with Pyodide, typed `call(command, payload)` wrapper with request ids, timeouts, load-progress events, and restart on crash. Verify: Vitest (Node Pyodide) runs the UI-5 fixtures through the client and matches; the first-load transfer size is measured and logged (target about 11 MB or less, report if over).
-- **UI-8 Storage layer.** IndexedDB wrapper, revisioned atomic writes, index, drafts, session route, settings, backup export and import with `validate_document`, storage-failure state. Verify: Vitest with `fake-indexeddb` for write conflicts, corrupt values, quota failure, import validation.
-- **UI-9 App shell.** AppShell, navbar, header, save indicator, theme toggle, hash router, guards, Home, Resume prompt, About, `404.html`. Verify: Playwright: a guarded route redirects; Resume appears after reopening the tab; unknown hash goes Home.
+- **UI-7 Engine worker and client.** Module Web Worker with Pyodide, typed `call(command, payload)` wrapper with request ids, timeouts, load-progress events, and restart on crash. Verify: Vitest (Node Pyodide) runs the UI-5 fixtures through the client and matches; the first-load transfer size is measured and logged (target about 11 MB or less, report if over), together with the engine start time and the part of it spent loading fpdf2 (decision D16).
+- **UI-8 Storage layer.** IndexedDB wrapper, revisioned atomic writes (storage sets `revision` and `updated_at`, D12), index (kept in step with every write, rename and delete), rename, drafts, session route, settings, backup export and import with `validate_document` and the 10 MB limit (D18), storage-failure state. Verify: Vitest with `fake-indexeddb` for write conflicts, corrupt values, quota failure, import validation, rename updating the index.
+- **UI-9 App shell.** AppShell, navbar, header (including rename), save indicator, theme toggle, hash router, guards, Home (including Rename and the corrupt-value recovery from section 6), Resume prompt (D13), About, `404.html`. Verify: Playwright: a guarded route redirects; Resume appears after reopening the tab and restores the last route; unknown hash goes Home; rename shows on Home and in the header after a reload.
 
 **Phase 3 - Setup and calculator**
 
-- **UI-10 Handicap calculator** (route and drawer). Verify: results equal the bridge fixtures; invalid input shows existing messages.
+- **UI-10 Handicap calculator** (route and drawer). Verify: results equal the UI-5 calculator fixtures; invalid input shows existing messages.
 - **UI-11 Stage 1.** Verify: Playwright: divisor snapping behaves as the old script; byes control shows only for odd counts of 3 or more; draft survives a reload; validation messages match.
 - **UI-12 Stage 2.** Both modes, row cards on mobile, updating options, row-level errors, draft persistence, calculator drawer. Verify: a rejected submit keeps every typed value; advanced mode requires target fields.
 - **UI-13 Stage 3.** Redraw and confirm. Verify: redraw changes pairings when possible; the draw survives a reload; confirm starts the event and locks setup.
 
 **Phase 4 - Scoring**
 
-- **UI-14 Pass overview.** Verify: Advance disabled until complete; confirm modal; final pass shows completion.
+- **UI-14 Pass overview.** Verify: Advance disabled until complete; confirm modal; final pass shows completion with the backup reminder and "Download backup" (section 6, rule 7); the stored status becomes `complete` (D11).
 - **UI-15 Match view without chart.** Score entry, validation, tie-break flow, bye match, this-pass table. Verify: Playwright reproduces tie-break scenarios from `test_event_routes.py`; reload mid-entry restores the draft; saved scores survive closing and reopening the tab.
-- **UI-16 Chart.** Port `match_chart.js`; Graph view switch; previous-passes checkbox; explanation. Verify: Vitest unit tests for marker-label placement (reuse any existing assertions about `markerLabelBoxes`); visual check at desktop and phone widths in both colour schemes; chart payload comes only from `pair_chart`.
+- **UI-16 Chart.** Port `match_chart.js`; Graph view switch; previous-passes checkbox; explanation. Verify: new Vitest unit tests for marker-label placement using `chart.markerLabelBoxes` (no existing tests use it): labels do not overlap one another, sit beside their marker line, and stay inside the chart area; visual check at desktop and phone widths in both colour schemes; chart payload comes only from `pair_chart`.
 
 **Phase 5 - Results and exports**
 
@@ -365,13 +375,13 @@ Each task lists **Verify** criteria; a task is complete only when they pass.
 
 **Phase 6 - Polish and hardening**
 
-- **UI-19 Responsive and accessibility pass.** Verify against section 7.4 and 7.5 using Playwright mobile and WebKit projects plus an automated accessibility scan (for example `axe-core`); zero serious violations.
-- **UI-20 Resilience tests.** Close and reopen the tab at each stage and mid-score; force-reload during a command; two-tab conflict; storage-disabled mode; engine failure. Verify: no scenario loses a saved score; every failure shows the specified message.
+- **UI-19 Responsive and accessibility pass.** Verify against section 7.4 and 7.5 using Playwright mobile and WebKit projects plus an automated accessibility scan (`@axe-core/playwright`); zero serious and zero critical violations.
+- **UI-20 Resilience tests** (after UI-19, so the Phase 6 review covers both). Close and reopen the tab at each stage and mid-score; force-reload during a command; two-tab conflict; storage-disabled mode; engine failure. Verify: no scenario loses a saved score; every failure shows the specified message.
 
 **Phase 7 - Deployment**
 
-- **UI-21 CI and GitHub Pages.** `ci.yml` runs pytest, Vitest, build, and Playwright (using a local Pyodide copy or network access); `pages.yml` builds and deploys on `main` only. Vite `base` must work under `/<repo-name>/` (relative base). Verify: deployed site loads from the Pages URL, runs a full event, exports files, and survives a reload; record first-load size and time.
-- **UI-22 Retire the Flask UI (only after the owner approves in chat).** Move or delete `app.py`, `state.py`, `templates/`, `static/`, `main.py`, and the Flask-bound tests whose behaviours are now covered by bridge and e2e tests; update `README.md`; keep the `prototype-flask` tag. Verify: remaining pytest suite green; README run instructions updated; owner sign-off.
+- **UI-21 CI and GitHub Pages** (after the Phase 6 review). `ci.yml` runs pytest, Vitest, build, and Playwright on every push and pull request, with network access for Pyodide and its packages (D15); `pages.yml` builds and deploys on `main` only. Vite `base` must work under `/<repo-name>/` (relative base). The agent verifies locally first: the same commands as `ci.yml` pass, and the production build served from a `/Handicapped-H2Hs/` sub-path runs a full event in Playwright. Pushing the branch and merging to `main` are the owner's actions: the agent then stops and asks. Verify (after the owner pushes and merges): CI green on GitHub; deployed site loads from the Pages URL, runs a full event, exports files, and survives a reload; record first-load size and time.
+- **UI-22 Retire the Flask UI (only after the owner approves in chat).** Delete (the `prototype-flask` tag and git history keep them) `app.py`, `state.py`, `templates/`, `static/`, `main.py`, `tests/helpers.py`, `test_app.py`, `test_event_routes.py`, `test_integration.py` and `test_state.py`. In `test_handicap_calculator.py`, delete only the Flask route tests and keep the tests of the pure lookup functions. Before deleting each test file, record in the logbook which bridge, draw or e2e tests cover its behaviours; anything not covered is ported first. Tests in `test_bridge.py` that compare against the legacy `SessionState` path (UI-2) are changed to build the reference `Event` directly with `models.Event` and the `rotation` builders. Update `README.md`; keep the `prototype-flask` tag. Verify: remaining pytest suite green; no remaining import of Flask in `h2h/` or `tests/`; README run instructions updated; owner sign-off.
 
 ## 9. Testing strategy (summary)
 
@@ -401,12 +411,12 @@ Each task lists **Verify** criteria; a task is complete only when they pass.
 - **iOS Safari.** Memory limits and storage eviction (data can be removed after a long period without visits); backups and the "Download backup" prompts are the mitigation. Test on a real device.
 - **Mantine and Pyodide version drift.** Pin both; upgrade deliberately, with tests.
 - **Module Web Worker loading of Pyodide.** Confirm the supported pattern in current Pyodide docs during UI-1/UI-7.
-- **Dependency housekeeping** (removing scipy, pandas, notebook from `pyproject.toml`): ask the owner first; `notebook` is used by `Initial Testing/examples.ipynb`.
-- **Open question for the owner:** should completed events be kept indefinitely, or auto-archive after N days? Default: keep until the user deletes them.
+- **Dependency housekeeping** (removing scipy, pandas, notebook from `pyproject.toml`): not part of this plan (D16); ask the owner first; `notebook` is used by `Initial Testing/examples.ipynb`. Flask itself stays a dependency until the owner decides after UI-22.
+- **Event retention:** resolved as decision D14 (keep until the user deletes them). The owner may still choose auto-archiving later.
 
 ## 12. Out of scope and rules for the agent
 
-- Do not change statistics, rules or output wording. If a UI need seems to require changing `stats.py`, `models.py`, `outputs.py` or `rotation.py`, stop and ask; the only core edits planned are UI-3 and the optional lazy `fpdf` import.
+- Do not change statistics, rules or output wording. If a UI need seems to require changing `stats.py`, `models.py`, `outputs.py` or `rotation.py`, stop and ask. No core module edits are planned: UI-3 changes only `state.py` and adds `draw.py` (D17), and the lazy `fpdf` import is deferred to the owner (D16).
 - Do not add a server, accounts, analytics, error-reporting services, or third-party scripts and fonts that transmit user data.
 - Do not add features not in `AISpec.md` or this document (for example name uniqueness rules, new scoring modes, charts beyond the pair chart).
 - Do not use `pip` or `conda`; do not commit `node_modules`, build output, or the generated Python bundle.
