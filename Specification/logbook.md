@@ -2744,3 +2744,80 @@ Assumptions:
 4. **The engine test in `npm run e2e` downloads from jsDelivr and PyPI**, as CI will (D15).
 
 Spec discrepancies: none.
+
+## UI-8 - Storage layer (2026-10-04)
+
+Built by a subagent in parallel with the end of UI-7 (only in `web/src/storage/`, its tests and the two new
+packages). I reviewed the write path and re-ran the checks.
+
+What changed:
+- Packages: `idb` 8.0.3 (dependency) and `fake-indexeddb` 6.2.5 (devDependency), pinned exactly.
+- `src/storage/migrations.ts`: database "handicapped-h2hs", version 1, one key-value store "keyval". Document
+  schema migrations stay in Python.
+- `src/storage/status.ts`: the observable storage status (idle, saving, saved with time, failed with reason
+  "unavailable", "quota" or "error"), shaped for `useSyncExternalStore`.
+- `src/storage/db.ts`, `EventStore`. Methods never throw; they return result objects.
+  - `saveEvent(doc, expectedRevision | null, nowIso)` (D12). In one readwrite transaction it reads the stored
+    document; returns a conflict, with the stored document, if its revision differs, the event was deleted or
+    created elsewhere, or the stored value is corrupt; otherwise writes the whole document with
+    `revision + 1` and `updated_at`, and updates `events:index`. Any error aborts the transaction, so the
+    previous good document and index are kept.
+  - `renameEvent` changes only `name`.
+  - `deleteEvent` removes the event, its draft, its session route and its index entry in one transaction.
+  - `loadEvent` returns found, missing, corrupt (with the raw value) or failed.
+  - `listEvents` returns the index newest first, rebuilt from the `event:*` keys if it is missing or
+    malformed; corrupt values are left out.
+  - `importEvent` and the device records (`getValue`, `putValue`, `deleteValue`).
+  - `navigator.storage.persist()` is called once, after the first successful write.
+- `src/storage/autosave.ts`: drafts (get, set, delete), `DraftSaver` (500 ms debounce, flush, cancel), the
+  session route per event, and settings (`color_scheme` light, dark or auto, default auto; `graph_view`
+  default false; `last_event_id`) with defaults for missing or ill-typed fields.
+- `src/storage/backup.ts`:
+  - Export: one or all events as `{"format": "handicapped-h2hs-backup", "version": 1, "exported_at",
+    "events"}`, with a file-name helper.
+  - Import: files over 10 MB (D18) are refused before reading; non-JSON, a wrong format or a newer version are
+    rejected. A backup envelope or a single event document is accepted.
+  - Every event goes through the injected validator (in the app, `engine.call("validate_document")`) before
+    anything is stored; a validator that throws stores nothing. Only valid events are stored; rejected ones
+    are reported with the validator's message.
+  - An existing id is never overwritten without the caller's explicit confirmation.
+
+Verification:
+- `npx vitest run tests/storage-*`: **42 passed**.
+  - `storage-db` (17):
+    - a stale revision, an id created elsewhere and an event deleted elsewhere are conflicts that write
+      nothing;
+    - a whole-document replace increments the revision and updates the index;
+    - the index is rebuilt; rename changes only the name;
+    - delete removes all four records;
+    - nine kinds of corrupt value are reported without throwing;
+    - a simulated quota failure (on the event put, and on the index put after the event was written, which
+      checks the rollback) keeps the previous document and index and sets failed/quota, and the next good save
+      clears it;
+    - a generic error gives failed/error; no IndexedDB gives failed/unavailable, and a retry succeeds later.
+  - `storage-autosave` (8): drafts, session and settings round trips; the debounced saver.
+  - `storage-backup` (17): export and import identical; a real fixture document round trips; validation of
+    mixed valid and invalid events; six whole-file rejections; 10 MB enforced before reading; a throwing
+    validator; existing ids need confirmation; storage failure during import.
+- `npx tsc -b`, `npx eslint src/storage tests` and Prettier: clean.
+- Not tested here: old Safari private mode (it may report quota rather than unavailable). UI-20 covers storage
+  failure end to end.
+
+Assumptions:
+1. **Revisions.** A new event is stored as `doc.revision + 1` (a `new_document` with revision 0 becomes 1);
+   later saves use the stored revision + 1.
+2. **Backup import keeps a new id's `revision` and `updated_at` exactly.** This is the one exception to D12,
+   and it makes export followed by import identical. A confirmed overwrite gets
+   `max(stored, imported) + 1` and the current time, so a tab still holding the old document sees a
+   conflict.
+3. **Corrupt-value detection is structural only** (object, integer `schema_version` and `revision`, `id`
+   matching its key, a known `status`, object `setup`, string `name` and `updated_at`, numeric
+   `setup.n_archers`). Full validation is `validate_document`. A corrupt value is never overwritten by a save,
+   so its readable content can be exported first.
+4. **The failure state ("NOT being saved") changes only on save, rename or an unavailable database.**
+   Failures of drafts, settings, delete or import are returned to the caller, because "NOT being saved" would
+   mislead there.
+5. **`updateSettings` is a read followed by a write, not one transaction**, so two tabs changing settings at
+   the same moment could lose one change. It is a device preference only.
+
+Spec discrepancies: none.
