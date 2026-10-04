@@ -13,7 +13,7 @@ Context may have been reset since the last iteration, so start by re-reading, in
 Then:
 
 1. **Choose the task.** Take the **first task in file order whose `completed` is false and whose `depends_on` tasks are all completed**. Do not skip ahead or reorder by your own priority. If no task is eligible, stop and say why.
-2. **Break it down if it is large.** Split it into small sub-steps and complete them one at a time. Use subagents where they help, for example for independent investigation or test writing, but you remain responsible for the result.
+2. **Break it down if it is large.** Split it into small sub-steps and complete them one at a time. Use subagents where possible, for example for independent investigation or test writing, but you remain responsible for the result. Do not use the same model an effort level as the main task unless the subtask is very complex. Use a smaller model and/or a lower effort level.
 3. **Implement it** following the task's `description` and the UISpec sections it cites. Rules that always apply:
    - Python: `uv` only (never `pip` or `conda`); numpy-style docstrings on every function added or changed; surgical edits; do not change statistics, rules or output wording; do not edit `stats.py`, `models.py`, `outputs.py` or `rotation.py` except where a task explicitly says so.
    - Front end: Mantine components first (use the Mantine MCP server for component APIs and check current docs; pin versions); no server, no analytics, no third-party scripts or fonts that transmit user data; the UI shows values from the Python bridge and never recomputes or reformats statistics.
@@ -26,6 +26,7 @@ Then:
 5. **Record progress** in `Specification/logbook.md`: a brief entry with the task id, what changed, how it was verified (commands run and results, screenshots reviewed), any issues, assumptions, and notes for future tasks. Log any discrepancy you find between UISpec and the real code under a "Spec discrepancies" heading, with the safest interpretation you took. Do not silently edit `UISpec.md`, `deploymentConstrains.md` or `AISpec.md`; propose changes to me instead.
 6. **Update `UI-prd.json`**: set `completed` to true for the task only once everything in steps 4 and 5 is done.
 7. **Commit** this task's work with a short, informative message that starts with the task id (for example `UI-11: Stage 1 form with divisor-snapping slider`). Commit regularly within a task if it is large. Do not commit `node_modules`, `web/dist`, or the generated Python bundle.
+8. **Compact** the conversation to avoid stored context becoming large and costly to usage limits over large runs.
 
 ## When to stop (finish the current iteration cleanly, then stop and report)
 
