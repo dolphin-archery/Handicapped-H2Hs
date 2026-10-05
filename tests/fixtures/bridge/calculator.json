@@ -1,0 +1,642 @@
+{
+ "scenario": "calculator",
+ "description": "The options, then the calculator indoors, indoors with a compound bow, outdoors, and invalid input.",
+ "now_iso": "2026-10-04T15:30:12",
+ "seed": 4,
+ "steps": [
+  {
+   "command": "options",
+   "payload": {},
+   "result": {
+    "ok": true,
+    "data": {
+     "distance_groups": [
+      {
+       "group": "Metric",
+       "items": [
+        {
+         "value": "18m",
+         "label": "18 m"
+        },
+        {
+         "value": "25m",
+         "label": "25 m"
+        },
+        {
+         "value": "30m",
+         "label": "30 m"
+        },
+        {
+         "value": "40m",
+         "label": "40 m"
+        },
+        {
+         "value": "50m",
+         "label": "50 m"
+        },
+        {
+         "value": "60m",
+         "label": "60 m"
+        },
+        {
+         "value": "70m",
+         "label": "70 m"
+        },
+        {
+         "value": "90m",
+         "label": "90 m"
+        }
+       ]
+      },
+      {
+       "group": "Imperial",
+       "items": [
+        {
+         "value": "20yd",
+         "label": "20 yd"
+        },
+        {
+         "value": "25yd",
+         "label": "25 yd"
+        },
+        {
+         "value": "30yd",
+         "label": "30 yd"
+        },
+        {
+         "value": "40yd",
+         "label": "40 yd"
+        },
+        {
+         "value": "50yd",
+         "label": "50 yd"
+        },
+        {
+         "value": "60yd",
+         "label": "60 yd"
+        },
+        {
+         "value": "80yd",
+         "label": "80 yd"
+        },
+        {
+         "value": "100yd",
+         "label": "100 yd"
+        }
+       ]
+      }
+     ],
+     "face_sizes": [
+      40,
+      60,
+      80,
+      122
+     ],
+     "advanced_face_sizes": [
+      20,
+      35,
+      40,
+      50,
+      60,
+      65,
+      80,
+      122
+     ],
+     "face_types": [
+      {
+       "value": "10_zone",
+       "label": "10 zone (standard 10-ring face)"
+      },
+      {
+       "value": "10_zone_compound",
+       "label": "10 zone, compound (inner 10 only)"
+      },
+      {
+       "value": "10_zone_6_ring",
+       "label": "10 zone, 6 ring (small face, rings 10 to 5)"
+      },
+      {
+       "value": "10_zone_5_ring",
+       "label": "10 zone, 5 ring (triple spot, rings 10 to 6)"
+      },
+      {
+       "value": "10_zone_5_ring_compound",
+       "label": "10 zone, 5 ring, compound (triple spot, inner 10 only)"
+      },
+      {
+       "value": "11_zone",
+       "label": "11 zone (inner ring scores 11)"
+      },
+      {
+       "value": "11_zone_6_ring",
+       "label": "11 zone, 6 ring (rings 11 to 5)"
+      },
+      {
+       "value": "11_zone_5_ring",
+       "label": "11 zone, 5 ring (triple spot, rings 11 to 6)"
+      },
+      {
+       "value": "5_zone",
+       "label": "5 zone (gold 9 to white 1, imperial rounds)"
+      },
+      {
+       "value": "WA_field",
+       "label": "WA field (6 to 1)"
+      },
+      {
+       "value": "IFAA_field",
+       "label": "IFAA field (5, 4, 3)"
+      },
+      {
+       "value": "IFAA_field_expert",
+       "label": "IFAA field, expert (5 to 1)"
+      },
+      {
+       "value": "AA_national_field",
+       "label": "AA national field (5 to 1)"
+      },
+      {
+       "value": "Worcester",
+       "label": "Worcester (5 to 1)"
+      },
+      {
+       "value": "Worcester_2_ring",
+       "label": "Worcester, 2 ring (5-spot, 5 and 4)"
+      },
+      {
+       "value": "Beiter_hit_miss",
+       "label": "Beiter hit or miss (1 or 0)"
+      }
+     ],
+     "bowstyles": [
+      "Recurve",
+      "Compound",
+      "Barebow",
+      "Longbow"
+     ],
+     "min_handicap": 0,
+     "max_handicap": 150,
+     "defaults": {
+      "n_archers": 4,
+      "total_arrows": 60,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "distance_key": "20yd",
+      "face_cm": 60,
+      "face_type": "10_zone",
+      "n_lookback": 4
+     },
+     "calculator": {
+      "kinds": [
+       "indoor",
+       "outdoor"
+      ],
+      "rounds": {
+       "indoor": [
+        {
+         "value": "bray_i",
+         "label": "Bray I"
+        },
+        {
+         "value": "bray_i_triple",
+         "label": "Bray I Triple"
+        },
+        {
+         "value": "bray_ii",
+         "label": "Bray II"
+        },
+        {
+         "value": "bray_ii_triple",
+         "label": "Bray II Triple"
+        },
+        {
+         "value": "portsmouth",
+         "label": "Portsmouth"
+        },
+        {
+         "value": "portsmouth_triple",
+         "label": "Portsmouth Triple"
+        },
+        {
+         "value": "stafford",
+         "label": "Stafford"
+        },
+        {
+         "value": "vegas",
+         "label": "Vegas"
+        },
+        {
+         "value": "vegas_300",
+         "label": "Vegas 300"
+        },
+        {
+         "value": "vegas_300_triple",
+         "label": "Vegas 300 Triple"
+        },
+        {
+         "value": "wa18",
+         "label": "WA 18m"
+        },
+        {
+         "value": "wa18_triple",
+         "label": "WA 18m Triple"
+        },
+        {
+         "value": "wa25",
+         "label": "WA 25m"
+        },
+        {
+         "value": "wa25_triple",
+         "label": "WA 25m Triple"
+        },
+        {
+         "value": "worcester",
+         "label": "Worcester"
+        },
+        {
+         "value": "worcester_5_centre",
+         "label": "Worcester 5-Spot"
+        }
+       ],
+       "outdoor": [
+        {
+         "value": "agb900_30",
+         "label": "AGB 900 30"
+        },
+        {
+         "value": "agb900_40",
+         "label": "AGB 900 40"
+        },
+        {
+         "value": "agb900_50",
+         "label": "AGB 900 50"
+        },
+        {
+         "value": "agb900_60",
+         "label": "AGB 900 60"
+        },
+        {
+         "value": "agb900_70",
+         "label": "AGB 900 70"
+        },
+        {
+         "value": "albion",
+         "label": "Albion"
+        },
+        {
+         "value": "american",
+         "label": "American"
+        },
+        {
+         "value": "bristol_i",
+         "label": "Bristol I"
+        },
+        {
+         "value": "bristol_ii",
+         "label": "Bristol II"
+        },
+        {
+         "value": "bristol_iii",
+         "label": "Bristol III"
+        },
+        {
+         "value": "bristol_iv",
+         "label": "Bristol IV"
+        },
+        {
+         "value": "bristol_v",
+         "label": "Bristol V"
+        },
+        {
+         "value": "hereford",
+         "label": "Hereford"
+        },
+        {
+         "value": "long_metric_70",
+         "label": "Long Metric (70m)"
+        },
+        {
+         "value": "long_metric_90",
+         "label": "Long Metric (90m)"
+        },
+        {
+         "value": "long_metric_i",
+         "label": "Long Metric I"
+        },
+        {
+         "value": "long_metric_ii",
+         "label": "Long Metric II"
+        },
+        {
+         "value": "long_metric_iii",
+         "label": "Long Metric III"
+        },
+        {
+         "value": "long_metric_iv",
+         "label": "Long Metric IV"
+        },
+        {
+         "value": "long_metric_v",
+         "label": "Long Metric V"
+        },
+        {
+         "value": "long_national",
+         "label": "Long National"
+        },
+        {
+         "value": "long_warwick",
+         "label": "Long Warwick"
+        },
+        {
+         "value": "long_western",
+         "label": "Long Western"
+        },
+        {
+         "value": "metric_122_30",
+         "label": "Metric 122-30"
+        },
+        {
+         "value": "metric_122_40",
+         "label": "Metric 122-40"
+        },
+        {
+         "value": "metric_122_50",
+         "label": "Metric 122-50"
+        },
+        {
+         "value": "metric_80_30",
+         "label": "Metric 80-30"
+        },
+        {
+         "value": "metric_80_40",
+         "label": "Metric 80-40"
+        },
+        {
+         "value": "metric_80_50",
+         "label": "Metric 80-50"
+        },
+        {
+         "value": "metric_i",
+         "label": "Metric I"
+        },
+        {
+         "value": "metric_ii",
+         "label": "Metric II"
+        },
+        {
+         "value": "metric_iii",
+         "label": "Metric III"
+        },
+        {
+         "value": "metric_iv",
+         "label": "Metric IV"
+        },
+        {
+         "value": "metric_v",
+         "label": "Metric V"
+        },
+        {
+         "value": "national",
+         "label": "National"
+        },
+        {
+         "value": "national_30",
+         "label": "National 30"
+        },
+        {
+         "value": "national_40",
+         "label": "National 40"
+        },
+        {
+         "value": "national_50",
+         "label": "National 50"
+        },
+        {
+         "value": "new_national",
+         "label": "New National"
+        },
+        {
+         "value": "new_warwick",
+         "label": "New Warwick"
+        },
+        {
+         "value": "new_western",
+         "label": "New Western"
+        },
+        {
+         "value": "short_metric",
+         "label": "Short Metric"
+        },
+        {
+         "value": "short_metric_i",
+         "label": "Short Metric I"
+        },
+        {
+         "value": "short_metric_ii",
+         "label": "Short Metric II"
+        },
+        {
+         "value": "short_metric_iii",
+         "label": "Short Metric III"
+        },
+        {
+         "value": "short_metric_iv",
+         "label": "Short Metric IV"
+        },
+        {
+         "value": "short_metric_v",
+         "label": "Short Metric V"
+        },
+        {
+         "value": "st_nicholas",
+         "label": "St Nicholas"
+        },
+        {
+         "value": "st_george",
+         "label": "St. George"
+        },
+        {
+         "value": "wa1440_60",
+         "label": "WA 1440 (60m)"
+        },
+        {
+         "value": "wa1440_60_small",
+         "label": "WA 1440 (60m) 6-zone"
+        },
+        {
+         "value": "wa1440_70",
+         "label": "WA 1440 (70m)"
+        },
+        {
+         "value": "wa1440_70_small",
+         "label": "WA 1440 (70m) 6-zone"
+        },
+        {
+         "value": "wa1440_90",
+         "label": "WA 1440 (90m)"
+        },
+        {
+         "value": "wa1440_90_small",
+         "label": "WA 1440 (90m) 6-zone"
+        },
+        {
+         "value": "wa720_30_b",
+         "label": "WA 30m Barebow"
+        },
+        {
+         "value": "wa720_40",
+         "label": "WA 40m"
+        },
+        {
+         "value": "wa720_40_c",
+         "label": "WA 40m Compound"
+        },
+        {
+         "value": "wa720_50_b",
+         "label": "WA 50m Barebow"
+        },
+        {
+         "value": "wa720_50_c",
+         "label": "WA 50m Compound"
+        },
+        {
+         "value": "wa720_60",
+         "label": "WA 60m"
+        },
+        {
+         "value": "wa720_70",
+         "label": "WA 70m"
+        },
+        {
+         "value": "wa900",
+         "label": "WA 900"
+        },
+        {
+         "value": "warwick",
+         "label": "Warwick"
+        },
+        {
+         "value": "warwick_30",
+         "label": "Warwick 30"
+        },
+        {
+         "value": "warwick_40",
+         "label": "Warwick 40"
+        },
+        {
+         "value": "warwick_50",
+         "label": "Warwick 50"
+        },
+        {
+         "value": "western",
+         "label": "Western"
+        },
+        {
+         "value": "western_30",
+         "label": "Western 30"
+        },
+        {
+         "value": "western_40",
+         "label": "Western 40"
+        },
+        {
+         "value": "western_50",
+         "label": "Western 50"
+        },
+        {
+         "value": "windsor",
+         "label": "Windsor"
+        },
+        {
+         "value": "windsor_30",
+         "label": "Windsor 30"
+        },
+        {
+         "value": "windsor_40",
+         "label": "Windsor 40"
+        },
+        {
+         "value": "windsor_50",
+         "label": "Windsor 50"
+        },
+        {
+         "value": "york",
+         "label": "York"
+        }
+       ]
+      },
+      "defaults": {
+       "indoor": "portsmouth",
+       "outdoor": "wa720_70"
+      }
+     }
+    }
+   }
+  },
+  {
+   "command": "calculator",
+   "payload": {
+    "kind": "indoor",
+    "round_codename": "portsmouth",
+    "compound": false,
+    "score": "550"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "handicap": 41.4,
+     "text": "41.4"
+    }
+   }
+  },
+  {
+   "command": "calculator",
+   "payload": {
+    "kind": "indoor",
+    "round_codename": "portsmouth",
+    "compound": true,
+    "score": "570"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "handicap": 19.6,
+     "text": "19.6"
+    }
+   }
+  },
+  {
+   "command": "calculator",
+   "payload": {
+    "kind": "outdoor",
+    "round_codename": "wa720_70",
+    "compound": false,
+    "score": "600"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "handicap": 29.3,
+     "text": "29.3"
+    }
+   }
+  },
+  {
+   "command": "calculator",
+   "payload": {
+    "kind": "indoor",
+    "round_codename": "portsmouth",
+    "compound": false,
+    "score": "abc"
+   },
+   "result": {
+    "ok": false,
+    "error": {
+     "code": "validation",
+     "message": "Enter a valid score for the chosen round."
+    }
+   }
+  }
+ ]
+}

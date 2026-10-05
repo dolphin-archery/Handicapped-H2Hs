@@ -1,0 +1,436 @@
+[
+  {
+    "id": "UI-0",
+    "name": "Baseline and docs",
+    "phase": "Phase 0 - Baseline",
+    "description": "Establish the baseline for the UI work (see UISpec 8, UI-0). Work on the dedicated branch `ui-redesign` created from an unchanged `main`, with the current prototype tagged `prototype-flask`; both already existed on 2026-10-04, so check them rather than recreate them. Run `uv run pytest` and record the pass count in `Specification/logbook.md`. Add `.gitignore` entries for `web/node_modules`, `web/dist` and `web/public/py`.\n\nConfirm the specification documents (`Specification/UISpec.md`, `Specification/deploymentConstrains.md`, `Specification/AISpec.md`, `Specification/UI-prd.json`) are present. No application code changes in this task.",
+    "depends_on": [],
+    "tests": [
+      "`git branch --show-current` prints `ui-redesign`.",
+      "`git tag --list prototype-flask` prints `prototype-flask`.",
+      "`uv run pytest` passes with zero failures, and the pass count is recorded in `Specification/logbook.md`.",
+      "`.gitignore` contains entries for `web/node_modules`, `web/dist` and `web/public/py`.",
+      "`Specification/UISpec.md`, `Specification/deploymentConstrains.md`, `Specification/AISpec.md` and `Specification/UI-prd.json` exist."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-1",
+    "name": "Pyodide compatibility gate",
+    "phase": "Phase 1 - Python in the browser, no UI",
+    "description": "Prove that the app's own Python modules run unchanged in Pyodide before any further work; every later task depends on this gate (see UISpec 2, last paragraph; UISpec 4.3; UISpec 8, UI-1; deploymentConstrains 2 and 4). Create a minimal `web/package.json` containing only the `pyodide` npm package pinned to `v314.0.7` (the Vite scaffold is UI-6), and in `web/scripts/pyodide-gate/` a Python scenario `scenario.py` and a Node runner `run-gate.mjs`. The runner loads numpy, installs `archeryutils` and `fpdf2` with `micropip`, unpacks the existing whitelisted `h2h` modules (`__init__.py`, `stats.py`, `rotation.py`, `models.py`, `outputs.py`, `exports.py`, `chart_data.py`; `bridge.py` and `draw.py` do not exist yet), and runs `scenario.py`: a scripted 4-archer event end to end using the existing modules directly (`rotation` schedule, `models.Event`, `record_match`, `advance`, leaderboard, both CSV exports, the PDF export and one `chart_data.build_pair_chart_data` payload), printing one JSON result. Run the same `scenario.py` natively with `uv run` to produce `golden.json`, commit it, and compare.\n\nThis is a gate. If any value differs beyond tolerance, or the modules cannot be loaded, stop, record the details in the logbook and report to the owner before continuing. Any numeric differences larger than the tolerance that are attributable to Pyodide's older numpy must be recorded and reported (see UISpec 11, Pyodide numeric drift). Keep the gate files; they are not deleted without owner approval.",
+    "depends_on": ["UI-0"],
+    "tests": [
+      "`node web/scripts/pyodide-gate/run-gate.mjs` loads Pyodide `v314.0.7`, numpy, `archeryutils` and `fpdf2`, and imports the whitelisted `h2h` modules without error.",
+      "The scripted 4-archer event completes in Pyodide: stage setup, `record_match`, `advance`, leaderboard, leaderboard CSV, archer results CSV, PDF and one pair chart payload.",
+      "`uv run` of `web/scripts/pyodide-gate/scenario.py` produces `web/scripts/pyodide-gate/golden.json`, which is committed.",
+      "Every integer and string in the Pyodide output equals the golden JSON exactly.",
+      "Every float in the Pyodide output matches the golden JSON within a relative tolerance of 1e-9; any larger difference is recorded in the logbook and reported to the owner.",
+      "The PDF bytes produced in Pyodide start with `%PDF-`."
+    ],
+    "gate": true,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-2",
+    "name": "Document and replay",
+    "phase": "Phase 1 - Python in the browser, no UI",
+    "description": "Create `h2h/bridge.py` and implement the event document schema version 1 (see UISpec 5.2, including its notes on schedule positions, the unstored schedule and persisting inputs only), `rebuild_event(doc)` following the replay rule in UISpec 5.3, and `validate_document(raw)` (see UISpec 5.4 and UISpec 6, rules 7 and 9). Follow the contract rules in UISpec 5.1: pure functions, no Flask import, no module-level mutable state, no file or network access, numpy-style docstrings on every function.\n\nAdd pytest golden tests (in `tests/test_bridge.py`) that build an event through the legacy `SessionState` path and replay the same inputs from a document. Do not modify `stats.py`, `models.py`, `outputs.py` or `rotation.py`.",
+    "depends_on": ["UI-1"],
+    "tests": [
+      "`h2h/bridge.py` exists and does not import Flask (`import h2h.bridge` succeeds and `flask` is not in its imports).",
+      "pytest: an event built through the legacy `SessionState` path and the same inputs replayed from a document by `rebuild_event` produce identical `Event.results`.",
+      "pytest: replay after correcting a previously saved score produces identical `Event.results` to the legacy path.",
+      "pytest: replay with a sit-out schedule (odd archers, byes not shot) produces identical `Event.results` to the legacy path.",
+      "pytest: replay with handicap updating on and with it off each produces identical `Event.results` to the legacy path.",
+      "pytest: `validate_document` accepts a valid schema version 1 document and rejects malformed input.",
+      "`uv run pytest` passes with zero failures (existing suite unchanged)."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-3",
+    "name": "Draw refactor",
+    "phase": "Phase 1 - Python in the browser, no UI",
+    "description": "Extract the Stage 3 draw logic, including the pairings-signature comparison that prefers a draw whose pairings differ from the current ones, from `SessionState.redraw_pairings` in `h2h/state.py` into a pure function in a new module `h2h/draw.py` (decision D17; see UISpec 5.4, final paragraph, and UISpec 8, UI-3). The function takes the schedule, the number of archers, a `random.Random` and the current assignment (or `None`) and returns the new assignment; `SessionState` calls it with its own `rng`, and the bridge will call it with `random.Random(seed)` in UI-4. `SessionState` behaviour must be unchanged. Do not modify `stats.py`, `models.py`, `outputs.py` or `rotation.py`.\n\nAdd `tests/test_draw.py` testing the function directly, so the draw stays covered after `test_state.py` is retired in UI-22. Keep the change to `state.py` surgical and add numpy-style docstrings.",
+    "depends_on": ["UI-1"],
+    "tests": [
+      "`h2h/draw.py` exists, imports no Flask, and `SessionState.redraw_pairings` calls its draw function.",
+      "pytest (`tests/test_draw.py`): the function returns a permutation of the archer indices; with a previous assignment and more than two archers it returns one with different pairings; with two archers it returns a valid assignment without looping forever.",
+      "pytest: the same seed gives the same assignment through `SessionState` and through the function called directly.",
+      "`tests/test_state.py` passes without any modification to the test file.",
+      "The Flask tests (`test_app.py`, `test_event_routes.py`, `test_integration.py`, `test_handicap_calculator.py`) pass without modification.",
+      "`uv run pytest` passes with zero failures."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-4",
+    "name": "Bridge commands",
+    "phase": "Phase 1 - Python in the browser, no UI",
+    "description": "Implement every command in the UISpec 5.4 table in `h2h/bridge.py`, using the `ok`/`error` envelope and error codes from UISpec 5.1. Reuse the existing builders in `outputs`, `exports`, `chart_data` and `models` (serialising dataclasses with `dataclasses.asdict`) instead of copying logic. Mutating commands return a new document. `export` and `new_document` take the time as an ISO string from the caller; `redraw` and `apply_stage2` use the `h2h/draw.py` function from UI-3 with `random.Random(seed)` for a caller-supplied seed. `record_match` sets `status` to `complete` when `Event.is_complete` is true (decision D11). For `apply_stage2`, return `row` and `field` with validation errors alongside the existing message (see UISpec 7.3, Stage 2).\n\nExtend `tests/test_bridge.py` to cover each command, porting the relevant assertions from `tests/test_event_routes.py` and `tests/test_integration.py` as bridge-level tests. Do not modify `stats.py`, `models.py`, `outputs.py` or `rotation.py`.",
+    "depends_on": ["UI-2", "UI-3"],
+    "tests": [
+      "`tests/test_bridge.py` has at least one happy-path test for each command in UISpec 5.4: `options`, `new_document`, `apply_stage1`, `apply_stage2`, `redraw`, `pairings`, `start_event`, `overview`, `match`, `record_match`, `advance`, `results`, `archer_results`, `pair_chart`, `export`, `calculator`, `validate_document`.",
+      "pytest: invalid inputs return `{\"ok\": false, \"error\": {\"code\": \"validation\", ...}}` with messages equal to the existing `ValueError` text asserted by the current tests.",
+      "pytest: a tied `record_match` returns error code `tiebreak_required`.",
+      "pytest: commands not allowed in the current state (for example `advance` on an incomplete or last pass) return error code `state`.",
+      "pytest: `record_match` on the last match of the final pass sets `status` to `complete`; re-saving a final-pass match afterwards succeeds and keeps `complete`.",
+      "pytest: `apply_stage2` validation errors include `row` and `field` as well as the existing row-numbered message.",
+      "pytest: every command's output passes `json.dumps(..., allow_nan=False)`.",
+      "pytest: mutating commands return a new document and leave the input document unchanged.",
+      "Relevant assertions from `tests/test_event_routes.py` and `tests/test_integration.py` are ported as bridge-level tests and pass.",
+      "`uv run pytest` passes with zero failures."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-5",
+    "name": "Parity fixtures",
+    "phase": "Phase 1 - Python in the browser, no UI",
+    "description": "Generate golden outputs from native Python by running scripted scenarios through the bridge commands (UI-4): simple setup, advanced setup, odd archers with byes shot, odd archers with byes not shot, handicap updating, a tie-break, and a final complete event, plus a set of `calculator` cases (indoor without compound, indoor with compound, outdoor, and one invalid input) (see UISpec 8, UI-5, and UISpec 9). Commit the fixtures under `tests/fixtures/` and a generator that can recreate them; use a fixed seed for the draw and a fixed `now_iso` for exports.\n\nAdd a pytest test that regenerates the fixtures and compares them with the committed files. These fixtures are reused by UI-7 (Pyodide parity), UI-10 (calculator) and UI-18 (exports).",
+    "depends_on": ["UI-4"],
+    "tests": [
+      "Fixture files are committed under `tests/fixtures/` for: simple setup, advanced setup, odd archers with byes shot, odd archers with byes not shot, handicap updating, a tie-break, a final complete event, and the calculator cases (indoor, indoor compound, outdoor, invalid input).",
+      "pytest: a test regenerates every fixture from native Python and the result equals the committed files.",
+      "`uv run pytest` passes with zero failures."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-6",
+    "name": "Web scaffold",
+    "phase": "Phase 2 - Front-end foundation",
+    "description": "Turn the minimal `web/` project from UI-1 into the front-end scaffold described in UISpec 4.1 and 4.2: Vite + React + TypeScript + Mantine using Mantine's official Vite setup (check current docs via the Mantine MCP server; pin versions and commit the lockfile), with ESLint, Prettier, Vitest and Playwright configured. Use a relative Vite `base` (see deploymentConstrains 3, rule 7).\n\nAdd `web/scripts/build-py-bundle.mjs`, which zips only the whitelisted `h2h` modules (UISpec 4.3, including `draw.py` and `bridge.py`) into `web/public/py` with a content-hashed file name, and `web/pyodide-requirements.txt` with loose bounds (see UISpec 4.3). Wire the bundle script into `npm run build`.",
+    "depends_on": ["UI-1", "UI-2", "UI-3"],
+    "tests": [
+      "From a clean checkout, `npm ci` then `npm run build` in `web/` succeeds.",
+      "The generated Python bundle in `web/public/py` contains exactly `__init__.py`, `stats.py`, `rotation.py`, `models.py`, `outputs.py`, `exports.py`, `chart_data.py`, `draw.py` and `bridge.py`, and none of `app.py`, `state.py`, `templates/` or `static/`.",
+      "The bundle file name contains a content hash that changes when a bundled module changes.",
+      "`web/pyodide-requirements.txt` exists with `archeryutils>=3.0.0` and `fpdf2>=2.8.9`.",
+      "Lint, type check and `npm test` (Vitest) run without errors on the scaffold.",
+      "`web/package-lock.json` is committed; `web/node_modules`, `web/dist` and `web/public/py` are not committed."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-7",
+    "name": "Engine worker and client",
+    "phase": "Phase 2 - Front-end foundation",
+    "description": "Implement the Python engine (see UISpec 4, 4.2 and 5.1; deploymentConstrains 3, rule 3): `web/src/engine/worker.ts`, a module Web Worker that loads Pyodide and numpy from jsDelivr pinned to `v314.0.7` (decision D15), `archeryutils` and `fpdf2`, and unpacks the hashed Python bundle; `web/src/engine/client.ts`, a typed `call(command, payload)` wrapper with request ids, timeouts, load-progress events and restart on crash; and `web/src/engine/types.ts` with TypeScript types mirroring the bridge's snake_case JSON. Confirm the supported pattern for loading Pyodide in a module worker in current Pyodide docs.\n\nCross the boundary as JSON strings only. Add Vitest tests that run the UI-5 fixtures through the client using Pyodide under Node, and measure and log the first-load transfer size.",
+    "depends_on": ["UI-5", "UI-6"],
+    "tests": [
+      "Vitest (Node Pyodide): every UI-5 fixture scenario run through the client matches the committed fixtures (ints and strings exactly, floats within relative tolerance 1e-9).",
+      "Vitest: each request receives the response with its own request id when several calls are in flight.",
+      "Vitest: a call that exceeds its timeout rejects with a timeout error.",
+      "Vitest: after the worker crashes, the client restarts it and a subsequent call succeeds.",
+      "Load-progress events are emitted during engine start.",
+      "The first-load transfer size, the engine start time and the part of it spent loading fpdf2 (decision D16) are measured and recorded in the logbook; if the size exceeds about 11 MB this is reported to the owner."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-8",
+    "name": "Storage layer",
+    "phase": "Phase 2 - Front-end foundation",
+    "description": "Implement the IndexedDB storage layer in `web/src/storage/` (`db.ts`, `autosave.ts`, `backup.ts`, `migrations.ts`) following UISpec 6: the key layout (`event:<id>`, `events:index`, `settings`, `draft:<id>`, `session:<id>`), write-before-show, atomic revisioned writes with conflict detection (the storage layer sets `revision` and `updated_at`, decision D12), the events index kept in step with every write, rename and delete, a rename operation that changes only `name` (D12), debounced drafts, the last-route session record, device settings, `navigator.storage.persist()` after the first successful save, and backup export and import (import enforces the 10 MB limit of decision D18, passes through the bridge's `validate_document` via the engine client, and never overwrites an existing id without asking).\n\nExpose a storage-failure state for the UI to show (UISpec 6, rule 1 and the failure modes paragraph). Schema migrations stay in Python (UISpec 6, rule 9); apart from the D12 fields the UI never edits stored documents by hand.",
+    "depends_on": ["UI-6", "UI-7"],
+    "tests": [
+      "Vitest (`fake-indexeddb`): a write whose expected `revision` does not match the stored revision is detected as a conflict and does not overwrite the stored document.",
+      "Vitest: a successful write replaces the whole document, increments `revision` and updates `events:index`.",
+      "Vitest: a corrupt stored value is detected and reported without throwing an unhandled error.",
+      "Vitest: a simulated quota-exceeded failure sets the storage-failure state and leaves the previous good document intact.",
+      "Vitest: importing a backup runs it through `validate_document`; an invalid file, or one larger than 10 MB, is rejected and nothing is stored.",
+      "Vitest: importing a backup whose id already exists does not overwrite it without confirmation.",
+      "Vitest: a backup exported then imported restores an identical document.",
+      "Vitest: drafts, the session route and settings round-trip through storage.",
+      "Vitest: renaming an event changes only `name`, increments `revision`, and updates `events:index`.",
+      "Vitest: deleting an event removes `event:<id>`, its draft and session records, and its `events:index` entry."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-9",
+    "name": "App shell",
+    "phase": "Phase 2 - Front-end foundation",
+    "description": "Build the application shell and navigation (see UISpec 7.1, 7.3 Home and Delete event, and 7.6; UISpec 6, rules 3 to 5 and the failure modes paragraph): Mantine `AppShell` with left navbar (disabled items with tooltips), header (title, event name with rename, save indicator, Graph view switch, colour scheme toggle, event menu), hash router with the routes and guards in the UISpec 7.1 table, Home (saved events list with Open, Rename, Download backup and Delete; New event; Import backup; Resume card showing the most recently updated in-progress event per decision D13; empty state), About, the engine loading banner and failure state, the storage-failure alert, the two-tab conflict modal, the delete-event confirm modal, recovery for a corrupt stored value (offer to export what can be read, then delete), and a root `web/404.html`. Files go in `web/src/main.tsx`, `App.tsx`, `theme.ts`, `web/src/routes/` and `web/src/components/`.\n\nThe colour scheme (light, dark, auto; decision D8) and Graph view (D5) are device settings stored via UI-8. This is the last task of Phase 2: after completing it, stop for owner review.",
+    "depends_on": ["UI-6", "UI-7", "UI-8"],
+    "tests": [
+      "Playwright: opening a guarded event route whose stage is not yet reached redirects to the correct earlier route and shows a notification.",
+      "Playwright: opening `#/e/<unknown-id>/setup/1` shows the 'Event not found' view with a link Home.",
+      "Playwright: after creating an in-progress event, closing and reopening the tab at the bare URL shows the Resume card, and Resume restores the last route.",
+      "Playwright: with two in-progress events, the Resume card shows the most recently updated one and both are listed on Home.",
+      "Playwright: an unknown hash redirects to `#/`.",
+      "Playwright: renaming an event from Home or the header shows the new name in both places after a reload.",
+      "Playwright: the save indicator shows 'Saved HH:MM' after a save.",
+      "Playwright: a corrupt stored event is shown on Home with an option to export what can be read and then delete it, without breaking the rest of Home.",
+      "Playwright: deleting an event requires confirmation in a modal naming the event, and the event is removed from Home.",
+      "`web/404.html` exists with a friendly message and a link to the app.",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": true,
+    "completed": true
+  },
+  {
+    "id": "UI-10",
+    "name": "Handicap calculator",
+    "phase": "Phase 3 - Setup and calculator",
+    "description": "Build the handicap calculator view (see UISpec 7.2, Calculator, and 7.3, Calculator) as both the standalone `#/calculator` route and a reusable drawer component that Stage 2 will open (decision D6). It calls the bridge `calculator` command and the round lists from `options`; nothing is stored. Create the view in `web/src/routes/` and the shared form in `web/src/components/`.\n\nThe compound checkbox appears for Indoor only, with its explanation. Invalid input shows the existing bridge message. Verify against the UI-5 calculator fixtures.",
+    "depends_on": ["UI-5", "UI-7", "UI-9"],
+    "tests": [
+      "Playwright: for the calculator cases in the UI-5 fixtures, the displayed handicap equals the fixture value.",
+      "Playwright: invalid input shows the existing validation message from the bridge.",
+      "Playwright: the compound checkbox is visible for Indoor and hidden for Outdoor.",
+      "Playwright: the round list changes between Indoor and Outdoor.",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-11",
+    "name": "Stage 1",
+    "phase": "Phase 3 - Setup and calculator",
+    "description": "Build the setup shell with the Mantine `Stepper` and the Stage 1 view at `#/e/:id/setup/1` (see UISpec 7.2, Stage 1, and 7.3, Setup shell and Stage 1). Submitting calls `apply_stage1`, writes the document before showing the result (UISpec 6, rule 1), discards the draft, and moves to Stage 2. Form values are saved as drafts on a debounce (UISpec 6).\n\nThe arrows-per-pass control must reproduce the divisor-snapping behaviour of the old script in `h2h/templates/stage1.html`. Any derived summary line must use values from Python, not duplicated logic.",
+    "depends_on": ["UI-7", "UI-8", "UI-9"],
+    "tests": [
+      "Playwright: the arrows-per-pass control offers only divisors of the total arrows, remembers the last intended value, and snaps to the nearest valid divisor when the total changes, matching the old script in `stage1.html`.",
+      "Playwright: the 'Shoot byes?' control is shown only for an odd number of archers of 3 or more.",
+      "Playwright: Simple mode shows distance (default 20 yd, grouped Metric / Imperial) and face size (default 60 cm); Advanced mode hides them.",
+      "Playwright: typed values survive a page reload before submit (draft restored).",
+      "Playwright: invalid input shows validation messages identical to the bridge `apply_stage1` messages.",
+      "Playwright: a valid submit stores the document and navigates to Stage 2.",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-12",
+    "name": "Stage 2",
+    "phase": "Phase 3 - Setup and calculator",
+    "description": "Build the Stage 2 view at `#/e/:id/setup/2` (see UISpec 7.2, Stage 2, and 7.3, Stage 2; UISpec 7.4 for the table-versus-cards switch): a table of archer rows on desktop and one card per archer below `sm`, Simple and Advanced modes (Advanced adds face type, face size and distance per archer), the 'Update handicaps during matches' control revealing n_lookback and start weight, row-level errors (an `Alert` plus the offending row highlighted, using `row`/`field` from the bridge where available), draft persistence as the user types, and a 'Handicap calculator' button opening the UI-10 drawer.\n\nSubmitting calls `apply_stage2`, writes before showing, discards the draft and moves to Stage 3.",
+    "depends_on": ["UI-10", "UI-11"],
+    "tests": [
+      "Playwright: a rejected submit keeps every typed value in every row and shows the row-numbered bridge message.",
+      "Playwright: the offending row is visibly highlighted after a rejected submit.",
+      "Playwright: in Advanced mode, submitting without face type, face size or distance for an archer is rejected.",
+      "Playwright: the n_lookback and start weight inputs appear only when updating is set to Yes in Advanced mode.",
+      "Playwright: at 390 px wide archers are shown as cards; at 1440 px as a table.",
+      "Playwright: typed values survive a page reload (draft restored).",
+      "Playwright: the calculator drawer opens from Stage 2 and closing it leaves the typed archer values unchanged.",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-13",
+    "name": "Stage 3",
+    "phase": "Phase 3 - Setup and calculator",
+    "description": "Build the Stage 3 view at `#/e/:id/setup/3` (see UISpec 7.2, Stage 3, and 7.3, Stage 3): a table of passes (Pass | Matches | Sitting out) from the bridge `pairings` command, showing byes and sitting-out archers; 'Redraw pairings' calls `redraw` with a seed from `crypto.getRandomValues` and stores the new document; 'Confirm pairings and start event' calls `start_event` and navigates to the pass overview. Back to Stage 2 remains available until confirmation.\n\nAfter confirmation, Stages 1 to 3 become read-only summaries reachable from the Setup menu.",
+    "depends_on": ["UI-12"],
+    "tests": [
+      "Playwright: Redraw changes the pairings when a different pairing is possible.",
+      "Playwright: the displayed draw is identical after a page reload.",
+      "Playwright: Confirm sets status to running, navigates to the pass overview, and Stages 1 to 3 then show read-only summaries.",
+      "Playwright: before confirmation, Back to Stage 2 is available; after confirmation, setup cannot be edited.",
+      "Playwright: byes and sitting-out archers are shown for an odd number of archers.",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-14",
+    "name": "Pass overview",
+    "phase": "Phase 4 - Scoring",
+    "description": "Build the current pass overview at `#/e/:id/pass` (see UISpec 7.2, Overview, and 7.3, Current pass) from the bridge `overview` command: 'Pass N of M' heading with a progress bar, the match table (Match, Score, Percentiles, Winner, status badge, action button), clickable rows, sitting-out note, and 'Advance to next pass' disabled with a hint until every match is scored. Advancing asks for confirmation in a modal (decision D7), then calls `advance` and writes before showing.\n\nOn the final pass once complete (stored `status` is `complete`, decision D11), show a success `Alert` with 'View results', the export download buttons (wired up in UI-18), and a 'Download backup' button with a one-line reminder that data stays only in this browser (UISpec 6, rule 7).",
+    "depends_on": ["UI-13"],
+    "tests": [
+      "Playwright: 'Advance to next pass' is disabled, with the reason shown, until every match in the pass is scored.",
+      "Playwright: clicking Advance opens a confirm modal; cancelling leaves the pass unchanged; confirming moves to the next pass.",
+      "Playwright: on the final pass with every match scored, a completion alert with 'View results', a 'Download backup' button and the backup reminder is shown, and Advance is not.",
+      "Playwright: after the last match of the final pass is saved, the stored document's `status` is `complete` and the Home list shows the event as complete.",
+      "Playwright: 'Download backup' in the completion alert downloads a JSON backup of the event.",
+      "Playwright: values in the table equal the bridge `overview` output exactly.",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-15",
+    "name": "Match view without chart",
+    "phase": "Phase 4 - Scoring",
+    "description": "Build the match scoring view at `#/e/:id/pass/match/:i` without the chart (see UISpec 7.2, Match page, and 7.3, Match): one integer score input per archer bounded by that archer's maximum, no handicap shown beside names while entering, Enter saves, the tie-break control and `Alert` when the bridge returns `tiebreak_required` (keeping typed scores), the bye match with one input and no winner, the 'This pass' results table from the bridge after saving, and 'Next unscored match' and 'Back to overview' after a successful save. Score inputs are saved as drafts (UISpec 6); `record_match` writes before showing.\n\nMatches on the final pass stay editable after the event is complete (decision D11; the route guard allows `running` or `complete`). Leave the right-hand column for the chart panel added in UI-16.",
+    "depends_on": ["UI-14"],
+    "tests": [
+      "Playwright: the tie-break scenarios from `tests/test_event_routes.py` are reproduced end to end, with typed scores kept when the tie-break is requested.",
+      "Playwright: the tie-break control appears only when the bridge reports a tie, or when the saved result was decided by it.",
+      "Playwright: a score outside 0 to the archer's maximum, or a non-integer, is rejected with the bridge message.",
+      "Playwright: no handicap is shown beside archer names in the score inputs.",
+      "Playwright: a bye match shows one input, no winner and no chart panel.",
+      "Playwright: reloading mid-entry restores the typed scores from the draft.",
+      "Playwright: saved scores survive closing and reopening the tab.",
+      "Playwright: after the event is complete, a final-pass match can still be opened, edited and saved.",
+      "Playwright: values in the 'This pass' table equal the bridge `match` output exactly.",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-16",
+    "name": "Chart",
+    "phase": "Phase 4 - Scoring",
+    "description": "Port `h2h/static/match_chart.js` into `web/src/chart/MatchChart.tsx` using Chart.js from npm, tree-shaken (decision D9), keeping the `nearestCurveX` interaction mode, the marker-label placement plugin (including `chart.markerLabelBoxes`; no tests use it yet, so write new ones) and all behaviours in UISpec 7.2, Chart (see UISpec 7.3, Chart component). Add the 'Show previous passes' scores too' checkbox, the 'How the winner is decided' explanation in a collapsible section, theme-aware colours that keep the two series distinct, responsive sizing and redraw on theme change.\n\nPlace the chart in the match view's right column when Graph view is on (a muted hint when off), below the inputs on mobile. The chart payload must come only from the bridge `pair_chart` command. This is the last task of Phase 4: after completing it, stop for owner review.",
+    "depends_on": ["UI-15"],
+    "tests": [
+      "Vitest: new unit tests using `chart.markerLabelBoxes` show that marker labels do not overlap one another, sit beside their marker line, and stay inside the chart area, including for two markers one score apart.",
+      "Vitest or code inspection: the chart component's data comes only from the bridge `pair_chart` response, with no statistics computed in TypeScript.",
+      "Playwright: with Graph view on, the match view shows the chart; with it off, the muted hint is shown instead.",
+      "Playwright: the previous-passes checkbox adds earlier passes' markers when checked.",
+      "Playwright: a bye match shows no chart.",
+      "Visual check: screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook, with both series clearly distinct."
+    ],
+    "gate": false,
+    "needs_review": true,
+    "completed": true
+  },
+  {
+    "id": "UI-17",
+    "name": "Results tabs",
+    "phase": "Phase 5 - Results and exports",
+    "description": "Build the Results view at `#/e/:id/results/:tab` with tabs Leaderboard, Pairwise, Passes and Archers (decision D4; see UISpec 7.2, Results, and 7.3, Results) from the bridge `results` and `archer_results` commands. Pairwise 'View chart' opens the UI-16 chart in a `Modal` or `Drawer` when Graph view is on. The Passes tab uses an `Accordion` with the latest pass open and a visible separation between matches; the Archers tab shows an Average row and handles 'no completed pass yet'.\n\nInclude the Download menu placeholder on the leaderboard and view header (wired in UI-18). Display values exactly as returned by the bridge; do not reformat numbers in TypeScript.",
+    "depends_on": ["UI-15", "UI-16"],
+    "tests": [
+      "Playwright: every value displayed in each tab equals the corresponding bridge `results` or `archer_results` output exactly (no reformatting).",
+      "Code inspection: no number formatting or statistics computation in the results components.",
+      "Playwright: 'View chart' in Pairwise opens the pair chart when Graph view is on and is not shown when it is off.",
+      "Playwright: the Passes tab opens the latest scored pass by default.",
+      "Playwright: the Archers tab shows the 'no completed pass yet' text before any pass is complete.",
+      "Playwright: each tab is reachable by its hash route (`leaderboard`, `pairwise`, `passes`, `archers`).",
+      "Screenshots at 1440x900 and 390x844 in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-18",
+    "name": "Exports",
+    "phase": "Phase 5 - Results and exports",
+    "description": "Wire the Download menus in the Results view and the final-pass completion alert to the bridge `export` command for `leaderboard_csv`, `archer_results_csv` and `results_pdf` (see UISpec 5.4 and 7.3, Results; deploymentConstrains 3, rule 5). Pass the export time from the browser clock as `now_iso`, decode base64 PDF bytes, and download through a `Blob` and a temporary `<a download>` link.\n\nAdd a Python test of the bridge PDF export using the existing `pypdf` dev dependency.",
+    "depends_on": ["UI-5", "UI-14", "UI-17"],
+    "tests": [
+      "Playwright: each of the three downloads completes from the Results view and from the final-pass completion alert.",
+      "Playwright: downloaded file names and contents equal the UI-5 fixtures apart from the timestamp.",
+      "Playwright: the downloaded PDF starts with `%PDF-`.",
+      "pytest: the bridge `results_pdf` export opens with `pypdf` and contains the expected content.",
+      "`uv run pytest` passes with zero failures."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-19",
+    "name": "Responsive and accessibility pass",
+    "phase": "Phase 6 - Polish and hardening",
+    "description": "Review and fix every view against the responsive rules in UISpec 7.4 and the accessibility and polish rules in UISpec 7.5, using Playwright mobile and WebKit projects and an automated accessibility scan (`@axe-core/playwright`). Add the scan to the Playwright suite.\n\nFix issues in the existing route and component files; do not add features.",
+    "depends_on": ["UI-9", "UI-10", "UI-11", "UI-12", "UI-13", "UI-14", "UI-15", "UI-16", "UI-17", "UI-18"],
+    "tests": [
+      "Playwright with the accessibility scan reports zero serious (and zero critical) violations on every route in light and dark mode.",
+      "Playwright: no view has horizontal page scroll at 1440, 1280, 768 or 390 px wide.",
+      "Playwright: tables with five or fewer columns fit at 390 px without horizontal scrolling of the table.",
+      "Playwright (mobile project): interactive targets are at least 44 px and input font size is at least 16 px.",
+      "Numeric inputs have an appropriate `inputMode`.",
+      "The page `<title>` updates per route.",
+      "Playwright WebKit and mobile emulation projects pass the full e2e suite.",
+      "Screenshots at 1440x900, 1280x720, 768 and 390 px wide in light and dark mode are reviewed and noted in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": true
+  },
+  {
+    "id": "UI-20",
+    "name": "Resilience tests",
+    "phase": "Phase 6 - Polish and hardening",
+    "description": "Add Playwright end-to-end resilience tests (see UISpec 6, including the failure modes paragraph, and 7.6; deploymentConstrains 8, item 3): close and reopen the tab at each setup stage and mid-score, force-reload during a command, a two-tab conflict, storage-disabled mode, and engine failure. Fix any behaviour that does not meet UISpec 6 and 7.6.\n\nIt runs after UI-19 so that the Phase 6 review covers both tasks. This is the last task of Phase 6: after completing it, stop for owner review.",
+    "depends_on": ["UI-7", "UI-8", "UI-9", "UI-11", "UI-12", "UI-13", "UI-14", "UI-15", "UI-19"],
+    "tests": [
+      "Playwright: closing and reopening the tab at Stage 1, Stage 2, Stage 3 and mid-score resumes at the right route with no saved score lost.",
+      "Playwright: a forced reload during a command loses no previously saved score and leaves a valid stored document.",
+      "Playwright: two tabs on the same event produce the 'This event changed in another tab' modal with 'Load latest' and 'Overwrite with this tab'.",
+      "Playwright: with storage unavailable, the persistent 'This event is NOT being saved' alert with 'Download backup' is shown.",
+      "Playwright: a simulated engine failure shows the error message with a Retry or Reload button and leaves stored data unchanged.",
+      "No scenario loses a saved score."
+    ],
+    "gate": false,
+    "needs_review": true,
+    "completed": true
+  },
+  {
+    "id": "UI-21",
+    "name": "CI and GitHub Pages",
+    "phase": "Phase 7 - Deployment",
+    "description": "Add `.github/workflows/ci.yml`, which runs pytest (via `uv`), Vitest, the web build and Playwright on every push and pull request with network access for Pyodide and its packages (decision D15), and `.github/workflows/pages.yml`, which builds and deploys to GitHub Pages on `main` only (see UISpec 4.1 and 8, UI-21; deploymentConstrains 3, rules 7 and 8, and 6). The Vite `base` must be relative so the site works under `/<repo-name>/`. This task runs after the Phase 6 review (UI-20).\n\nVerify locally first: run the same commands as `ci.yml`, then serve the production build from a `/Handicapped-H2Hs/` sub-path and run a full event in Playwright. Pushing the branch and merging to `main` are the owner's actions: stop and ask the owner to do them, then complete the GitHub checks. Record first-load size and time in the logbook.",
+    "depends_on": ["UI-6", "UI-8", "UI-13", "UI-15", "UI-17", "UI-18", "UI-20"],
+    "tests": [
+      "Locally, the commands in `ci.yml` (pytest, Vitest, build, Playwright) all pass.",
+      "Locally, the production build served from a `/Handicapped-H2Hs/` sub-path runs a full event in Playwright, including exports and a reload.",
+      "`pages.yml` triggers deployment only on `main`.",
+      "After the owner pushes the branch, `ci.yml` passes in GitHub Actions.",
+      "After the owner merges to `main`, the deployed site loads from the GitHub Pages URL under `/<repo-name>/`, runs a full event, exports files, and survives a reload.",
+      "First-load size and time on the deployed site are recorded in the logbook."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": false
+  },
+  {
+    "id": "UI-22",
+    "name": "Retire the Flask UI",
+    "phase": "Phase 7 - Deployment",
+    "description": "Do NOT start this task without the owner's explicit approval in chat; if approval has not been given, stop and ask. Once approved, delete (the `prototype-flask` tag and git history keep them) `h2h/app.py`, `h2h/state.py`, `h2h/templates/`, `h2h/static/`, `main.py`, `tests/helpers.py`, `tests/test_app.py`, `tests/test_event_routes.py`, `tests/test_integration.py` and `tests/test_state.py`; in `tests/test_handicap_calculator.py` delete only the Flask route tests and keep the tests of the pure lookup functions (see UISpec 2, Tests row, and 8, UI-22). Before deleting each test file, record in the logbook which bridge, draw or e2e tests cover its behaviours, and port anything not yet covered first. Change the tests in `tests/test_bridge.py` that compare against the legacy `SessionState` path to build the reference `Event` directly with `models.Event` and the `rotation` builders.\n\nUpdate `README.md` with the new run, test and deploy instructions (UISpec 10, item 6). Keep the `prototype-flask` tag. Do not change `pyproject.toml` dependencies (decision D16) unless the owner asks.",
+    "depends_on": ["UI-4", "UI-19", "UI-20", "UI-21"],
+    "tests": [
+      "The owner's approval in chat is recorded in the logbook before any file is deleted.",
+      "The logbook maps each deleted test file to the bridge, draw or e2e tests that cover its behaviours.",
+      "No file in `h2h/` or `tests/` imports Flask or `h2h.state`.",
+      "`uv run pytest` passes with zero failures on the remaining suite.",
+      "`README.md` run, test and deploy instructions describe the new web UI and no longer refer to the Flask app.",
+      "`git tag --list prototype-flask` still prints `prototype-flask`.",
+      "The owner signs off on the result."
+    ],
+    "gate": false,
+    "needs_review": false,
+    "completed": false
+  }
+]

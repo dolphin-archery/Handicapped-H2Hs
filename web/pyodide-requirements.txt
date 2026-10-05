@@ -1,0 +1,3 @@
+# Browser runtime packages installed with micropip; numpy comes from Pyodide (loadPackage).
+archeryutils>=3.0.0
+fpdf2>=2.8.9

@@ -3,6 +3,8 @@
 import csv
 import io
 import re
+import subprocess
+import sys
 import tomllib
 from datetime import datetime
 from pathlib import Path
@@ -77,6 +79,13 @@ def test_fpdf2_and_pypdf_are_declared_dependencies_and_import():
     lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
     assert 'name = "fpdf2"' in lock and 'name = "pypdf"' in lock
     import fpdf  # noqa: F401
+
+
+def test_importing_the_bridge_does_not_import_fpdf2():
+    """fpdf2 is imported on the first PDF, so the browser can install it lazily (decision D16)."""
+    code = "import sys, h2h.bridge; print('fpdf' in sys.modules)"
+    result = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, check=True)
+    assert result.stdout.strip() == "False"
 
 
 # --- CSV ---------------------------------------------------------------------------------

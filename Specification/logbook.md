@@ -171,7 +171,7 @@ setup form (Assumption 10) would be reasonable v2 additions.
 ## Feedback 1 - Base Functionality
 
 Scope: implemented every item under `Specification/feedback.md`'s "Feedback 1"
-heading (tasks 11-14 below, added to `prd.json` per `Specification/feedbackPrompt.md`'s
+heading (tasks 11-14 below, added to `prd.json` per `Prompts/feedbackPrompt.md`'s
 process); explicitly did not touch anything under its "Future Feedback - DO NOT
 IMPLEMENT YET" heading (UI redesign, rotations/brackets, overall scoring system,
 results printouts, publication).
@@ -2157,3 +2157,1515 @@ the confirmation, and a consequence you may want to know about: the markers of e
 the current pass's curve, not the curve each was judged against (I have not changed this); **55** the feedback
 list's numbering (1, 2, 2, 3) is read as four items. Not touched: everything under "Future Plans - DO NOT
 IMPLEMENT YET". Final suite: 919 tests passing.
+
+## UI redesign planning - `UI-prd.json` created and section 8 gaps closed (2026-10-04)
+
+Scope: `Specification/UI-prd.json` was created from `Specification/UISpec.md` section 8 (tasks UI-0 to UI-22,
+with `phase`, `depends_on`, `gate`, `needs_review` and `completed` fields; `gate` only on UI-1, `needs_review`
+on UI-9, UI-16 and UI-20). Reviewing it found twelve gaps or ambiguities in section 8. Each one was closed with an
+assumption in both `UISpec.md` (new decisions D11-D18 in section 3, plus the affected sections) and
+`UI-prd.json`. No code was changed and no implementation was started. `prd.json` is unchanged.
+
+Assumptions made (decision numbers refer to `UISpec.md` section 3):
+1. **UI-0 already partly done.** The `ui-redesign` branch and the `prototype-flask` tag already exist, so UI-0
+   checks them and does not recreate them. "Docs present" means `UISpec.md`, `deploymentConstrains.md`,
+   `AISpec.md` and `UI-prd.json`.
+2. **Gate scope.** Every task after UI-1 depends on the gate, including the Python-only tasks UI-2 to UI-5
+   (UISpec section 2 now says "before any further work").
+3. **UI-1 tooling.** UI-1 creates only `web/package.json` (pinned `pyodide`) and `web/scripts/pyodide-gate/`
+   (`scenario.py`, `run-gate.mjs`, committed `golden.json`), and the Vite scaffold moves to UI-6. The one
+   `scenario.py` runs both natively and in Pyodide and drives the existing modules directly, because `bridge.py`
+   does not exist yet.
+4. **Draw function location (D17).** The draw moves to a new whitelisted module, `h2h/draw.py`, which both
+   `state.py` and `bridge.py` import. The core modules stay untouched, the draw survives the retirement of
+   `state.py` in UI-22, and UI-2 and UI-3 edit different files. UI-3 adds `tests/test_draw.py`. As a result,
+   UI-6 now also depends on UI-3, and the bundle whitelist includes `draw.py`.
+5. **Items with no owning task.** Each now has an owner:
+   - Rename and `events:index` upkeep go in UI-8 (storage) and UI-9 (Home and header).
+   - The corrupt-value recovery goes in UI-9.
+   - The backup prompt on completion goes in UI-14: the completion alert has "Download backup" and a reminder,
+     to meet deploymentConstrains 3, rule 4.
+   - Two related gaps were also closed:
+     - **D11:** no command set `status: complete`. `record_match` now sets it when `Event.is_complete`. The
+       match route guard also allows `complete`, so final-pass matches stay editable as in the Flask app.
+     - **D12:** document fields have owners. The storage layer sets `revision` and `updated_at`, the UI may
+       change only `name`, and the bridge changes everything else.
+   - **D13:** with several in-progress events, the Resume card shows the most recently updated one.
+   - **D18:** the import size limit is 10 MB.
+6. **Calculator fixtures.** UI-5 now includes `calculator` cases (indoor, indoor with compound, outdoor, one
+   invalid input), and UI-10 checks against them.
+7. **`markerLabelBoxes`.** No existing test uses it (it appears only in `h2h/static/match_chart.js`). UI-16
+   writes new Vitest tests: labels do not overlap, sit beside their marker, and stay inside the chart area.
+8. **Accessibility threshold.** The UI-19 scan (`@axe-core/playwright`) requires zero serious and zero critical
+   violations.
+9. **Phase 6 review ordering.** UI-20 depends on UI-19, so the Phase 6 review always covers both tasks. This is
+   a phase-ordering dependency, not a code dependency.
+10. **Deployment (UI-21).** UI-21 depends on UI-20, so it runs after the Phase 6 review. CI uses network access
+    for Pyodide (D15: Pyodide comes from jsDelivr pinned `v314.0.7`, not self-hosted). The agent first verifies
+    locally: the CI commands, and the production build served from a `/Handicapped-H2Hs/` sub-path. It then
+    stops and asks the owner to push and merge, which the loop prompt forbids the agent to do itself.
+11. **Retiring Flask (UI-22).** "Move or delete" becomes delete (the tag and git history keep the files). The
+    files are named explicitly. In `test_handicap_calculator.py` only the Flask route tests go, and the pure
+    lookup tests stay. Before each test file is deleted, the logbook must map it to the tests that cover its
+    behaviours. UI-2's legacy-comparison tests in `test_bridge.py` are rewritten to build the reference `Event`
+    directly.
+12. **Open items in UISpec section 11.**
+    - **D14:** completed events are kept until the user deletes them.
+    - **D16:** `pyproject.toml` is unchanged and the lazy `fpdf` import is not part of this plan. UI-7 records
+      the start-up time spent on fpdf2 so the owner can decide later.
+
+Validation: `UI-prd.json` parses as JSON, every `depends_on` id exists, and every dependency points to an
+earlier task in the file, so there are no cycles. The loop's "first eligible task in file order" rule therefore
+follows file order.
+
+## UI-0 - Baseline and docs (2026-10-04)
+
+What changed: `.gitignore` gains `web/node_modules/`, `web/dist/` and `web/public/py/`. No application code
+changed.
+
+Verification:
+- `git branch --show-current` prints `ui-redesign`; `git tag --list prototype-flask` prints `prototype-flask`
+  (annotated tag on commit 6bfb59c, which is `main`'s head and an ancestor of `ui-redesign`). Both already
+  existed, so neither was recreated.
+- **Baseline: `uv run pytest` gives 919 passed, 0 failed (7.3 s), native Python 3.14.0.**
+- `git check-ignore -v` matches `web/node_modules/x`, `web/dist/x` and `web/public/py/x` to the new rules and does
+  not match `web/public/other.txt`, so other files under `web/public/` stay tracked.
+- `Specification/UISpec.md`, `deploymentConstrains.md`, `AISpec.md` and `UI-prd.json` all exist.
+
+Notes for future tasks: native Python is 3.14.0 and Pyodide v314.0.7 ships 3.14.2, so UI-1 compares across a
+patch-version difference as well as the numpy difference. `/Prompts` is git-ignored (commit 6bfb59c), so
+`Prompts/UILoopPrompt.md` is not in the repository even though `README.md` lists `Prompts/`; this is the owner's
+choice and is left alone. `uv run` warns that the shell's `VIRTUAL_ENV` points elsewhere and uses the project
+`.venv`, which is the intended behaviour.
+
+## UI-1 - Pyodide compatibility gate (2026-10-04): PASSED
+
+What changed (all new; no `h2h/` file touched):
+- `web/package.json` (only `pyodide` pinned to `314.0.7`) and `web/package-lock.json`.
+- `web/scripts/pyodide-gate/scenario.py`: runs natively (`uv run web/scripts/pyodide-gate/scenario.py` writes
+  `golden.json`) and inside Pyodide (the runner imports it and calls `result_json`). It drives the existing modules
+  directly: `rotation.build_schedule`, `models.Event`, `record_match` (with a tie-break, a score of 0 and a
+  corrected score), `advance`, `outputs.pass_table_rows`, `leaderboard`, `archer_results`, pairwise results, both
+  CSVs, the PDF, `chart_data.build_pair_chart_data`, and the calculator (`calculator_rounds`,
+  `calculator_round`, `handicap_for_round_score`). It also captures the tie-break, final-pass advance and
+  out-of-range score messages.
+- `web/scripts/pyodide-gate/run-gate.mjs`: loads Pyodide 314.0.7 under Node, loads numpy and micropip,
+  `micropip.install`s `archeryutils` and `fpdf2` at the versions recorded in `golden.json`, writes the seven
+  whitelisted `h2h` modules into the Pyodide file system, runs the scenario, and compares with `golden.json`.
+  It exits with 1 on any mismatch or a missing `%PDF-` header.
+- `web/scripts/pyodide-gate/golden.json` (native output, committed).
+
+Verification:
+- `node web/scripts/pyodide-gate/run-gate.mjs` prints **GATE PASSED** and exits with 0:
+  - Environments: native Python 3.14.0 / numpy 2.5.3 / win32; Pyodide Python 3.14.2 / numpy 2.4.6 / emscripten.
+    Both have archeryutils 3.0.0 and fpdf2 2.8.9.
+  - Every int, bool, string and None is equal and of the same type. **All 492 floats are bit-identical (largest
+    relative difference 0)**, so there is no numeric drift from Pyodide's older numpy to record.
+  - Both PDFs start with `%PDF-1.3` and have the same page count and drawn content as native.
+  - Timings (Node 24.19.0, desktop, wheels cached): Pyodide loaded in 1.0 s; packages ready in 3.1 s; h2h modules
+    imported in 1.4 s; scenario ran in 0.2 s; 5.6 s in total.
+- The comparison was mutation-checked natively by feeding `compare_json` altered copies of the golden output:
+  - Flagged: a float changed by a relative 1e-8, an int changed, an int turned into a float, a string changed,
+    a list shortened and a changed PDF hash.
+  - Not flagged: a float changed by 1e-10 (within tolerance) and a changed `environment` (not compared).
+  - The PDF summary's decompressed stream contains the title and the export time, its hash changes when an
+    archer's name changes, and it is the same on repeated runs.
+- Regenerating `golden.json` natively gives a byte-identical file.
+- `uv run pytest`: 919 passed. pytest does not collect anything under `web/`.
+
+Assumptions:
+1. **Two scripted 4-archer events instead of one.** One uses simple setup (shared 20 yd / 60 cm with an indoor
+   Compound archer, a tie-break, a score of 0, a corrected score). The other uses advanced setup (four
+   per-archer faces: 10 zone, 10 zone 6 ring, 5 zone, Worcester; 6-arrow passes; handicap updating on). One
+   event cannot cover the simple and advanced paths, and the second costs almost nothing.
+2. **The gate installs the exact native versions** (`archeryutils==3.0.0`, `fpdf2==2.8.9`, read from
+   `golden.json`), so the comparison isolates Pyodide itself. The deployed app uses the loose bounds of UISpec
+   4.3. Pyodide's own Pillow 12.2.0 and fonttools 4.62.1 differ from native (12.3.0, 4.66.1), but neither is
+   used for a built-in-font PDF.
+3. **The PDF is compared by summary, not raw bytes**: header, page count and SHA-256 of the decompressed
+   streams. The raw bytes contain fpdf2's creation date and depend on the zlib build.
+4. **The comparison runs in Python** (`scenario.compare_json`, inside Pyodide) so ints and floats stay
+   distinct. Only JSON strings cross the JS/Python boundary.
+5. **The modules are written with `pyodide.FS.writeFile`**, not unpacked from an archive. The result is the
+   same; the hashed zip bundle arrives in UI-6.
+
+Spec discrepancies:
+- UISpec 8 says the scenario "prints one JSON result". In this design the native run writes `golden.json` and
+  the Pyodide run returns its JSON to the runner, which prints the comparison report. Same outcome; no spec
+  change proposed.
+
+Notes for future tasks:
+- The first run needs network access. Pyodide's own wheels (numpy, micropip, Pillow, fonttools) come from
+  jsDelivr and are cached in `web/node_modules/pyodide` (git-ignored); archeryutils, fpdf2 and defusedxml come
+  from PyPI on every run.
+- Importing the h2h modules took 1.4 s in Pyodide, most likely archeryutils round data and fpdf2. UI-7 should
+  measure the fpdf2 share (D16).
+- deploymentConstrains 4, rule 2 asks for a README note pinning the Pyodide version. It belongs with the README
+  rewrite (UI-22) or earlier if the owner prefers.
+
+## UI-2 - Document and replay (2026-10-04)
+
+What changed (new files only; no core module or existing test touched):
+- `h2h/bridge.py` holds the schema-version-1 event document (described in the module docstring) and:
+  - `schedule_for(setup)`, which rebuilds the schedule as `SessionState.start_stage1` does.
+  - `rebuild_event(doc)`, the UISpec 5.3 replay: it builds the `Event` from `setup`, `archers` and
+    `assignment`, records every stored match of each pass in match order, and advances past every pass before
+    `current_pass`.
+  - `validate_document(raw)`, which returns the `ok`/`error` envelope (code `validation`, message
+    "Invalid event document: ..."). It checks the structure, types, ranges and stage consistency, drops unknown
+    keys, then replays the scores through the core. The core's own messages therefore reject a score out of
+    range, a tie with no closest archer, or an earlier pass left unscored. `status` must be `complete` exactly
+    when `Event.is_complete` (D11).
+  - The private envelope helpers `_ok`/`_error`, which UI-4 will reuse.
+- `tests/test_bridge.py` (56 tests). It plays events through the legacy `SessionState` path (Stages 1-3 with a
+  seeded draw, then `Event.record_match` and `advance`) and builds the document from the same inputs and draw. It
+  then checks the replay after a JSON round trip: `Event.results`, the current pass, the archers, `is_complete`,
+  the leaderboard and the archer results must all be identical. Scenarios:
+  - a full simple event that includes a closest-to-the-middle tie;
+  - a part-scored pass;
+  - a corrected score;
+  - five archers with byes sat out (sit-out schedule) and with byes shot;
+  - advanced per-archer targets with updating on and off (every per-pass handicap is compared too).
+  The validation tests cover valid documents at every stage (fresh, Stage 2, running, complete), returned
+  unchanged and without mutating the input, plus cleaning and 41 malformed variants.
+
+Verification:
+- `uv run pytest tests/test_bridge.py`: 56 passed. `uv run pytest`: **975 passed** (919 + 56).
+- Mutation check on `rebuild_event`. Each of these bugs fails at least one replay test:
+  - ignoring `closest` (3 failed);
+  - ignoring the assignment (7);
+  - never using the sit-out schedule (1);
+  - ignoring handicap updating (1);
+  - replaying only the first match of each pass (7).
+  The first version of the tests used draw seed 11, which shuffles 4 archers into the entry order, so the
+  4-archer tests could not catch a dropped assignment (only 2 failed). The seed is now 4 (no archer keeps their
+  place for 4 or 5 archers), and `_legacy` asserts that the draw is not the entry order.
+
+Assumptions:
+1. **Order of results within a pass.** The document keys scores by match index, not by the order they were
+   saved in: JavaScript orders integer-like object keys numerically, so saving order could not survive anyway.
+   The replay records each pass's matches in index order. If matches were saved out of order, `Event.results`
+   holds the same results in a different order within a pass. No output depends on that order (outputs sort by
+   pass, `match_results` by match order, pairwise results are sorted), and
+   `test_saving_order_within_a_pass_changes_nothing_that_is_shown` checks it. Where matches were saved in index
+   order, the results are identical lists, as UI-2 requires.
+2. **Replay calls `advance()` instead of setting `current_rotation_index`** (UISpec 5.3 says set it, then
+   advance). The effect is identical, and `advance` also checks that every earlier pass is fully scored.
+3. **`setup.stage` is 0 to 3** (0 for a new event, 3 once Stage 3 is confirmed).
+   - `status` is `setup` exactly while the stage is below 3.
+   - Below stage 2, `archers` is empty, `assignment` null and handicap updating off. This mirrors
+     `SessionState.start_stage1` clearing later stages.
+   - Handicap updating needs advanced setup, as in `SessionState.start_stage2`, which stores the effective
+     value.
+4. **Strict types.** Counts, scores' keys, `face_cm` and `revision` must be JSON integers (not booleans);
+   handicaps any finite number (normalised to float, since JSON from JavaScript turns 35.0 into 35); stored
+   scores any number, with whole-number and range checks left to the core during the replay (normalised to int
+   on success).
+5. **Status consistency is rejected, not repaired.** `complete` without a complete event, or `running` with
+   one, is a validation error rather than a silent fix. The only writer is the app itself, so a mismatch means
+   corruption.
+6. **No `(id, revision)` cache in `bridge.py`.** UISpec 5.1 forbids module-level mutable state there, so the
+   performance cache of UISpec 5.3 belongs in the worker (UI-7) if it is needed.
+
+Spec discrepancies: none beyond assumptions 1 and 2.
+
+Notes for future tasks: UI-4 adds the commands to `bridge.py` and needs `apply_stage1` to reset `archers`,
+`assignment`, updating and `stage` exactly as `validate_document` expects (assumption 3). New-document defaults:
+stage 0, 4 archers, 60 arrows, 12 per pass, simple, byes shot, 20yd / 60 cm, updating off.
+
+## UI-3 - Draw refactor (2026-10-04)
+
+What changed:
+- New `h2h/draw.py` (decision D17), with no Flask and no state. It holds:
+  - `pairings_signature(schedule, assignment)`;
+  - `draw_assignment(schedule, n_archers, rng, current=None)`, which returns the new assignment and prefers
+    pairings that differ from `current`, up to `_MAX_REDRAW_ATTEMPTS` (50) tries;
+  - the `_MAX_REDRAW_ATTEMPTS` constant.
+  This is the code moved out of `SessionState`, unchanged.
+- `h2h/state.py` (surgical, +10/-24 lines):
+  - `redraw_pairings` now calls `draw_assignment(self.schedule, len(self.pending_archers), self.rng,
+    self.assignment)`;
+  - `_pairings_signature` stays as a one-line delegate, because `tests/test_state.py` calls it;
+  - the now-unused `_MAX_REDRAW_ATTEMPTS` moved to `draw.py`;
+  - docstrings updated.
+- New `tests/test_draw.py` (54 tests) tests the function directly, so the draw stays covered after
+  `test_state.py` is retired (UI-22). It checks:
+  - the result is a permutation (2 to 11 archers, several seeds);
+  - the first draw is one shuffle;
+  - redraws change the pairings for 4 and 6 archers, 5 with byes shot and 5 sitting out (25 redraws each);
+  - two archers stop after exactly 50 attempts with a valid draw;
+  - the signature ignores the order within a pair but not who meets whom;
+  - the same seed gives identical draws and redraws through `SessionState` and through `draw_assignment`
+    (5 setups, 3 seeds);
+  - `draw.py` imports neither Flask nor `state`.
+
+Verification:
+- `uv run pytest tests/test_draw.py`: 54 passed.
+- `test_state.py`, `test_app.py`, `test_event_routes.py`, `test_integration.py` and `test_handicap_calculator.py`
+  are unmodified (`git status` shows only `h2h/state.py` changed): 301 passed.
+- `uv run pytest`: **1029 passed** (975 + 54).
+- Behaviour unchanged: the pre-refactor `state.py` (from `git show HEAD`, loaded as a temporary module and then
+  deleted) and the new one gave identical first draws, four redraws and the random source's state afterwards for
+  1400 combinations (200 seeds; 2, 3, 4, 5, 7 and 12 archers; byes shot and sat out).
+- Mutation check on `draw.py`. Two bugs fail tests: dropping the preference for new pairings (2 failed) and
+  one extra attempt (1 failed). Ignoring the bye in the signature is not caught, and cannot be by any input: in a
+  rotation everyone not in a pair has the bye or sits out, so equal pairs already mean an equal bye. That part of
+  the signature is redundant (moved code, kept as it was), and the related test was renamed to say what it checks.
+
+Assumptions: the function is named `draw_assignment` and the module constant keeps its original private name.
+The bridge (UI-4) calls `draw_assignment(schedule_for(setup), n_archers, random.Random(seed), current)`.
+
+Spec discrepancies: none.
+
+## UI-4 - Bridge commands (2026-10-04)
+
+What changed:
+- `h2h/bridge.py` gains every command of UISpec 5.4, each returning the `ok`/`error` envelope:
+  - setup: `options`, `new_document`, `apply_stage1`, `apply_stage2`, `redraw`, `pairings`, `start_event`;
+  - scoring: `overview`, `match`, `record_match`, `advance`;
+  - results: `results`, `archer_results`, `pair_chart`, `export`, `calculator`;
+  - plus `validate_document` from UI-2.
+  It also gains the error codes `tiebreak_required`, `state` and `internal`, and `call(command, payload_json)
+  -> str`, the one JSON-text entry point the worker will use (UI-7). `call` refuses NaN and turns anything
+  unexpected (an unknown command, bad arguments, a bug) into an `internal` envelope.
+  No core module was touched. The draw uses `h2h.draw.draw_assignment` with `random.Random(seed)`.
+- `tests/test_bridge.py` gains 86 command tests (142 in the file):
+  - a happy path for every command;
+  - the existing messages for Stage 1, Stage 2 (with `row`/`field`), scores, closest and the calculator;
+  - `tiebreak_required` (nothing saved; then decided by the closest archer; the stored `closest` cleared when a
+    re-save no longer ties);
+  - 16 out-of-order `state` refusals, which leave the input unchanged;
+  - D11 (`complete` on the last save of the final pass, kept on a re-save);
+  - the display text checked against `outputs`/`exports`;
+  - mutating commands return a new document, leave the input untouched, and keep `revision`/`updated_at`;
+  - every command round-trips through `call` as JSON with `allow_nan=False`, with the called set equal to the
+    UISpec 5.4 list;
+  - `call` turns failures into `internal` envelopes.
+- New `tests/test_bridge_ported.py` (138 tests). A subagent ported the logic-level assertions of
+  `test_event_routes.py` and `test_integration.py`, and I reviewed the result. Each test names its source with
+  a `# ports file::test` comment. Mapping of behaviour groups to ported tests, for UI-22:
+  - Stage 1 validation and storage, shoot byes and schedule length, stage guards;
+  - Stage 2 rows with row-numbered messages, advanced per-archer targets, the updating settings;
+  - Stage 3 pairings, redraw and start;
+  - overview and match view values (including byes, sit-outs and the percentile display rule);
+  - saving and re-saving, the full tie-break flow, advancing;
+  - per-archer maxima;
+  - simple-setup targets (indoor Compound's reduced 10, outdoor, imperial);
+  - whole events with byes shot and sat out;
+  - the leaderboard, pairwise and pass tables;
+  - archer results (a score of 0 gives "-", "bye", no completed pass);
+  - the Pass starting handicap only when updating;
+  - export file names, headers and content (PDF read with `pypdf`);
+  - the chart payload (before and after scoring, earlier scores of a pair that has not met, curves and legends
+    with and without updating).
+  Not ported, because they belong to the UI: page rendering and form controls, form refilling, HTTP status
+  codes, graph-view toggling, template, CSS and JS markup, reset and navigation links, and source scans of
+  `app.py` and the templates. The calculator route tests are covered by `test_bridge.py`.
+
+Verification:
+- `uv run pytest`: **1253 passed** (1029 + 86 + 138). It was run three times without the ported file
+  (1115, 1115, 1115) and twice with it. One run during the mutation checks had a single failure that never
+  reproduced; it most likely overlapped with the subagent's concurrent test runs. Noted in case it reappears.
+- `node web/scripts/pyodide-gate/run-gate.mjs` still prints GATE PASSED (the gate's modules are unchanged).
+- Mutation check on the commands. Each of these bugs fails at least one test:
+  - never setting `complete` (D11);
+  - winner always the second archer;
+  - `%.1f` for the entered handicap;
+  - a wrong `field` (10 failed);
+  - always storing `closest`;
+  - converting the export time to the machine's time zone;
+  - "next unscored match" including the match itself.
+  The time-zone bug was missed at first because the test's `+01:00` offset equals this machine's BST, which
+  made the conversion a no-op; the test now uses `+05:30`.
+- Every function in `bridge.py` has a numpy-style docstring (checked by script).
+
+Assumptions:
+1. **`call(command, payload_json)` was added.** It is not in the UISpec 5.4 table, but it is the JSON-string
+   boundary of UISpec 5.1 and the only place the `internal` code is produced. The worker (UI-7) calls only
+   `call`.
+2. **Parameter names** `new_document(event_id, now_iso)` and `calculator(kind, round_codename, compound, score)`
+   replace `id` and `round`, which shadow Python built-ins (`round` is used inside the function). The JSON keys
+   follow these names.
+3. **Seeds:** `apply_stage2(doc, archers, updating, seed)` and `redraw(doc, seed)` take an integer seed from
+   the browser, as the UI-4 task description says.
+4. **Form values are read as the Flask routes read them** (text or numbers, converted the same way), so every
+   message is the existing one. This includes Python's own `invalid literal for int() with base 10: 'abc'` for
+   a non-numeric Stage 1 count, which Flask also showed. UI-11's number inputs should make it rare.
+5. **Display values are strings formatted as the templates formatted them.** Examples: the entered handicap
+   with `%g`, derived handicaps to one place or "-", "59.8%", "100 - 98", "<name> wins" or "Draw". Indices
+   stay numbers, and `pair_chart` returns the raw chart payload, which Chart.js plots and the UI never
+   reformats.
+6. **What mutating commands return.** All return `{"document": new}`. `apply_stage1` adds
+   `passes_per_archer` and `n_passes`, for the Stage 2 start-weight default and summary text. `record_match`
+   adds the match view.
+7. **`apply_stage2` error rows.** `row` is the 0-based row index, and the message keeps Flask's 1-based "Row
+   n". `row` is null for the updating parameters. With several bad rows, the first problem in Flask's order is
+   reported.
+8. **`closest` is stored only when the pass was decided by it.** A re-save that no longer ties clears it.
+   Replay is unaffected, because the core uses `closest` only on a tie.
+9. **Redirects became errors.** Flask redirected for:
+   - a match index outside the pass (now `validation`);
+   - an event command before the start (now `state`, "The event has not started yet: confirm the pairings at
+     Stage 3 first.");
+   - setup commands after the start (now `state`, "The event has started, so its setup can no longer be
+     changed.").
+   Other stage refusals reuse `SessionState`'s `RuntimeError` messages. A refused advance (unscored pass, or
+   the final pass) gives `state` with the core's message.
+10. **`pair_chart` accepts any two different archers**, because the match view charts a pair before they first
+    meet. Flask's pair-history page redirected for a pair who had not met. The Results UI (UI-17) should offer
+    "View chart" only for rows of `results()["pairwise"]`.
+11. **`export` uses the clock time of `now_iso` as written**, dropping any UTC offset rather than converting,
+    because the exports say "(local time)". UI-18 must send the browser's local time, not `toISOString()`
+    (which is UTC).
+12. **A new event is named "New event"** (renamed by the UI, D12).
+
+Behaviour differences from Flask (found by the porting; not proposed as spec changes):
+- **Two archers named closest.** Flask refused two ticked boxes with "Tick only one archer as closest to the
+  middle.". The bridge takes one archer, as UISpec 7.2 says ("choose exactly one"), so a list is refused with
+  "The archer closest to the middle must be one of the two in this match." The ported test asserts this.
+  - The subagent had first added a strict-xfail test asserting Flask's text. I removed it, because the
+    difference is deliberate, and a strict xfail would read to later tasks as a known bug.
+  - If you want Flask's exact message, the bridge can return it for a list of two in about three lines.
+- **A missing Stage 1 field.** With no `n_archers` key, Flask showed the KeyError text "'n_archers'"; the bridge
+  shows the int() message for an empty value. No test covered this before.
+
+Notes for future tasks:
+- **UI-11 / UI-12: derived values.** The Stage 1 "N passes per archer" line (optional) and the Stage 2
+  start-weight default (passes per archer) must come from Python:
+  - `apply_stage1` returns them on submit, but nothing returns them for a reloaded Stage 2 page, or live
+    while Stage 1 is being edited;
+  - the obvious fix is a small read-only command, or adding them to `pairings`/`options`. Decide in UI-11/12
+    and log it; it is a presentation helper, not a rule change.
+- **The "_bridge" text check.** `test_event_routes.py::test_no_leftover_reference_to_the_old_round_mode_form_in_the_app`
+  forbids the text "_bridge" anywhere in `h2h/`. Avoid such names. UI-22 should move this check if it is still
+  wanted.
+- **`bridge.py` has not yet been imported inside Pyodide.** It is not in the UI-1 gate whitelist; UI-6 bundles
+  it and UI-7 runs the fixtures through it there.
+
+## UI-5 - Parity fixtures (2026-10-04)
+
+What changed (tests only; no `h2h/` change):
+- `tests/bridge_fixtures.py` is the generator. Each scenario drives an event through `bridge.call`, exactly as
+  the browser will (JSON text in and out), with draw seed 4 (a redraw uses 5) and the fixed time
+  `2026-10-04T15:30:12`. Every step is recorded as `{"command", "payload", "result"}`. Regenerate with
+  `uv run python -m tests.bridge_fixtures`.
+- `tests/fixtures/bridge/*.json`, eight files (about 780 kB):
+  - `simple`: 4 archers, 3 passes, includes a tie;
+  - `advanced`: per-archer 10 zone, 6 ring, 5 zone and Worcester faces;
+  - `byes_shot` and `byes_sat_out`: 5 archers; the sat-out version uses the 3-pass sit-out schedule;
+  - `handicap_updating`: 5 passes, lookback 4, start weight 5, with a score of 0;
+  - `tie_break`: a refused tie, a closest archer outside the match, a decided tie, a re-save that clears it,
+    and an unneeded closest archer;
+  - `complete_event`: 5 passes, with refusals of every code along the way (not started, bad Stage 1, row 2
+    handicap, unscored advance, out-of-range score, final-pass advance), completion, a re-save after
+    completion and `validate_document`;
+  - `calculator`: `options`, then indoor, indoor compound, outdoor and invalid input.
+  Every event scenario ends with `results`, `archer_results`, one `pair_chart` and all three exports.
+- `tests/test_bridge_fixtures.py` (13 tests):
+  - each scenario regenerates to exactly the committed file (data and text);
+  - no stale or missing files;
+  - together the fixtures call all 17 commands and see the error codes `validation`, `tiebreak_required` and
+    `state`;
+  - each scenario contains what its name says;
+  - the exports carry the fixed time;
+  - the PDF summary ignores the creation time and unescapes text.
+
+**One normalisation, which UI-7 and UI-18 must apply too.** A successful `export` of kind `results_pdf` has
+its base64 `content` replaced by `pdf_summary(pdf)`:
+`{"header": first 8 bytes, "pages": count of /Type /Page, "text": [every string drawn with Tj, in order]}`.
+To compute the text:
+- inflate each `stream ... endstream` (or keep it raw if it is not zlib);
+- match `\(((?:\\.|[^\\)])*)\)\s*Tj`;
+- unescape `\(`, `\)`, `\\` and `\r`;
+- decode as Latin-1.
+The raw PDF bytes cannot be compared: fpdf2 stamps its own creation time (`datetime.now`, UTC) in the info
+dictionary, and compressed streams depend on the zlib build.
+
+Verification:
+- `uv run pytest tests/test_bridge_fixtures.py`: 13 passed. `uv run pytest`: **1266 passed**.
+- Mutation check: changing derived handicaps to two decimal places in `bridge.py` failed 7 of the 13 tests (the
+  six scenarios that show such handicaps, plus the text comparison); restored, no diff.
+
+Assumptions:
+1. **Each scenario is a complete event** ending in every output and export, so the fixture list's "final
+   complete event" is `complete_event`, which adds the refusals and the after-completion re-save.
+2. **Payloads are what a browser would send**: form values as text, the document from the previous step.
+   Results are recorded after the JSON round trip of `call`.
+3. **The calculator fixtures also hold `options`**, the round lists UI-10 needs.
+
+Notes for future tasks: UI-7 replays every step's `command` and `payload` through the engine client and
+compares with `result`: integers and strings exactly, floats within a relative 1e-9, and PDF results after the
+normalisation above. Fixture files are LF; `read_text` handles a CRLF checkout.
+
+Process note: UI-6 (web scaffold) was built by a subagent in parallel with UI-5, in `web/` only, because it
+does not depend on UI-5. It is committed after UI-5, keeping file order.
+
+## UI-6 - Web scaffold (2026-10-04)
+
+Built by a subagent in parallel with UI-5 (in `web/` only); I reviewed the files and re-ran every check.
+
+What changed:
+- **Stack**, pinned exactly (`web/.npmrc` has `save-exact=true`; lockfile committed):
+  - Vite 8.3.2, React 19.3.0, TypeScript 6.0.3, Mantine 9.6.3 (core, hooks, form, notifications, modals),
+    react-router 8.4.0;
+  - ESLint 10 (flat config, typescript-eslint, react-hooks, react-refresh) and Prettier 3.9 (print width 100);
+  - Vitest 5 (jsdom, Mantine's test setup mocks) with Testing Library, Playwright 1.63 (Chromium), fflate.
+  - Mantine's Vite setup came from mantine.dev: the Mantine MCP server indexes only components.
+- **Files:**
+  - `index.html` (lang en);
+  - `vite.config.ts` with relative base `./` (deploymentConstrains 3, rule 7);
+  - three TypeScript projects (app, node, test), all strict;
+  - `src/main.tsx` (MantineProvider plus the core styles), placeholder `src/App.tsx`, `src/theme.ts`;
+  - `src/env.d.ts`, `pyodide-requirements.txt`;
+  - `tests/` (setup, a render helper, App test, bundle tests) and `e2e/smoke.spec.ts`.
+  - The root `.gitignore` now also ignores `web/test-results/` and `web/playwright-report/`.
+- **Scripts:** `dev`, `build` (Python bundle, then `tsc -b`, then `vite build`), `preview`, `typecheck`,
+  `lint`, `format`, `format:check`, `test`, `e2e`, `gate` (the UI-1 gate).
+- **Python bundle** (`scripts/build-py-bundle.mjs`):
+  - It zips exactly the 9 whitelisted modules as `h2h/<module>` into `public/py/h2h-<hash>.zip`.
+  - The hash is the first 12 hex characters of SHA-256 over names and LF-normalised contents. A CRLF Windows
+    checkout and LF Linux CI therefore give byte-identical zips (also checked across four time zones).
+  - Older bundles are removed.
+  - `vite.config.ts` awaits the build and compiles the URL in as `__PY_BUNDLE__` ("py/h2h-<hash>.zip",
+    relative to `index.html`). No runtime manifest can go stale. Current bundle: `h2h-74af6b56ce98.zip`, 45.6 kB.
+
+Verification (I re-ran each after the subagent's clean `npm ci` run):
+- `npm run build`, `typecheck`, `lint` and `format:check` all OK. Production JS is 263.5 kB (82.2 kB gzip),
+  CSS 233.9 kB (34.2 kB gzip).
+- `npm test`: 7 passed. The App renders its title. The bundle holds exactly the 9 modules and excludes decoy
+  `app.py`, `state.py`, `templates/` and `static/`. The hash is stable, the same for CRLF and LF, and changes
+  when a module changes. Old bundles are removed.
+- `npm run e2e`: 1 passed. The production build is served under `/Handicapped-H2Hs/`, so relative URLs work on
+  a sub-path.
+- The UI-1 gate still passes.
+- Screenshot reviewed (1440x900, light): the placeholder title and text, no console errors. A full screenshot
+  matrix starts with the first real view (UI-9).
+
+Assumptions:
+1. **TypeScript 6.0.3 rather than 7.** typescript-eslint 8.71 requires `<6.1`, and Vite's react-ts template
+   pins `~6.0`.
+2. **MantineProvider lives in `main.tsx`.** Tests wrap components with `tests/render.tsx` in `env="test"`.
+3. **Vitest runs `web/tests/**/*.test.{ts,tsx}`.** A Node-environment test opts in with
+   `// @vitest-environment node`.
+4. **`scripts/pyodide-gate/` is excluded from Prettier**, so the committed UI-1 gate files stay byte for byte.
+5. **CI should use Node 24.** react-router 8.4 and Vitest 5 need Node 22.12 or later.
+
+Spec discrepancies:
+- **`404.html`.** UISpec 4.1 places it at the `web/` root, but Vite copies only `public/` into the build. The
+  safest reading is `web/public/404.html` (served at the site root, as deploymentConstrains 3, rule 7 intends);
+  UI-9 will do that.
+
+Notes for future tasks:
+- The worker must receive the bundle URL already resolved on the main thread
+  (`new URL(__PY_BUNDLE__, document.baseURI)`), because a worker's relative fetch resolves against `assets/`.
+- The dev server does not watch `h2h/`: restart it after a Python change.
+- With TypeScript 6, global types must be listed in each tsconfig's `types`.
+
+## UI-7 - Engine worker and client (2026-10-04)
+
+What changed (`web/` only; no Python change):
+- `src/engine/types.ts`: TypeScript mirror of the bridge's snake_case JSON (the envelope, the event document,
+  every command's payload and result as a `Commands` table, so `call` is typed per command).
+- `src/engine/host.ts`: the engine logic, independent of where it runs. It:
+  - loads Pyodide, then numpy and micropip;
+  - installs archeryutils, then fpdf2 (timed separately for D16);
+  - unpacks the hashed bundle into `/home/pyodide/app` on `sys.path`;
+  - answers each call with `h2h.bridge.call`, JSON text both ways.
+  It reports progress (runtime, packages, pdf, app), then ready with timings, or fatal. It also holds
+  `parseRequirements`, and the pinned `PYODIDE_VERSION` and `PYODIDE_CDN`.
+- `src/engine/worker.ts`: the module Web Worker. It imports Pyodide's loader from jsDelivr v314.0.7 at run time
+  (D15; the loader and its wasm always match), and takes the requirements from `pyodide-requirements.txt`
+  (`?raw`).
+- `src/engine/client.ts`: `EngineClient`, a typed `call(command, payload)` with request ids. It:
+  - holds calls until the engine is ready;
+  - times calls out (60 s) and engine start (180 s);
+  - rejects with `EngineError` (`timeout`, `crashed` or `disposed`) when the engine crashes (worker `error`),
+    reports a fatal error, or hangs, then replaces the worker on the next call or `start()` (the Retry
+    button);
+  - reports status (idle, loading with a stage, ready with timings, failed) to subscribers.
+  `browserEngine.ts` creates the one app client and resolves `__PY_BUNDLE__` against `document.baseURI`;
+  `useEngineStatus.ts` is a React hook over the status.
+- `vite.config.ts`: `worker.format = "es"`. `.prettierrc.json`: `endOfLine: "auto"`, so `format:check` passes
+  on a CRLF Windows checkout (autocrlf is on).
+- Temporary placeholder `App.tsx`: starts the engine, shows its status, and once ready makes one `options`
+  call and shows the bowstyles. UI-9's loading banner and shell replace it.
+- Tests:
+  - `tests/engine-client.test.ts`: 10 tests with scripted stand-in workers.
+  - `tests/engine-parity.test.ts`: the real host in-process under Node Pyodide, every UI-5 fixture step sent
+    through the client.
+  - `tests/bridgeFixtures.ts`: the fixture loader, the TypeScript `pdfSummary` (fflate), `normaliseResult` and
+    `compareJson` (integers, strings, booleans and null exact; other numbers within a relative 1e-9).
+  - `tests/bridgeFixtures.test.ts`: 11 tests of the comparison rules.
+  - `e2e/engine.spec.ts`: a real browser.
+  - `e2e/screenshots.spec.ts`: the review screenshot harness. It is skipped unless `SCREENSHOT_DIR` is set;
+    later tasks add their routes.
+
+Verification:
+- **Parity (Vitest, Node Pyodide 314.0.7):** all 8 fixtures reproduce step by step through the client. **698
+  non-integer numbers compared, largest relative difference 0** (bit-identical to native, as in UI-1). The PDF
+  summaries (header, pages, drawn text) match Python's.
+- **Client (Vitest):**
+  - several calls in flight each get the answer with their own id (answered out of order);
+  - a timeout rejects and replaces the hung worker, and the next call succeeds on a new worker;
+  - a crash rejects pending calls, and the next call restarts the engine and succeeds;
+  - a fatal start (offline) fails the waiting call, and `start()` retries;
+  - a start timeout, messages from a replaced worker ignored, dispose;
+  - progress events: runtime, packages, pdf, app, ready (also checked with the real host).
+- **Real browser (Playwright, Chromium, fresh context, production build under /Handicapped-H2Hs/):** the worker
+  starts and answers `options` ("Bowstyles: Recurve, Compound, Barebow, Longbow."), with no page errors.
+- `npm run typecheck`, `lint`, `build` OK; Prettier clean for these files; `vitest` 39 passed (5 files);
+  `playwright` smoke and engine 2 passed.
+- Screenshots (1440x900 and 390x844, light and dark) reviewed: the placeholder title, status "Engine ready in
+  5.5 s" and the bowstyle line, wrapping cleanly at 390 px. Dark mode is not applied yet (the colour-scheme
+  setting is UI-9, D8).
+
+**Measurements (reported to the owner):**
+- **First-load transfer: 12.1 MB in 23 requests**, slightly over the "about 11 MB" target. The largest
+  downloads are pyodide.asm.wasm 3.44 MB, numpy 2.93 MB, python_stdlib.zip 2.51 MB, fonttools 1.12 MB, pillow
+  1.03 MB, fpdf2 0.34 MB, pyodide.asm.mjs 0.26 MB and micropip 0.11 MB; the app JS/CSS, archeryutils and the
+  45.6 kB bundle make up the rest.
+- **Engine start (desktop, fast connection):** 9.7 s on the first run and 6.3 s on a second run, each with an
+  empty browser cache, so the difference is CDN and network variation.
+  - First run: Pyodide runtime 5.2 s, numpy, micropip and archeryutils 1.5 s, fpdf2 install and import 2.8 s,
+    app bundle 0.2 s.
+  - Under Node with cached packages: 3.6 s in total, of which fpdf2 is 1.7 s.
+- **D16 (owner's decision):** fpdf2 and its dependencies (pillow, fonttools) are about 2.5 MB and 2.2-2.8 s of
+  start-up. A lazy `fpdf` import plus installing fpdf2 on the first PDF export would bring the first load to
+  about 9.6 MB, inside the target. The size and the share are now measured, as D16 asked.
+
+Assumptions:
+1. **Pyodide's loader is imported from the CDN at run time** (`import()` with `@vite-ignore`), not bundled from
+   npm. The npm package is used for its types and for the Node tests only, which avoids Vite pre-bundling
+   problems with Pyodide.
+2. **A call timeout replaces the worker.** A Python call that never returns blocks the worker, so other calls
+   in flight are rejected as `crashed`. The stored document is never involved.
+3. **Calls wait for the engine** and get their timeout only once they are sent. Engine start has its own
+   180 s limit, because a phone's first visit downloads about 12 MB.
+4. **The engine test in `npm run e2e` downloads from jsDelivr and PyPI**, as CI will (D15).
+
+Spec discrepancies: none.
+
+## UI-8 - Storage layer (2026-10-04)
+
+Built by a subagent in parallel with the end of UI-7 (only in `web/src/storage/`, its tests and the two new
+packages). I reviewed the write path and re-ran the checks.
+
+What changed:
+- Packages: `idb` 8.0.3 (dependency) and `fake-indexeddb` 6.2.5 (devDependency), pinned exactly.
+- `src/storage/migrations.ts`: database "handicapped-h2hs", version 1, one key-value store "keyval". Document
+  schema migrations stay in Python.
+- `src/storage/status.ts`: the observable storage status (idle, saving, saved with time, failed with reason
+  "unavailable", "quota" or "error"), shaped for `useSyncExternalStore`.
+- `src/storage/db.ts`, `EventStore`. Methods never throw; they return result objects.
+  - `saveEvent(doc, expectedRevision | null, nowIso)` (D12). In one readwrite transaction it reads the stored
+    document; returns a conflict, with the stored document, if its revision differs, the event was deleted or
+    created elsewhere, or the stored value is corrupt; otherwise writes the whole document with
+    `revision + 1` and `updated_at`, and updates `events:index`. Any error aborts the transaction, so the
+    previous good document and index are kept.
+  - `renameEvent` changes only `name`.
+  - `deleteEvent` removes the event, its draft, its session route and its index entry in one transaction.
+  - `loadEvent` returns found, missing, corrupt (with the raw value) or failed.
+  - `listEvents` returns the index newest first, rebuilt from the `event:*` keys if it is missing or
+    malformed; corrupt values are left out.
+  - `importEvent` and the device records (`getValue`, `putValue`, `deleteValue`).
+  - `navigator.storage.persist()` is called once, after the first successful write.
+- `src/storage/autosave.ts`: drafts (get, set, delete), `DraftSaver` (500 ms debounce, flush, cancel), the
+  session route per event, and settings (`color_scheme` light, dark or auto, default auto; `graph_view`
+  default false; `last_event_id`) with defaults for missing or ill-typed fields.
+- `src/storage/backup.ts`:
+  - Export: one or all events as `{"format": "handicapped-h2hs-backup", "version": 1, "exported_at",
+    "events"}`, with a file-name helper.
+  - Import: files over 10 MB (D18) are refused before reading; non-JSON, a wrong format or a newer version are
+    rejected. A backup envelope or a single event document is accepted.
+  - Every event goes through the injected validator (in the app, `engine.call("validate_document")`) before
+    anything is stored; a validator that throws stores nothing. Only valid events are stored; rejected ones
+    are reported with the validator's message.
+  - An existing id is never overwritten without the caller's explicit confirmation.
+
+Verification:
+- `npx vitest run tests/storage-*`: **42 passed**.
+  - `storage-db` (17):
+    - a stale revision, an id created elsewhere and an event deleted elsewhere are conflicts that write
+      nothing;
+    - a whole-document replace increments the revision and updates the index;
+    - the index is rebuilt; rename changes only the name;
+    - delete removes all four records;
+    - nine kinds of corrupt value are reported without throwing;
+    - a simulated quota failure (on the event put, and on the index put after the event was written, which
+      checks the rollback) keeps the previous document and index and sets failed/quota, and the next good save
+      clears it;
+    - a generic error gives failed/error; no IndexedDB gives failed/unavailable, and a retry succeeds later.
+  - `storage-autosave` (8): drafts, session and settings round trips; the debounced saver.
+  - `storage-backup` (17): export and import identical; a real fixture document round trips; validation of
+    mixed valid and invalid events; six whole-file rejections; 10 MB enforced before reading; a throwing
+    validator; existing ids need confirmation; storage failure during import.
+- `npx tsc -b`, `npx eslint src/storage tests` and Prettier: clean.
+- Not tested here: old Safari private mode (it may report quota rather than unavailable). UI-20 covers storage
+  failure end to end.
+
+Assumptions:
+1. **Revisions.** A new event is stored as `doc.revision + 1` (a `new_document` with revision 0 becomes 1);
+   later saves use the stored revision + 1.
+2. **Backup import keeps a new id's `revision` and `updated_at` exactly.** This is the one exception to D12,
+   and it makes export followed by import identical. A confirmed overwrite gets
+   `max(stored, imported) + 1` and the current time, so a tab still holding the old document sees a
+   conflict.
+3. **Corrupt-value detection is structural only** (object, integer `schema_version` and `revision`, `id`
+   matching its key, a known `status`, object `setup`, string `name` and `updated_at`, numeric
+   `setup.n_archers`). Full validation is `validate_document`. A corrupt value is never overwritten by a save,
+   so its readable content can be exported first.
+4. **The failure state ("NOT being saved") changes only on save, rename or an unavailable database.**
+   Failures of drafts, settings, delete or import are returned to the caller, because "NOT being saved" would
+   mislead there.
+5. **`updateSettings` is a read followed by a write, not one transaction**, so two tabs changing settings at
+   the same moment could lose one change. It is a device preference only.
+
+Spec discrepancies: none.
+
+## UI-9 - App shell (2026-10-04): complete, stopped for owner review
+
+What changed (`web/` only):
+- `src/main.tsx`:
+  - starts the engine in the background, reads settings before the first render (no colour flash), and
+    renders the providers: MantineProvider (`defaultColorScheme="auto"`, a colour-scheme manager stored in the
+    IndexedDB `settings` record, D8), Services (engine and store), Settings, ModalsProvider, Notifications;
+  - also loads the notifications CSS.
+- `src/App.tsx`: the hash router (D2) with the UISpec 7.1 routes under the `Shell` layout. Unknown hashes go to
+  `#/`, and `#/e/:id/results` goes to `leaderboard`.
+- `src/app/`:
+  - `services.tsx` (context for the engine and store);
+  - `settings.tsx` (device settings written through to IndexedDB, plus the colour-scheme manager);
+  - `currentEvent.tsx`, the event in the URL, or the last one opened. It:
+    - commits changes write-before-show;
+    - opens the two-tab conflict modal ("This event changed in another tab": Load latest / Overwrite with
+      this tab);
+    - after a storage failure, keeps the change in memory and shows the alert;
+    - records the session route and `last_event_id`;
+    - offers rename, delete and reload.
+  - `guards.ts` (pure route guards);
+  - `download.ts` (Blob plus `<a download>`).
+- `src/components/`:
+  - `Shell` (AppShell: 56 px header; 260 px navbar from `md`, burger drawer below it; content at most 1200 px);
+  - `Header`: title, an event-name menu with Rename, Download backup and Delete event; the save indicator;
+    the Graph view switch, shown once the event has started; and the colour scheme menu (light, dark,
+    automatic);
+  - `Navbar`: Home; the event's Setup (with progress), Current pass and Results, disabled with a tooltip until
+    the event starts; Handicap calculator; About; and a footer line saying data stays in this browser;
+  - `SaveIndicator`: "Saved HH:MM", "Saving..." or "Not saved", with `aria-live`;
+  - `StorageFailureAlert`: the persistent red "This event is NOT being saved", with Download backup of the
+    in-memory event;
+  - `EngineBanner`: progress while Python loads (non-blocking), and a failure message with Retry and
+    Reload;
+  - `eventActions`: rename modal, delete confirmation naming the event, backup download;
+  - `usePageTitle` (per-route `<title>`), and inline SVG icons (no icon package).
+- `src/routes/`:
+  - `Home`: New event (through the engine's `new_document`, stored, then Stage 1), Import backup (validated by
+    the engine, with a replace confirmation for existing ids), the Resume card for the most recently updated
+    in-progress event (D13; restores the session route), the saved-event cards (Open, Rename, Download backup,
+    Delete), corrupt-value recovery cards (download what can be read, then delete), and an empty state;
+  - `EventRoutes`: the event layout ("Event not found" with a link Home; corrupt-value recovery), the guard
+    wrapper (redirect plus a notification), and placeholder views for the stages, the pass, a match, results
+    and the calculator, naming the task that builds each;
+  - `About`.
+- `public/404.html`: a friendly page linking to `/Handicapped-H2Hs/`.
+- Tests:
+  - `tests/guards.test.ts` (12 tests);
+  - `tests/App.test.tsx`, rewritten for the shell;
+  - `e2e/seed.ts`, which seeds IndexedDB with real UI-5 fixture documents so shell tests need no engine;
+  - `e2e/shell.spec.ts` (10 tests);
+  - `e2e/engine.spec.ts`, now New event through the real engine;
+  - `e2e/screenshots.spec.ts`, routes added;
+  - `e2e/smoke.spec.ts`, new heading.
+
+Verification:
+- `npx tsc -b`, `eslint .`, `prettier --check .` and `npm run build`: clean. `npx vitest run`: 93 passed.
+  `uv run pytest`: 1266 passed.
+- Playwright (Chromium, production build under `/Handicapped-H2Hs/`): smoke plus shell, 12 passed. The engine
+  test passed: New event goes through the real engine to Stage 1, Resume appears afterwards, and the first load
+  was 12.2 MB. The shell tests cover:
+  - a guarded route redirects (`setup/3` to `setup/2` with "Complete Stage 2 first."; `pass` before the start
+    shows the not-started message);
+  - an unknown id shows "Event not found" with a link Home; an unknown hash goes to `#/`; the empty state;
+  - with two in-progress events, Resume shows the more recent and both are listed;
+  - Resume after closing and reopening the tab restores the last route;
+  - rename from Home and from the header shows in both places after a reload, with "Saved HH:MM";
+  - a corrupt stored event offers download (`backup_<stamp>.json`) and delete while the other event still
+    works;
+  - delete needs confirmation in a modal naming the event (Keep it / Delete event);
+  - navbar items not yet reachable are disabled;
+  - `404.html` is served with its link.
+- Screenshots: Home, Stage 2, Current pass, About and Event not found, each at 1440x900 and 390x844, light and
+  dark, 20 in all. Home, pass, Stage 2 and About reviewed:
+  - light and dark both apply;
+  - the desktop navbar shows the event section and disabled items;
+  - on phones the burger drawer and a truncated event name in the header work, cards stack in one column, and
+    there is no horizontal scroll;
+  - Graph view is shown only for a started event.
+  - Cosmetic: the Delete button wraps onto its own line inside the event cards. Left for UI-19.
+- A jsdom App test could not see Home's IndexedDB-driven empty state (fake-indexeddb under jsdom). That check
+  lives in Playwright instead, against real IndexedDB.
+
+Assumptions:
+1. **Setup routes stay reachable after the start.** The UISpec 7.1 table says `setup/3` needs "not started",
+   but 7.3 makes Stages 1-3 read-only summaries after confirmation, so the guard allows them and UI-11 to
+   UI-13 lock editing. Pass, match and results need status running or complete.
+2. **The navbar's event section shows the event in the URL, or else the last one opened.** The header's event
+   menu and the Graph view switch appear only on event routes.
+3. **After a storage failure the change is kept in memory and shown** (with the persistent alert and Download
+   backup) rather than blocked, so a scorer in a private window can carry on and keep a backup. Creating a new
+   event while storage is unavailable is refused with a notification; UI-20 covers storage-disabled mode end
+   to end.
+4. **The match index's range is checked by the bridge's `match` command in UI-15**; the guard checks only
+   that it is a whole number.
+5. **The colour scheme is stored in the IndexedDB `settings` record** through a custom Mantine manager, not
+   Mantine's localStorage key (UISpec 6).
+6. **Lint exemptions with reasons:** react-refresh in the context and action modules, and set-state-in-effect
+   in the event loader and Home's refresh, both of which mirror IndexedDB.
+
+Spec discrepancies:
+- UISpec 7.1's `setup/3` guard ("not started") conflicts with 7.3's read-only summaries after the start;
+  handled as in assumption 1.
+- `404.html` lives in `web/public/` (see UI-6).
+
+For the owner's review (UI-9 has `needs_review`), run from `web/`:
+- `npm run build`, then `npm run preview -- --base /Handicapped-H2Hs/`, and open
+  http://localhost:4173/Handicapped-H2Hs/ (or use `npm run dev`).
+- Try New event, rename, delete, Download and Import backup, the colour scheme and resize to phone width.
+- Stage, pass, results and calculator views are placeholders until UI-10 to UI-17.
+
+## UI-9 owner review: decisions and the lazy PDF library (2026-10-04)
+
+The owner reviewed UI-9 ("the skeleton looks good"; additions to follow after the core build) and decided:
+1. **D16: load the PDF library only on a PDF export.** Done:
+   - `h2h/exports.py` imports `fpdf` inside `results_pdf`, with a `TYPE_CHECKING` import for the annotation.
+   - `web/src/engine/host.ts` no longer installs fpdf2 at start. The `pdf` load stage and `fpdf_ms` timing are
+     removed. Before an `export` call with kind `results_pdf`, the host installs fpdf2 (pillow and fonttools
+     come with it) once, caching the promise; after a failure a later export retries.
+   - The engine banner now says "about 10 MB".
+   - Verified:
+     - pytest 1267 passed, including a new subprocess test that importing `h2h.bridge` does not import `fpdf`.
+     - Vitest 93 passed. Under Node, Pillow and fonttools load only when the `results_pdf` fixture step runs,
+       and parity holds.
+     - Playwright: the engine test reports a **first load of 9.6 MB** (was 12.1-12.2 MB). It now asserts that
+       no fpdf2, pillow or fonttools request is made before a PDF export. Shell and smoke tests: 12 passed.
+   - Note for UI-15: the first PDF export waits for the install (about 2-3 s), so the Export PDF button needs
+     a loading state.
+2. **Setup pages are read-only after the start, until a reset.** This confirms UI-9 assumption 1, and UI-11 to
+   UI-13 must lock editing. Multiple instances running in parallel are not supported.
+3. **The "both archers closest" wording** may differ from Flask, as long as the UI makes clear that exactly one
+   archer must be chosen as the winner. In practice this happens only when both archers shoot the pass's
+   maximum score. UI-14 shows that message clearly.
+4. **Stage 2's default start weight:** add a small read-only bridge command when UI-11/UI-12 need it.
+
+## UI-10: Handicap calculator (2026-10-04)
+
+What changed (all in `web/`):
+- `src/engine/useBridgeQuery.ts`: a hook that runs a read-only bridge command and returns loading, ok (data)
+  or error. It reruns when the payload changes (compared as JSON). Later views (pairings, overview, match,
+  results) reuse it.
+- `src/components/CalculatorForm.tsx`, with two parts:
+  - `CalculatorForm`: round type (`SegmentedControl` Indoor / Outdoor), a searchable round `Select`, the
+    compound `Checkbox` (indoor only, with the old page's explanation), a score `NumberInput` (numeric
+    keypad, whole numbers, no negatives) and Calculate.
+  - `CalculatorDrawer`, kept mounted so a typed calculation survives closing the drawer, for Stage 2 (D6).
+  - The round lists and defaults come from `options().calculator`. The result is "Handicap: <text>", using
+    the bridge's `text`. Bridge errors appear in a red `Alert`. Nothing is stored.
+- `src/routes/Calculator.tsx`: the `#/calculator` view, replacing the placeholder.
+- Tests:
+  - `e2e/calculator.spec.ts`: 6 tests on one shared page, so the engine starts once;
+  - `e2e/screenshots.spec.ts` gains the calculator route.
+
+Verification:
+- Playwright `calculator.spec.ts`: 6 passed.
+  - The three valid fixture cases (indoor Portsmouth 550 is 41.4; compound 570 is 19.6; outdoor WA 720 70 m
+    600 is 29.3) show "Handicap: <fixture text>".
+  - Invalid input shows "Enter a valid score for the chosen round.".
+  - The compound checkbox is visible for Indoor and absent for Outdoor.
+  - The round list has 16 indoor and 76 outdoor options, with the fixture's first label.
+- Shell and smoke tests 12 passed; Vitest 93 passed; `tsc -b`, eslint and prettier are clean; pytest 1267
+  passed.
+- Screenshots of the calculator at 1440x900 and 390x844, light and dark, reviewed:
+  - the form sits in a bordered card with a maximum width of 560 px;
+  - labels are visible and the checkbox description reads well;
+  - on phones the form takes the full width with no horizontal scroll;
+  - dark mode applies throughout.
+  - Nothing to fix. Input font size on phones (16 px) is left to UI-19 with the other views.
+
+Assumptions:
+1. **The invalid-input test leaves the score empty, not "abc" as in the fixture.** The `NumberInput` refuses
+   letters, and the bridge rejects an empty score with the same message.
+2. **The calculator remembers one round per type**, so switching Indoor and Outdoor keeps each choice, as the
+   old page did with its two lists.
+3. **The score field allows only whole, non-negative numbers.** These are input conveniences only; any other
+   rejection is the bridge's.
+
+Notes for later tasks:
+- UI-12 opens `CalculatorDrawer` from Stage 2.
+- `options` waits for the engine. Stage 1 and 2 need its lists (distances, faces, bowstyles), so those forms
+  show a loader until the engine is ready (UI-11).
+
+## UI-11: Stage 1 (2026-10-04)
+
+What changed (all in `web/`):
+- `src/setup/SetupShell.tsx`: the setup shell, used by Stages 1 to 3.
+  - A Mantine `Stepper` (Event, Archers, Pairings) whose steps can be clicked once reachable (the guard's
+    rule). The descriptions are dropped below `sm` so the steps fit a phone.
+  - A centred card at most 760 px wide, or the full width for Stage 2.
+  - After the start, a notice: "The event has started, so its setup can no longer be changed...".
+- `src/setup/Stage1.tsx`: Stage 1, with these fields and behaviours.
+  - **Fields:**
+    - number of archers and total arrows (`NumberInput`, numeric keypad, two columns on desktop);
+    - arrows per pass (`Slider` over divisor indices, with marks and the value shown in the label);
+    - Shoot byes? (`SegmentedControl` with the old explanation, shown only for an odd count of 3 or more);
+    - setup mode (Simple / Advanced);
+    - in Simple mode, distance (grouped, searchable `Select`) and face size from `options`; in Advanced mode
+      the old note.
+  - **Values** start from the draft, or else from the stored setup (the `new_document` defaults). Every change
+    is saved as a draft after 500 ms.
+  - **Continue:**
+    - calls `apply_stage1` and commits (write before show);
+    - discards the Stage 1 draft and opens Stage 2;
+    - bridge errors appear in a red `Alert`;
+    - it shows a loading state while the engine starts, and the selects show "Loading..." until `options`
+      arrives. The number fields, slider and mode work meanwhile.
+  - **Read-only after the start** (owner decision 2 of the UI-9 review): every field is `readOnly` or
+    `disabled`, and there is no Continue.
+- `src/setup/divisors.ts`: the old `stage1.html` script's rules as pure functions (`divisors`,
+  `snapToDivisor`, `controlTotal`, `byesApply`). `src/setup/stage2Draft.ts`: Stage 2's draft shape and its
+  values from a document.
+- `src/app/useFormDraft.ts`: an event's draft is now a record with one entry per form (`stage1`, `stage2`,
+  later `match:<pass>:<match>`) in the single `draft:<id>` value. The hook provides `save` (debounced),
+  `discard` (removes only this form's entry) and `keep` (stores another form's entry unless it exists).
+- `src/app/guards.ts`: `setupLocked(doc)`. `src/routes/EventRoutes.tsx`: `setup/1` renders Stage 1.
+- `e2e/seed.ts`: `fixtureDoc` reads any scenario and the `new_document` step; `readStored` reads a key; `seed`
+  now clears the database first, so tests sharing a page don't see each other's drafts.
+
+Verification:
+- Vitest 99 passed, including 6 new tests in `tests/divisors.test.ts` (divisors, `parseInt || 1`, keeping the
+  preference, nearest divisor with ties to the smaller, returning to the preference, byes rule).
+- Playwright `stage1.spec.ts`: 8 passed, on one page shared serially so the engine downloads stay cached.
+  - **Snapping:** 60 then ArrowRight gives 15, back gives 12; 50 shows 10; 4 then 48 shows 12 again.
+  - **Byes control:** shown for 3 and 5, hidden for 1, 2, 4 and 8.
+  - **Modes:** Simple shows "20 yd" and "60 cm" with Metric and Imperial groups; Advanced hides both and shows
+    the note.
+  - **Draft:** survives a reload, read back from IndexedDB.
+  - **Bridge messages:** "Need at least 2 archers, got 1." and "Arrows per pass (1) must evenly divide total
+    arrows (0).".
+  - **Valid submit:** stores stage 1 with the values, deletes the draft and opens Stage 2.
+  - **Changing after Stage 2:** see assumption 2 below.
+  - **Started event:** read-only.
+- Shell, smoke, calculator and engine tests pass (27 in all); the first load is 9.7 MB. `tsc`, eslint and
+  prettier are clean; pytest 1267 passed.
+- Screenshots of Stage 1, and of Stage 1 read-only on a started event, at 1440x900 and 390x844, light and dark,
+  reviewed. Fixed two things:
+  - the phone Stepper was clipped ("Pairings" ran off the right edge): descriptions are now hidden below `sm`;
+  - the read-only notice was a near-black box in dark mode: it is now blue.
+  - Otherwise: two columns on desktop and one on phones, slider marks readable (all divisors labelled up to
+    12 divisors, otherwise the ends only), dark mode correct.
+  - Left for UI-19: the header's "Graph view" switch label wraps onto two lines at 390 px.
+
+Assumptions:
+1. **Continue with unchanged values moves to Stage 2 without calling `apply_stage1`.** That command clears
+   Stages 2 and 3 (as `SessionState.start_stage1` did), so looking back at Stage 1 and pressing Continue would
+   otherwise wipe the archers.
+2. **Changed values after Stage 2 ask first.** A confirm modal says Stage 2's archers and the pairings will be
+   cleared; on confirm, the stored archers are kept as Stage 2's draft (unless Stage 2 already has one), so
+   nothing typed is lost. The modal is presentation only; the bridge still decides what is cleared.
+3. **The slider labels every mark only when there are at most 12 divisors.** Otherwise only the ends are
+   labelled, so marks don't overlap. The current value is always shown in the label.
+4. **A total below 1 is treated as 1 by the control.** The old script's `parseInt || 1` gave an empty slider
+   for a negative total. The bridge still rejects the value.
+5. **No derived "passes per archer" summary line is shown before submit.** UISpec calls it "welcome", and
+   `apply_stage1` returns `passes_per_archer` and `n_passes` only on submit; computing it in TypeScript would
+   duplicate logic. A read-only bridge command could add it later if the owner wants one.
+
+## UI-12: Stage 2 (2026-10-04)
+
+What changed:
+- **New bridge command `stage2_info(doc)`** (owner decision 4 of the UI-9 review). It is read-only and needs
+  Stage 1; it still answers after the start, for the summary. It returns what the Flask route passed to the
+  Stage 2 page:
+  - `n_archers` and `setup_mode`;
+  - the shared target's `distance_label`, `face_cm` and `indoor`, from `TargetSetup`;
+  - `default_start_weight`, which is passes per archer (`total_arrows // n_pass`, as the route's
+    `default_passes`);
+  - `default_n_lookback`.
+  - Python changes:
+    - `h2h/bridge.py`: the command, registered in `_COMMANDS`;
+    - `tests/test_bridge.py`: 2 new tests, and the every-command test calls it (its expected set is the 5.4
+      commands plus `stage2_info`);
+    - `tests/bridge_fixtures.py`: records it after `apply_stage1` in every scenario, so the fixtures still use
+      every command. The fixtures were regenerated: insertions only, nothing else changed.
+- `web/src/setup/Stage2.tsx`: the Stage 2 view.
+  - **Layout:** a table with one row per archer (#, Name, Bowstyle, Handicap; Advanced adds Face type, Face
+    size and Distance) in a `Table.ScrollContainer`, or one card per archer below `sm` (`useMatches`, so only
+    one of them is rendered). The intro text matches the Flask page (in Simple mode it states the target and
+    whether it counts as indoor). Enter in a name moves to the next row's name.
+  - **Advanced mode:** an "Update handicaps during matches" No / Yes control, with the old explanation,
+    reveals Lookback (default 4) and Start weight (default passes per archer from `stage2_info`). Untouched
+    advanced fields take the Flask form's defaults (face type `10_zone`, 60 cm, 20 yd); a cleared select is
+    sent empty, so the bridge rejects it.
+  - **Errors:** the bridge message in a red `Alert`. The row named by the bridge's `row` is highlighted (light
+    red background, red outline, `data-invalid`), and the field named by `field` gets the error style. Errors
+    in the updating parameters mark those inputs.
+  - **Calculator:** a "Handicap calculator" button opens the UI-10 drawer. The drawer is rendered outside the
+    `<form>`: React events bubble through portals, so the calculator's submit would otherwise submit Stage 2.
+  - **Continue:** calls `apply_stage2` with a seed from `crypto.getRandomValues`, commits, discards the draft
+    and opens Stage 3. The draft is saved as the user types. The values start from the draft, else the stored
+    archers, else empty rows, always one row per archer.
+  - **Read-only after the start:** fields are read-only, there is no Continue and no calculator; "Back to
+    Stage 1" stays.
+- `web/src/setup/drawSeed.ts`, shared with Stage 3's Redraw. `web/src/engine/types.ts` gains `Stage2Info`.
+  The `setup/2` route renders Stage 2.
+- Tests: `web/e2e/stage2.spec.ts`, 8 tests on a shared page. `e2e/screenshots.spec.ts` seeds an advanced event
+  and adds Stage 2 (simple, advanced, read-only).
+
+Verification:
+- pytest 1269 passed. After regenerating the fixtures and the bundle, Vitest 99 passed, including the
+  Node-Pyodide parity run over all the fixture steps (now with `stage2_info`).
+- Playwright `stage2.spec.ts`, 8 passed:
+  - **Rejected submit:** row 3's handicap of 200 shows "Row 3: handicap must be between ... got 200.". Every
+    typed name, bowstyle and handicap is still there, row 3 has `data-invalid` and its handicap is
+    `aria-invalid`.
+  - **Enter:** moves to the next name.
+  - **Advanced mode:** clearing archer 2's face type, archer 3's face size or archer 4's distance is each
+    refused with a "Row N:" message and that row highlighted.
+  - **Updating parameters:** the control is absent in Simple mode; Lookback 4 and Start weight 3 (18 arrows /
+    6) appear only for Yes.
+  - **Layout:** a table at 1440 px and cards ("Archer 1" to "Archer 4") at 390 px.
+  - **Draft:** survives a reload.
+  - **Calculator drawer:** gives 41.4 for Portsmouth 550, and closing it keeps the typed archers without
+    submitting Stage 2.
+  - **Valid submit:** stores stage 2, the archers and a permutation assignment, deletes the draft and opens
+    Stage 3.
+- Shell, smoke, calculator and Stage 1 tests pass (34 in all). `tsc`, eslint and prettier are clean.
+- Screenshots of Stage 2 simple, advanced and read-only at 1440x900 and 390x844, light and dark, reviewed:
+  - the advanced table fits 1440 px without scrolling (the face-type select shows its full label);
+  - phone cards stack with visible labels;
+  - the read-only summary shows the stored archers;
+  - dark mode is correct.
+  - Noted, not changed: the read-only summary keeps the "Enter each of the 4 archers..." intro, since it also
+    states the target. Phone input font size is left to UI-19.
+
+Assumptions:
+1. **Inputs in the desktop table are labelled by `aria-label`** ("Name, archer 1"), with the column header as
+   the visible label. Cards use visible labels.
+2. **Advanced defaults are not stored until submit:** an untouched field shows and sends the Flask default.
+   A cleared field is stored as "" in the draft.
+3. **No "Back to Stage 1" confirmation.** Going back loses nothing: Stage 2's draft stays, and Stage 1 asks
+   before clearing archers (UI-11).
+
+## UI-13: Stage 3 (2026-10-04)
+
+What changed (all in `web/`):
+- `src/setup/Stage3.tsx`: Stage 3, built from the bridge `pairings` command.
+  - **Table:** Pass | Matches | Sitting out, using the Flask page's wording: "Ann vs Ben",
+    "Ann (bye - shoots alone)", sitting-out names joined by ", " or "-". Only names are joined; nothing is
+    computed.
+  - **Redraw pairings:** calls `redraw` with a fresh `crypto.getRandomValues` seed and commits the new
+    document. The table reloads from `pairings`, because the query reruns on the new revision.
+  - **Confirm pairings and start event:** calls `start_event`, commits and opens `#/e/:id/pass`.
+  - **Back to Stage 2:** a link, always shown.
+  - **After the start:** a read-only summary ("The pairings for every pass, as drawn when the event
+    started.") with no Redraw or Confirm. Together with UI-11 and UI-12, all three setup stages are read-only
+    once the event has started.
+- `src/routes/EventRoutes.tsx`: `setup/:stage` renders Stage 1, 2 or 3; the setup placeholders are gone.
+- Tests: `e2e/stage3.spec.ts`, 5 tests on a shared page with a 240 s timeout for engine restarts after a
+  reload. `e2e/screenshots.spec.ts` seeds a five-archer event with byes sat out and adds Stage 3 and Stage 3
+  read-only.
+
+Verification:
+- Playwright `stage3.spec.ts`, 5 passed:
+  - **Redraw:** changes the table text and the stored assignment.
+  - **Reload:** shows the same draw.
+  - **Byes:**
+    - with byes shot, pass 1 shows "Ben vs Eve" and "Ann (bye - shoots alone)", with "-" sitting out;
+    - with byes sat out, pass 3 shows "Ann vs Cat" with "Ben, Dan, Eve" sitting out (the fixture's
+      `pairings` result).
+  - **Back to Stage 2:** opens the editable form.
+  - **Confirm:** stores status `running` and opens the pass overview. Stages 1 to 3 then show the read-only
+    notice: the same pairings, no Redraw or Confirm, Stage 2's name read-only, and no Continue on Stages 1
+    and 2.
+- Whole Playwright suite apart from screenshots: 40 passed. Vitest 99 passed; pytest 1269 passed; `tsc`,
+  eslint and prettier are clean.
+- Screenshots of Stage 3 (five archers, byes sat out) and Stage 3 read-only at 1440x900 and 390x844, light and
+  dark, reviewed:
+  - the table fits 390 px without scrolling;
+  - each match is on its own line within a pass;
+  - on phones the buttons wrap onto two lines, with Confirm (primary) on its own line;
+  - the dark-mode stripes are readable.
+  - Nothing to fix.
+
+Assumptions:
+1. **"Back to Stage 2" stays after the start,** linking to the read-only summary, as do the Stepper's steps.
+2. **There is no confirm modal before starting.** The button says what it does, and UISpec 7.3 asks for no
+   modal here (D7's confirmation is for Advance).
+
+## UI-14: Pass overview (2026-10-04)
+
+What changed (all in `web/`):
+- `src/scoring/PassOverview.tsx`: `#/e/:id/pass`, built from the bridge `overview` command.
+  - **Heading:** "Pass N of M", with "12 arrows per pass. Open each match to enter its scores.", a `Progress`
+    bar and "x of y matches scored".
+  - **Desktop table:** Match | Score | Percentiles | Winner | Status | Actions.
+    - Match is "Ann vs Ben", or "Ann (bye - no opponent, shoots alone)", as in `rotation.html`.
+    - Score, percentiles and winner are the bridge's text, unchanged.
+    - Status is a `Badge` ("Scored" / "Not scored"); Actions is "Enter scores" or "View / edit".
+    - Clicking a row opens the match.
+  - **Phones:** below `sm`, one card per match with the same values and a full-width action button.
+  - **Sitting out:** "Sitting out this pass: ...".
+  - **Advance to next pass:** disabled until the pass is complete, with the hint "Enter scores for every
+    match in this pass first.". Clicking opens a confirm modal (D7): "Advance to pass N+1?", Advance / Stay
+    on this pass. Confirming calls `advance` and commits.
+  - **Final pass:** says "This is the final pass. Score every match to complete the event." until the stored
+    status is `complete` (D11). It then shows the "The event is complete" alert with View results, the three
+    downloads, Download backup and "This event is saved only in this browser. Download a backup to keep it
+    safe.".
+  - **"View results so far":** a link until the event is complete.
+- `src/components/exports.ts` (`downloadExport`, `localIso`, `EXPORTS`) and `src/components/ExportButtons.tsx`.
+  The completion alert's downloads already call the bridge `export` command, passing the browser's local time
+  as `now_iso` and decoding the base64 PDF to bytes, then offer the file through the existing `downloadFile`
+  (Blob and `<a download>`). UI-18 adds the Results menu and the download tests.
+- `e2e/seed.ts`: `fixtureDoc("command@n")` picks the n-th such step (-1 for the last).
+- Tests: `e2e/overview.spec.ts` (7 tests) and `tests/exports.test.ts` (1). `e2e/screenshots.spec.ts` gains a
+  complete event.
+
+Verification:
+- Playwright `overview.spec.ts`, 7 passed:
+  - **Advance before the pass is complete:** disabled with the hint at 0 and at 1 of 2 scored, enabled once
+    pass 1 is complete.
+  - **The modal:** Stay keeps pass 1 (`current_pass` 0 stored); Advance shows "Pass 2 of 3" with 0 of 2
+    scored (`current_pass` 1 stored).
+  - **Completion alert** on the final, complete pass: View results, the three downloads, Download backup and
+    the reminder, and no Advance.
+  - **Complete status:** a complete event is stored as `complete` and Home shows "Complete".
+  - **Backup:** Download backup gives `backup_<stamp>.json` containing the event.
+  - **Values:** the table's Match, Score, Percentiles and Winner equal the fixture's final `overview` output.
+  - **Row click:** opens `pass/match/1`.
+- Whole Playwright suite apart from screenshots: 47 passed. Vitest 100 passed; pytest 1269 passed; `tsc`,
+  eslint and prettier are clean.
+- Screenshots of the pass at the start and of a complete event at 1440x900 and 390x844, light and dark,
+  reviewed. Fixed two things:
+  - on phones the 6-column table scrolled sideways and hid Status and Actions, so phones now get match cards;
+  - "View results so far" duplicated "View results" once the event was complete, so it is hidden then.
+  - The completion alert reads well in both schemes (teal light variant).
+
+Assumptions:
+1. **Export downloads are wired here, not left as placeholders.** It is a thin call to the bridge, and the
+   completion alert should work at the UI-16 review. UI-18 still owns the Results menu, the fixture comparison
+   and the `pypdf` test.
+2. **The "stored status becomes `complete` after the last match is saved" test lives in UI-15.** Saving needs
+   the match view; here it is shown with the fixture's complete document (status `complete`, set by
+   `record_match`, D11).
+3. **Phones show match cards** instead of a sideways-scrolling table (UISpec 7.4: no horizontal scroll, and
+   tables of more than five columns don't fit at 390 px).
+
+## UI-15: Match view without chart (2026-10-04)
+
+What changed (all in `web/`):
+- `src/scoring/MatchPage.tsx`: `#/e/:id/pass/match/:i`, built from the bridge `match` command; saving calls
+  `record_match`.
+  - **Heading:** "Ann vs Ben", or "Ann - bye, no opponent", with "Pass N of M · Back to overview".
+  - **Score boxes:** one per archer, labelled "<name> score (0-<max>)" with the archer's own maximum. No
+    handicap is shown; the first box is autofocused; the numeric keypad is used; Enter saves. The box does
+    not filter values: decimals, negatives and out-of-range numbers go to the bridge, which answers with its
+    messages.
+  - **Tie-break** (owner decision 3 of the UI-9 review):
+    - a `Radio.Group` "Tie-break: closest to the middle", so exactly one archer can be chosen, explained as
+      "Choose that one archer: they win the pass";
+    - shown only after a `tiebreak_required` answer (yellow `Alert` with the bridge message, typed scores
+      kept) or when the saved result was decided by it, with that archer chosen;
+    - `closest` is sent only while the control is shown;
+    - the "Tick only one archer" case can't happen with radios.
+  - **After a save:**
+    - an inline "Scores saved." with "Next unscored match" (from the view's `next_unscored_match`) and "Back
+      to overview";
+    - "Save scores" becomes "Save changed scores", with the old page's note about replacing scores;
+    - the "This pass" table, with "Percentile and score were tied; decided by closest to the middle." when it
+      applies.
+  - **Layout:** two columns from `md`. The right column shows a muted hint when Graph view is off, and a
+    placeholder panel when it is on (the chart is UI-16). A bye match is single-column with one box, no
+    winner, no chart column and the old explanation.
+  - **Drafts:** typed values are saved as the draft entry `match:<pass>:<match>`, which is discarded after a
+    successful save. Matches on the final pass stay editable after completion (D11).
+- `src/scoring/PassTable.tsx`: the pass table (`_pass_table.html`): one `tbody` per match with a thick double
+  line between matches, and "Pass starting handicap" only when updating is on. It uses compact spacing, so 5
+  columns fit at 390 px. The Results Passes tab (UI-17) will reuse it.
+- `src/engine/useBridgeQuery.ts`: an optional `keepPrevious`, so a save that makes the `match` query rerun
+  doesn't unmount the form. The match page accepts a kept answer only if it is for the same match index: the
+  first version showed match 0's form under match 1 after "Next unscored match", which the test caught.
+- `e2e/seed.ts`: `fixtureSteps(scenario, command?)`. `e2e/engine.spec.ts`: the transfer counter ignores
+  requests that finish after the page closed; this race showed up once as a failure.
+- The serial engine specs (calculator, Stage 1, Stage 2) now use a 240 s timeout like the later ones: under
+  parallel load, engine start exceeded the 30 s default once.
+- Tests: `e2e/match.spec.ts`, 13 tests; screenshots of a new match and a saved match.
+
+Verification:
+- Playwright `match.spec.ts`, 13 passed, on the `tie_break` fixture's two equal archers.
+  - **Tie-break scenarios** (as in `test_event_routes.py`):
+    - no control on a fresh match or one saved by score;
+    - a tie without a choice is refused with the bridge message, the typed 90 and 90 are kept, the control
+      appears with nothing chosen, and nothing is stored;
+    - choosing Ann saves the match: winners No / Yes, the decided note shown, Ann still chosen after a reload,
+      and the overview's winner is Ann;
+    - editing a closest-decided match to untied scores drops the note and the control;
+    - a refused re-save into a tie keeps the stored 100 / 60 and shows the control.
+  - **Invalid scores:** 999 gives "Score must be between 0 and 120..."; 90.5 gives "Score must be a whole
+    number, got 90.5.".
+  - **Labels** are exactly "Ben score (0-120)" and "Ann score (0-120)", with no "handicap" text in the form.
+  - **Bye:** one input, winner "-", no chart column, no chart panel even with Graph view on.
+  - **Draft:** survives a reload.
+  - **Persistence:** saved scores survive closing the tab and opening a new one.
+  - **Completion:** saving the last match of the final pass stores status `complete`, and Home shows
+    "Complete" (moved here from UI-14). A final-pass match of a complete event can be edited and saved, and
+    the status stays `complete`.
+  - **This pass table** equals the `record_match` result's rows exactly; "Next unscored match" opens match 1
+    with an empty form.
+- Whole Playwright suite apart from screenshots: 60 passed, twice in a row; the first load is 9.7 MB. Vitest
+  100 passed; pytest 1269 passed; `tsc`, eslint and prettier are clean.
+- Screenshots of a new match and a saved match at 1440x900 and 390x844, light and dark, reviewed:
+  - desktop two-column layout with the Graph view hint on the right;
+  - on phones the hint sits below the table.
+  - Fixed: the 5-column This pass table scrolled sideways at 390 px; it is now compact and fits.
+
+Assumptions:
+1. **The tie-break is a radio pair, not two checkboxes.** UISpec 7.2 says "choose exactly one", and the owner
+   only requires that a single winner is clearly chosen. The bridge's "Tick ... then save again" wording
+   still appears in the alert.
+2. **The score box does not stop decimals or negatives,** so the bridge's messages are what the user sees
+   (UISpec: the UI never validates rules itself). Mantine's `NumberInput` still refuses letters.
+3. **Graph view on shows a placeholder panel** until UI-16 adds the chart.
+
+## UI-16: Chart (2026-10-04)
+
+What changed (all in `web/`):
+- `package.json`: `chart.js` 4.5.1, pinned exactly and installed from npm (D9). It is tree-shaken: only the
+  line controller, line and point elements, linear scale, filler, legend and tooltip are registered. The app
+  bundle is 877 kB (277 kB gzip), including Mantine and React.
+- `src/chart/chartSetup.ts`: the port of `h2h/static/match_chart.js`.
+  - `pairDatasets(data, all, colors)`: both curves (legend from the payload's `legend`) and one dashed marker
+    per score shot; only the current pass, or every pass with `all`.
+  - `nearestCurveX`: the custom interaction mode, with the original reasoning kept in its doc comment.
+  - `drawMarkerLabels` (the `markerLabels` plugin's `afterDatasetsDraw`): the same placement rules. Rotated
+    "P<n>" labels; the first archer prefers the left and the second the right; a side is avoided if it falls
+    outside the plot or crosses another marker line; an overlapping label moves down. The boxes are kept on
+    `chart.markerLabelBoxes`, and mirrored to the canvas's `data-marker-labels` attribute for browser tests.
+  - The only change from the old code: the left or right preference is keyed to the dataset's archer ("a" or
+    "b") rather than to its colour, since colours now follow the theme. The behaviour is the same.
+- `src/chart/MatchChart.tsx`:
+  - `MatchChart` draws the `pair_chart` payload with Chart.js. It is responsive (aspect ratio 1.6) and
+    redraws when the markers or the colour scheme change. Series colours: the Flask blue `#4c72b0` and red
+    `#c44e52` in light mode, lighter `#7a9fdc` and `#e2777a` in dark mode. Axis and grid colours follow the
+    scheme.
+  - `PairChartPanel` has the "Score distributions" heading, the "Show previous passes' scores too" checkbox,
+    the chart (data only from the bridge `pair_chart`) and "How the winner is decided" in a collapsible
+    `Accordion` (the old explanation). UI-17 will reuse it in the Pairwise modal.
+- `src/scoring/MatchPage.tsx`: the right column shows `PairChartPanel` when Graph view is on, or the muted
+  hint when it is off. On phones it sits below the inputs. A bye match has no chart.
+- Tests: `tests/chart.test.ts` (9 Vitest tests), `e2e/chart.spec.ts` (3), and a chart screenshot with Graph
+  view on and every pass shown.
+  - The stage 2 draft test and the match tests now wait up to 240 s after a reload, since the engine restarts
+    and took longer than 5 s once under parallel load.
+
+Verification:
+- Vitest 109 passed. `tests/chart.test.ts` drives the label plugin on a stand-in chart (jsdom has no canvas)
+  and checks `chart.markerLabelBoxes`:
+  - two markers one score apart, in both orders: no overlap, each label 3 px beside its own line, neither
+    crossing the other line, all inside the plot;
+  - equal scores: the first archer's label on the left, the second's on the right;
+  - markers at either edge put their label on the inside;
+  - eight clustered markers stack without overlapping and stay inside;
+  - curves and hidden markers are ignored.
+  - `pairDatasets` over every `pair_chart` payload in the UI-5 fixtures plots the payload as it is (curves are
+    the payload arrays themselves, legends, marker x equal to the scores, "P<n>", marker height `y_max`) and
+    marks only the current pass unless asked.
+- Code inspection: the chart receives `PairChart` only from `useBridgeQuery("pair_chart", ...)`. TypeScript
+  only builds Chart.js datasets and pixel positions for labels; there are no statistics in TypeScript.
+- Playwright: whole suite apart from screenshots, 63 passed, twice in a row. `chart.spec.ts`:
+  - Graph view on shows the chart and off shows the hint;
+  - the previous-passes checkbox changes the labels from P2, P2 to P1, P1, P2, P2 and back;
+  - the explanation opens.
+  - `match.spec.ts` already shows a bye has no chart, with Graph view on.
+- pytest 1269 passed; `tsc`, eslint and prettier are clean.
+- Visual check of the chart screenshots at 1440x900 and 390x844, light and dark (Cat, handicap 50, against
+  Ben, handicap 20, all passes shown):
+  - the two series are clearly distinct in both schemes, and the legend names each archer with the handicap;
+  - labels sit beside their lines inside the plot;
+  - axes are readable on dark;
+  - on phones the chart sits below the table at full width.
+  - An earlier sample with two archers of equal handicap drew identical curves (red under blue). That is the
+    data, not a fault; equal scores then put the two labels either side of the shared line, as intended.
+
+Assumptions:
+1. **The label tests drive the plugin on a stand-in chart.** Vitest under jsdom cannot create a real Chart.js
+   canvas, so the stand-in provides `chartArea`, `scales.x`, `ctx.measureText` (7 px per character) and the
+   datasets. The real chart's boxes are also checked in the browser through `data-marker-labels`.
+2. **Dark-mode series colours are lighter tints of the same blue and red,** so they read on a dark background
+   and the two archers stay distinguishable.
+3. **The axis range is the payload's `x_min` and `x_max`,** which `chart_data` already widens to include every
+   marker, as the Flask chart did.
+
+## 2026-10-04 Owner review of UI-10 to UI-16 and spec update
+
+The owner accepted every assumption in the UI-16 report and asked for the spec to be updated to match their
+UI-9 review decisions. Changes to `Specification/UISpec.md`, made at the owner's request:
+- D16 and section 4.3: the `fpdf` import is lazy and fpdf2 is installed on the first PDF export; first load is
+  about 9.7 MB. The closing rules (section 12) say the same.
+- Section 5.4: a `stage2_info(doc)` row (read-only Stage 2 defaults, added in UI-12).
+- Section 6, rule 2: running the same event in several tabs at once is not supported; the conflict modal is
+  a safety net only.
+Already in the spec and unchanged: setup is read-only after the start (7.3, Stage 3) and the tie-break picks
+exactly one archer (7.1, Match page).
+
+## UI-17: Results tabs (2026-10-04)
+
+What changed:
+- `web/src/results/Results.tsx`: `ResultsView` at `#/e/:id/results/:tab` with Mantine `Tabs` (Leaderboard,
+  Pairwise, Passes, Archers); changing tab changes the hash route. Data from the bridge `results` and
+  `archer_results`, shown as the bridge's text.
+  - Header: "Event results", then "Event complete." or a "Continue scoring (pass n of N)" link, and a
+    Download `Menu`.
+  - Leaderboard: the Flask explanation with completed passes, and the six-column table.
+  - Pairwise: the Flask text and table; with Graph view on, a "View chart" button per row opens the UI-16
+    `PairChartPanel` in a `Modal`. "No pairs have shared a rotation yet." when empty.
+  - Passes: an `Accordion` with one item per pass in `results.passes`, the latest open; each uses `PassTable`
+    (thick double line between matches). "No pass has been scored yet." when empty.
+  - Archers: the Flask explanation, the "No pass has been completed yet..." text when no pass is complete,
+    one `Card` per archer (name, then "Total score - starting handicap - to-date handicap"), and the passes
+    table with a bold Average row, or "No completed pass for <name> yet."
+  - Page titles "Results: <tab>".
+- `web/src/components/ExportButtons.tsx`: `DownloadMenu` (the three exports, through the existing
+  `downloadExport`). UI-18 adds the download tests.
+- `web/src/routes/EventRoutes.tsx`: the results route renders `ResultsView`; the now-unused `Placeholder`
+  is removed (every view is built).
+- Tables at phone width: minimum widths lowered so headers wrap instead of forcing a scroll
+  (`PassTable` too).
+- Tests: `web/e2e/results.spec.ts` (6); results routes added to `e2e/screenshots.spec.ts` (with an
+  `openChart` flag and a short wait so the modal is captured after it fades in).
+
+Verification:
+- Playwright `results.spec.ts`, 6 passed:
+  - simple and handicap_updating scenarios: every cell of every tab (leaderboard, pairwise, every pass table,
+    every archer table with its Average row, archer headings, captions) equals the recorded bridge
+    `results` / `archer_results` output exactly; the handicap_updating run covers the "Pass starting
+    handicap" column;
+  - each tab opens from its hash route, selected, with its page title;
+  - the Passes tab opens the latest pass only, and an earlier one opens on click;
+  - "View chart" is absent with Graph view off, one per row with it on, and opens the chart for that pair
+    in a dialog that closes with Escape;
+  - before any completed pass the Archers tab shows the "No pass has been completed yet..." text, and Passes
+    says no pass has been scored.
+- Code inspection: the results components only place bridge strings in cells; there is no number
+  formatting or statistics in TypeScript (the only numbers interpolated are counts the bridge returns,
+  `completed_passes`, `n_passes`, `current_pass_number`).
+- Full Playwright suite apart from screenshots: 69 passed. Vitest 109 passed. pytest 1269 passed. `tsc`,
+  eslint and prettier clean.
+- Screenshots reviewed at 1440x900 and 390x844, light and dark, for every tab, the pairwise chart modal,
+  and the Archers tab before any completed pass:
+  - desktop: the tabs fill the width, tables are readable, the modal chart is clear in dark mode;
+  - fixed: a second Download button on the Leaderboard tab duplicated the header's; now only the header has
+    it;
+  - fixed: the modal screenshot was taken mid-fade (screenshot spec now waits);
+  - fixed in part: tables forced sideways scroll on phones through fixed minimum widths; with those lowered
+    the headers wrap, but the five-column pass and archer tables still overflow by about 20 px at 390 px.
+    UI-19 has a test for exactly this and will fix it (smaller spacing or font on phones).
+
+Assumptions:
+1. **One Download menu, in the view header,** rather than also on the Leaderboard tab (UISpec 7.3 lists
+   both; the leaderboard is the default tab, so they appeared side by side).
+2. **The archer heading splits the Flask single line** into the name as a heading and "Total score ... -
+   starting handicap ... - to-date handicap ..." below it; the values are unchanged.
+3. **Passes tab items are the passes the bridge returns** in `results.passes` (the passes with scores).
+
+## UI-18: Exports (2026-10-04)
+
+What changed:
+- The downloads were already wired: the completion alert's buttons (UI-14) and the Results Download menu
+  (UI-17) both call `downloadExport`, which sends `export` with `now_iso` from the browser clock
+  (`localIso`, local time without an offset), decodes base64 PDF bytes, and downloads through a `Blob` and a
+  temporary `<a download>` link (`src/app/download.ts`). No UI code changed in this task.
+- `web/e2e/exports.spec.ts` (7 tests): each of the three files from the Results Download menu and from the
+  completion alert. The page clock is fixed (`page.clock.setFixedTime`) at the fixtures' export time,
+  2026-10-04 15:30:12 local, so the file name and contents must equal the UI-5 `export` fixture exactly:
+  - CSVs: name and text identical;
+  - PDF: starts with `%PDF-`, and its `pdfSummary` (header, page count, every text line, the same
+    normalisation as the fixtures) equals the fixture's.
+- `tests/test_bridge.py::test_pdf_export_opens_with_pypdf_and_holds_the_report`: pypdf opens the bridge's
+  PDF; its extracted text equals that of `exports.results_pdf` for the same event and time, and contains the
+  title, "Exported 2026-10-04 15:30:12", every leaderboard name and every archer heading.
+
+Verification:
+- Playwright `exports.spec.ts` 7 passed (the first PDF also exercises the lazy fpdf2 install, D16); full
+  Playwright suite apart from screenshots 76 passed.
+- pytest 1270 passed; Vitest 109 passed; `tsc`, eslint and prettier clean.
+- No screenshots: nothing the user sees changed.
+
+Assumptions:
+1. **Fixing the page clock** makes the comparison exact rather than "apart from the timestamp"; the
+   timestamp itself is then checked too.
+
+## UI-19: Responsive and accessibility pass (2026-10-04)
+
+What changed:
+- Tooling:
+  - `@axe-core/playwright` 4.13.0, pinned, added as a web dev dependency (`web/package.json` only; no
+    `pyproject.toml` change);
+  - Playwright projects `webkit` (Desktop Safari) and `mobile` (iPhone 13: WebKit, touch, 390 px) beside
+    `chromium`.
+- `web/e2e/routes.ts`: the 22 review routes (with expected page titles) and `openRoute`, shared by the
+  screenshots and the new checks. `openRoute` now waits for the app shell before waiting for the engine
+  banner to go: the old order could pass before the banner had appeared (seen on WebKit).
+- `web/e2e/a11y.spec.ts`: per route, loaded once:
+  - the page title;
+  - every number field has `inputMode` numeric or decimal;
+  - an axe scan in light and in dark with zero serious or critical violations;
+  - on desktop projects, no page overflow at 1440, 1280, 768 and 390 px, and every table of at most five
+    columns fits its container at 390 px;
+  - on the mobile project, no page overflow, every interactive target at least 44 px tall (a checkbox,
+    radio or switch measured by its label row; links inside a sentence exempt) and input text at least
+    16 px.
+- Fixes in the app:
+  - `src/theme.ts`, for contrast:
+    - primary shade 8, so white text on blue buttons reaches 4.5:1;
+    - dimmed text gray 7 in light and dark 1 in dark (the defaults were 3.3:1);
+    - in the light scheme, darker text on light-variant badges, alerts and the active nav link (green
+      Complete was 3.8:1, the teal Scored badge 4.3:1, the nav description 4.1:1);
+    - links always underlined (axe link-in-text-block);
+    - modal and drawer close buttons named "Close";
+    - `respectReducedMotion`.
+  - `src/styles.css` (new):
+    - under prefers-reduced-motion, no CSS transitions or animations (UISpec 7.5);
+    - below 36em, table cell padding 5 px, so five-column tables fit at 390 px;
+    - below 48em, inputs 44 px with 16 px text, and buttons, action icons, close buttons, the burger, nav
+      links, tabs, menu items, stepper steps, checkbox, radio and switch rows, and standalone links at
+      least 44 px.
+  - Loaders have `role="status"` (an `aria-label` on a span with no role is not allowed); the Stage 1
+    slider thumb is labelled "Arrows per pass"; "Event not found" sets its page title; the link in the
+    match error alert takes the alert's colour; the header "Graph view" label no longer wraps on phones.
+- Tests adjusted: `overview.spec.ts` and `stage3.spec.ts` now open their shared page at 1440x900, like the
+  other desktop specs, because on the mobile project they correctly got the phone cards instead of the
+  tables they assert on.
+
+Verification:
+- `a11y.spec.ts` on chromium, webkit and mobile: 66 passed.
+- Full suite apart from screenshots: chromium 98 passed. WebKit and mobile: 144 passed on the first run,
+  with 2 failures from the viewport assumption above (6 more in those serial files did not run); after the
+  fix both files pass on mobile (12) and the a11y run passed on all three.
+- Vitest 109 passed; pytest 1270 passed; `tsc`, eslint and prettier clean.
+- Screenshots of all 22 routes at 1440x900, 1280x720, 768 and 390 px wide, light and dark (176) reviewed:
+  - every view fits without sideways scroll;
+  - archer and pass tables fit at 390 px;
+  - phone inputs and buttons are taller;
+  - the darker blue and captions read well in both schemes;
+  - the chart and results pages are unchanged in layout.
+  - Fixed after review: the header "Graph view" label wrapped on phones.
+  - Left as is: on phones the event-card Delete button sits on its own line under Open, Rename and
+    Download backup. It is readable and keeps the destructive action apart.
+
+Notes:
+- While the WebKit and mobile run was going, `web/node_modules` lost most of its packages (32 entries
+  left, `@playwright/test` gone), from something outside this session. `npm ci` restored it from the
+  lockfile.
+- A full run of the three projects takes about 15 minutes locally; CI (UI-21) may want to shard it, or run
+  WebKit and mobile only on `main`.
+
+Assumptions:
+1. **"Mobile" in UISpec 7.4 means below 48em (768 px)** for the 44 px and 16 px rules; at 768 px and above,
+   Mantine's default sizes stay.
+2. **The mobile project is an iPhone,** since the 16 px rule exists for iOS Safari.
+
+## UI-20: Resilience tests (2026-10-04)
+
+What changed:
+- `web/e2e/resilience.spec.ts` (9 tests, each in its own browser context):
+  - an engine that cannot start (Pyodide's CDN blocked on a first visit): the "The scoring engine could not
+    start" alert with Retry and "Reload the page"; the stored event is byte-for-byte unchanged; back online,
+    Retry starts the engine and the pass view loads;
+  - close and reopen the tab at Stage 1, Stage 2, Stage 3 and mid-score: a new tab at the bare URL shows the
+    Resume card; Resume returns to the same route with the typed value restored from its draft (Stage 3:
+    the same pairings and assignment), and no saved score changes;
+  - a forced reload straight after pressing Save: the earlier saved score is intact, the new match is
+    either fully saved or not at all, and the stored event still opens through the engine;
+  - two tabs on one match: the second tab's save shows "This event changed in another tab" with "Load
+    latest" and "Overwrite with this tab"; each choice is tested and the stored scores are those chosen;
+  - storage unavailable (IndexedDB refusing to open, as in a private window): New event shows the
+    persistent "This event is NOT being saved" alert, whose Download backup gives a JSON backup holding the
+    new event.
+- Behaviour fixed (UISpec 6 and 7.6):
+  - **The storage alert had no Download backup when nothing could be stored.** It only backed up the
+    loaded event, and with storage unavailable no event ever loads. The storage layer now keeps the
+    document a failed save was writing on the failed status (`unsaved`, `src/storage/status.ts` and
+    `db.ts`), and `StorageFailureAlert` backs that up, or else the loaded event. For a failed save of a
+    loaded event this is also more useful: the backup now holds the change that was not saved, not only
+    the last stored version. Vitest covers both (a quota failure and no IndexedDB).
+  - **Retry did not bring a view back.** A view whose bridge query failed because the engine failed
+    stayed on its error after Retry restarted the engine. `useBridgeQuery` now runs the command again once
+    the engine is ready, if its answer was an engine failure (not a refusal by the command).
+  - Long unbroken text in alerts (the engine error names the CDN URL) wraps instead of overflowing on
+    phones (`styles.css`).
+
+Verification:
+- `resilience.spec.ts` 9 passed on chromium, webkit and mobile (each run on its own).
+- Full suite apart from screenshots: chromium 107, webkit 107, mobile 107 passed.
+- Vitest 110 passed; pytest 1270 passed; `tsc`, eslint and prettier clean.
+- Screenshots of the storage-unavailable alert and the engine failure at 1440x900 and 390x844, light and
+  dark: both alerts read clearly; Retry and Reload are visible; fixed the URL overflowing the alert on
+  phones.
+- No scenario lost a saved score.
+
+Issues and notes:
+- **WebKit, many engine starts in one browser:** when one context opened and closed many tabs (each tab
+  starts its own Pyodide), WebKit eventually failed to start the engine within the 180 s limit ("The engine
+  took too long to start"). With a context per test this did not recur. Separately, the engine-failure test
+  timed out on WebKit only when it ran after the other tests in the same browser, and passed on its own
+  (including 3 repeats); it now runs first in the file. I take both to be resource limits of WebKit under
+  Playwright on Windows rather than app faults, but a real Safari check (deploymentConstrains 8, item 4)
+  should include a Retry after an offline first visit.
+- Running the same event in two tabs is not supported (owner decision); the conflict modal is the safety
+  net and is what these tests check.
+
+Assumptions:
+1. **"Engine failure" is simulated as a first visit with no network to the Pyodide CDN,** the case
+   UISpec 7.6 names. A worker crashing mid-session goes through the same failed state and banner.
+2. **"Resumes at the right route" is checked through the Resume card on a fresh tab at the bare URL,**
+   UISpec 6 rule 4.
+
+## UI-21: CI and GitHub Pages, local part (2026-10-05) - IN PROGRESS, waiting for the owner
+
+What changed:
+- `.github/workflows/ci.yml`: on every push and pull request, on ubuntu-latest:
+  - `uv run --locked pytest` (setup-uv reads `.python-version`);
+  - Node 24, then `npm ci`, `typecheck`, `lint`, Vitest, `build`;
+  - Playwright browsers (chromium and webkit, with OS dependencies), then `npm run e2e` (all three projects,
+    served by `vite preview` from `/Handicapped-H2Hs/`);
+  - the Playwright report and test results are uploaded as an artifact on failure.
+  - Network access for Pyodide and its packages comes with GitHub-hosted runners (D15).
+- `.github/workflows/pages.yml`: on push to `main` (and manual dispatch), builds `web/dist` and deploys it
+  with `upload-pages-artifact` and `deploy-pages`. Both jobs carry `if: github.ref == 'refs/heads/main'`, so
+  a manual run from another branch deploys nothing.
+- Action versions pinned to the current major releases, checked against the GitHub API on 2026-10-05:
+  checkout v7, setup-node v7, setup-uv v10, configure-pages v6, upload-pages-artifact v5, deploy-pages v5,
+  upload-artifact v7.
+- Vite `base` was already relative (`./`, UI-6), and Playwright already serves the build from
+  `/Handicapped-H2Hs/`.
+- `web/e2e/full-event.spec.ts`: one event through the UI from New event:
+  - Stage 1 (4 archers, 36 arrows, 12 per pass by the slider), Stage 2 (four archers), Stage 3 confirm;
+  - every match of the three passes scored, with a reload part-way through pass 2 (the saved match is still
+    scored), Advance confirmed each time;
+  - the completion alert's three downloads (stamped names, CSVs naming every archer, the PDF starting
+    `%PDF-`);
+  - a reload of the finished event, and Home showing it Complete.
+
+Verification (local, the same commands as `ci.yml`, with `CI=1`):
+- `uv run --locked pytest` 1270 passed.
+- `npm ci`, `npm run typecheck`, `npm run lint` clean; Vitest 110 passed; `npm run build` built.
+- `npm run e2e`: 324 passed (108 tests on each of chromium, webkit and mobile; the 528 screenshot tests
+  skip without `SCREENSHOT_DIR`), in 8.8 minutes, including the full event from the `/Handicapped-H2Hs/`
+  sub-path.
+- First load, measured by `engine.spec.ts` on the local production build: 9.7 MB in 15 requests.
+
+Still to do (the owner's actions, then the remaining checks):
+1. Push `ui-redesign`; check `ci.yml` passes in GitHub Actions.
+2. In the repository settings, set Pages to deploy from "GitHub Actions".
+3. Merge to `main`; check the site at the Pages URL loads under `/Handicapped-H2Hs/`, runs a full event,
+   exports files and survives a reload; record first-load size and time here.

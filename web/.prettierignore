@@ -1,0 +1,8 @@
+dist
+public/py
+node_modules
+package-lock.json
+playwright-report
+test-results
+# UI-1 Pyodide gate, kept exactly as committed (golden.json is written by scenario.py).
+scripts/pyodide-gate

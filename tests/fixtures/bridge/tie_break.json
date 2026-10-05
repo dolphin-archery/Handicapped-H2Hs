@@ -1,0 +1,3018 @@
+{
+ "scenario": "tie_break",
+ "description": "Two archers with the same handicap: a refused tie, the closest archer, re-saves, an unneeded closest.",
+ "now_iso": "2026-10-04T15:30:12",
+ "seed": 4,
+ "steps": [
+  {
+   "command": "new_document",
+   "payload": {
+    "event_id": "fixture-tie_break",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 0,
+      "n_archers": 4,
+      "total_arrows": 60,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    }
+   }
+  },
+  {
+   "command": "apply_stage1",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 0,
+      "n_archers": 4,
+      "total_arrows": 60,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    },
+    "form": {
+     "n_archers": "2",
+     "total_arrows": "36",
+     "n_pass": "12",
+     "setup_mode": "simple",
+     "distance": "20yd",
+     "face_cm": "60",
+     "shoot_byes": true
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "setup",
+      "setup": {
+       "stage": 1,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [],
+      "assignment": null,
+      "scores": {},
+      "current_pass": 0
+     },
+     "passes_per_archer": 3,
+     "n_passes": 3
+    }
+   }
+  },
+  {
+   "command": "stage2_info",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 1,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "n_archers": 2,
+     "setup_mode": "simple",
+     "target": {
+      "distance_label": "20 yd",
+      "face_cm": 60,
+      "indoor": true
+     },
+     "default_start_weight": 3,
+     "default_n_lookback": 4
+    }
+   }
+  },
+  {
+   "command": "apply_stage2",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 1,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [],
+     "assignment": null,
+     "scores": {},
+     "current_pass": 0
+    },
+    "archers": [
+     {
+      "name": "Ann",
+      "bowstyle": "Recurve",
+      "handicap": "30"
+     },
+     {
+      "name": "Ben",
+      "bowstyle": "Recurve",
+      "handicap": "30"
+     }
+    ],
+    "updating": {
+     "update_handicaps": false
+    },
+    "seed": 4
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "setup",
+      "setup": {
+       "stage": 2,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {},
+      "current_pass": 0
+     }
+    }
+   }
+  },
+  {
+   "command": "redraw",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 2,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {},
+     "current_pass": 0
+    },
+    "seed": 5
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "setup",
+      "setup": {
+       "stage": 2,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {},
+      "current_pass": 0
+     }
+    }
+   }
+  },
+  {
+   "command": "pairings",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 2,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {},
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "passes": [
+      {
+       "pass_number": 1,
+       "matches": [
+        {
+         "a": "Ben",
+         "b": "Ann"
+        }
+       ],
+       "sitting_out": []
+      },
+      {
+       "pass_number": 2,
+       "matches": [
+        {
+         "a": "Ben",
+         "b": "Ann"
+        }
+       ],
+       "sitting_out": []
+      },
+      {
+       "pass_number": 3,
+       "matches": [
+        {
+         "a": "Ben",
+         "b": "Ann"
+        }
+       ],
+       "sitting_out": []
+      }
+     ],
+     "started": false
+    }
+   }
+  },
+  {
+   "command": "start_event",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "setup",
+     "setup": {
+      "stage": 2,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {},
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {},
+      "current_pass": 0
+     }
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {},
+     "current_pass": 0
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 90,
+     "1": 90
+    },
+    "closest": null
+   },
+   "result": {
+    "ok": false,
+    "error": {
+     "code": "tiebreak_required",
+     "message": "Percentile and score are tied. Tick which archer's arrow was closest to the middle, then save again."
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {},
+     "current_pass": 0
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 90,
+     "1": 90
+    },
+    "closest": 7
+   },
+   "result": {
+    "ok": false,
+    "error": {
+     "code": "validation",
+     "message": "The archer closest to the middle must be one of the two in this match."
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {},
+     "current_pass": 0
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 90,
+     "1": 90
+    },
+    "closest": 1
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 90,
+          "1": 90
+         },
+         "closest": 1
+        }
+       }
+      },
+      "current_pass": 0
+     },
+     "match": {
+      "pass_index": 0,
+      "pass_number": 1,
+      "n_passes": 3,
+      "match_index": 0,
+      "bye": false,
+      "archers": [
+       {
+        "position": 0,
+        "name": "Ben",
+        "max_score": 120,
+        "score": 90
+       },
+       {
+        "position": 1,
+        "name": "Ann",
+        "max_score": 120,
+        "score": 90
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ben",
+        "score": "90",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "63.5",
+        "winner": "No"
+       },
+       {
+        "archer": "Ann",
+        "score": "90",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "63.5",
+        "winner": "Yes"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": true,
+      "closest": 1,
+      "next_unscored_match": null,
+      "pass_complete": true,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      }
+     },
+     "current_pass": 0
+    },
+    "match_index": 0
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 0,
+     "pass_number": 1,
+     "n_passes": 3,
+     "match_index": 0,
+     "bye": false,
+     "archers": [
+      {
+       "position": 0,
+       "name": "Ben",
+       "max_score": 120,
+       "score": 90
+      },
+      {
+       "position": 1,
+       "name": "Ann",
+       "max_score": 120,
+       "score": 90
+      }
+     ],
+     "scored": true,
+     "rows": [
+      {
+       "archer": "Ben",
+       "score": "90",
+       "percentile": "0.0%",
+       "start_handicap": "30.0",
+       "handicap": "63.5",
+       "winner": "No"
+      },
+      {
+       "archer": "Ann",
+       "score": "90",
+       "percentile": "0.0%",
+       "start_handicap": "30.0",
+       "handicap": "63.5",
+       "winner": "Yes"
+      }
+     ],
+     "show_start_handicap": false,
+     "decided_by_closest": true,
+     "closest": 1,
+     "next_unscored_match": null,
+     "pass_complete": true,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      }
+     },
+     "current_pass": 0
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 91,
+     "1": 90
+    },
+    "closest": 1
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 91,
+          "1": 90
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 0
+     },
+     "match": {
+      "pass_index": 0,
+      "pass_number": 1,
+      "n_passes": 3,
+      "match_index": 0,
+      "bye": false,
+      "archers": [
+       {
+        "position": 0,
+        "name": "Ben",
+        "max_score": 120,
+        "score": 91
+       },
+       {
+        "position": 1,
+        "name": "Ann",
+        "max_score": 120,
+        "score": 90
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ben",
+        "score": "91",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "62.7",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Ann",
+        "score": "90",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "63.5",
+        "winner": "No"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": null,
+      "pass_complete": true,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 91,
+         "1": 90
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 0
+    },
+    "match_index": 0
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "pass_index": 0,
+     "pass_number": 1,
+     "n_passes": 3,
+     "match_index": 0,
+     "bye": false,
+     "archers": [
+      {
+       "position": 0,
+       "name": "Ben",
+       "max_score": 120,
+       "score": 91
+      },
+      {
+       "position": 1,
+       "name": "Ann",
+       "max_score": 120,
+       "score": 90
+      }
+     ],
+     "scored": true,
+     "rows": [
+      {
+       "archer": "Ben",
+       "score": "91",
+       "percentile": "0.0%",
+       "start_handicap": "30.0",
+       "handicap": "62.7",
+       "winner": "Yes"
+      },
+      {
+       "archer": "Ann",
+       "score": "90",
+       "percentile": "0.0%",
+       "start_handicap": "30.0",
+       "handicap": "63.5",
+       "winner": "No"
+      }
+     ],
+     "show_start_handicap": false,
+     "decided_by_closest": false,
+     "closest": null,
+     "next_unscored_match": null,
+     "pass_complete": true,
+     "event_complete": false
+    }
+   }
+  },
+  {
+   "command": "advance",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      }
+     },
+     "current_pass": 0
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 90,
+          "1": 90
+         },
+         "closest": 1
+        }
+       }
+      },
+      "current_pass": 1
+     }
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      }
+     },
+     "current_pass": 1
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 80,
+     "1": 85
+    },
+    "closest": 0
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 90,
+          "1": 90
+         },
+         "closest": 1
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 80,
+          "1": 85
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 1
+     },
+     "match": {
+      "pass_index": 1,
+      "pass_number": 2,
+      "n_passes": 3,
+      "match_index": 0,
+      "bye": false,
+      "archers": [
+       {
+        "position": 0,
+        "name": "Ben",
+        "max_score": 120,
+        "score": 80
+       },
+       {
+        "position": 1,
+        "name": "Ann",
+        "max_score": 120,
+        "score": 85
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ben",
+        "score": "80",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "70.3",
+        "winner": "No"
+       },
+       {
+        "archer": "Ann",
+        "score": "85",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "67.1",
+        "winner": "Yes"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": false,
+      "closest": null,
+      "next_unscored_match": null,
+      "pass_complete": true,
+      "event_complete": false
+     }
+    }
+   }
+  },
+  {
+   "command": "advance",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 1
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "running",
+      "setup": {
+       "stage": 3,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 90,
+          "1": 90
+         },
+         "closest": 1
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 80,
+          "1": 85
+         },
+         "closest": null
+        }
+       }
+      },
+      "current_pass": 2
+     }
+    }
+   }
+  },
+  {
+   "command": "record_match",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "running",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "match_index": 0,
+    "scores": {
+     "0": 100,
+     "1": 100
+    },
+    "closest": 0
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "document": {
+      "schema_version": 1,
+      "id": "fixture-tie_break",
+      "name": "New event",
+      "created_at": "2026-10-04T15:30:12",
+      "updated_at": "2026-10-04T15:30:12",
+      "revision": 0,
+      "status": "complete",
+      "setup": {
+       "stage": 3,
+       "n_archers": 2,
+       "total_arrows": 36,
+       "n_pass": 12,
+       "setup_mode": "simple",
+       "shoot_byes": true,
+       "target": {
+        "distance_key": "20yd",
+        "face_cm": 60
+       },
+       "update_handicaps": false,
+       "n_lookback": null,
+       "start_weight": null
+      },
+      "archers": [
+       {
+        "name": "Ann",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       },
+       {
+        "name": "Ben",
+        "bowstyle": "Recurve",
+        "handicap": 30.0,
+        "target": null
+       }
+      ],
+      "assignment": [
+       1,
+       0
+      ],
+      "scores": {
+       "0": {
+        "0": {
+         "scores": {
+          "0": 90,
+          "1": 90
+         },
+         "closest": 1
+        }
+       },
+       "1": {
+        "0": {
+         "scores": {
+          "0": 80,
+          "1": 85
+         },
+         "closest": null
+        }
+       },
+       "2": {
+        "0": {
+         "scores": {
+          "0": 100,
+          "1": 100
+         },
+         "closest": 0
+        }
+       }
+      },
+      "current_pass": 2
+     },
+     "match": {
+      "pass_index": 2,
+      "pass_number": 3,
+      "n_passes": 3,
+      "match_index": 0,
+      "bye": false,
+      "archers": [
+       {
+        "position": 0,
+        "name": "Ben",
+        "max_score": 120,
+        "score": 100
+       },
+       {
+        "position": 1,
+        "name": "Ann",
+        "max_score": 120,
+        "score": 100
+       }
+      ],
+      "scored": true,
+      "rows": [
+       {
+        "archer": "Ben",
+        "score": "100",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "54.5",
+        "winner": "Yes"
+       },
+       {
+        "archer": "Ann",
+        "score": "100",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "54.5",
+        "winner": "No"
+       }
+      ],
+      "show_start_handicap": false,
+      "decided_by_closest": true,
+      "closest": 0,
+      "next_unscored_match": null,
+      "pass_complete": true,
+      "event_complete": true
+     }
+    }
+   }
+  },
+  {
+   "command": "results",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 100,
+         "1": 100
+        },
+        "closest": 0
+       }
+      }
+     },
+     "current_pass": 2
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "leaderboard": [
+      {
+       "archer_index": 1,
+       "rank": "1",
+       "name": "Ann",
+       "points": "2",
+       "passes_decided": "3",
+       "starting_handicap": "30",
+       "to_date_handicap": "62.2"
+      },
+      {
+       "archer_index": 0,
+       "rank": "2",
+       "name": "Ben",
+       "points": "1",
+       "passes_decided": "3",
+       "starting_handicap": "30",
+       "to_date_handicap": "63.5"
+      }
+     ],
+     "pairwise": [
+      {
+       "archer_a": 0,
+       "archer_b": 1,
+       "name_a": "Ben",
+       "name_b": "Ann",
+       "wins_a": "1",
+       "wins_b": "2",
+       "draw": false,
+       "result": "Ann wins"
+      }
+     ],
+     "passes": [
+      {
+       "pass_index": 0,
+       "pass_number": 1,
+       "groups": [
+        [
+         {
+          "archer": "Ben",
+          "score": "90",
+          "percentile": "0.0%",
+          "start_handicap": "30.0",
+          "handicap": "63.5",
+          "winner": "No"
+         },
+         {
+          "archer": "Ann",
+          "score": "90",
+          "percentile": "0.0%",
+          "start_handicap": "30.0",
+          "handicap": "63.5",
+          "winner": "Yes"
+         }
+        ]
+       ]
+      },
+      {
+       "pass_index": 1,
+       "pass_number": 2,
+       "groups": [
+        [
+         {
+          "archer": "Ben",
+          "score": "80",
+          "percentile": "0.0%",
+          "start_handicap": "30.0",
+          "handicap": "70.3",
+          "winner": "No"
+         },
+         {
+          "archer": "Ann",
+          "score": "85",
+          "percentile": "0.0%",
+          "start_handicap": "30.0",
+          "handicap": "67.1",
+          "winner": "Yes"
+         }
+        ]
+       ]
+      },
+      {
+       "pass_index": 2,
+       "pass_number": 3,
+       "groups": [
+        [
+         {
+          "archer": "Ben",
+          "score": "100",
+          "percentile": "0.0%",
+          "start_handicap": "30.0",
+          "handicap": "54.5",
+          "winner": "Yes"
+         },
+         {
+          "archer": "Ann",
+          "score": "100",
+          "percentile": "0.0%",
+          "start_handicap": "30.0",
+          "handicap": "54.5",
+          "winner": "No"
+         }
+        ]
+       ]
+      }
+     ],
+     "completed_passes": 3,
+     "n_passes": 3,
+     "current_pass_number": 3,
+     "event_complete": true,
+     "show_start_handicap": false
+    }
+   }
+  },
+  {
+   "command": "archer_results",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 100,
+         "1": 100
+        },
+        "closest": 0
+       }
+      }
+     },
+     "current_pass": 2
+    }
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "sections": [
+      {
+       "archer_index": 0,
+       "name": "Ben",
+       "total_score": "270",
+       "starting_handicap": "30",
+       "to_date_handicap": "63.5",
+       "rows": [
+        {
+         "pass_number": "1",
+         "opponent": "Ann",
+         "score": "90",
+         "percentile": "0.0%",
+         "start_handicap": "30.0",
+         "handicap": "63.5"
+        },
+        {
+         "pass_number": "2",
+         "opponent": "Ann",
+         "score": "80",
+         "percentile": "0.0%",
+         "start_handicap": "30.0",
+         "handicap": "70.3"
+        },
+        {
+         "pass_number": "3",
+         "opponent": "Ann",
+         "score": "100",
+         "percentile": "0.0%",
+         "start_handicap": "30.0",
+         "handicap": "54.5"
+        }
+       ],
+       "average": {
+        "score": "90.0",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "62.8"
+       }
+      },
+      {
+       "archer_index": 1,
+       "name": "Ann",
+       "total_score": "275",
+       "starting_handicap": "30",
+       "to_date_handicap": "62.2",
+       "rows": [
+        {
+         "pass_number": "1",
+         "opponent": "Ben",
+         "score": "90",
+         "percentile": "0.0%",
+         "start_handicap": "30.0",
+         "handicap": "63.5"
+        },
+        {
+         "pass_number": "2",
+         "opponent": "Ben",
+         "score": "85",
+         "percentile": "0.0%",
+         "start_handicap": "30.0",
+         "handicap": "67.1"
+        },
+        {
+         "pass_number": "3",
+         "opponent": "Ben",
+         "score": "100",
+         "percentile": "0.0%",
+         "start_handicap": "30.0",
+         "handicap": "54.5"
+        }
+       ],
+       "average": {
+        "score": "91.7",
+        "percentile": "0.0%",
+        "start_handicap": "30.0",
+        "handicap": "61.7"
+       }
+      }
+     ],
+     "completed_passes": 3,
+     "n_passes": 3,
+     "show_start_handicap": false
+    }
+   }
+  },
+  {
+   "command": "pair_chart",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 100,
+         "1": 100
+        },
+        "closest": 0
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "a": 0,
+    "b": 1
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "archer_a": {
+      "name": "Ben",
+      "legend": "Ben (handicap 30)",
+      "passes": [
+       {
+        "index": 0,
+        "score": 90
+       },
+       {
+        "index": 1,
+        "score": 80
+       },
+       {
+        "index": 2,
+        "score": 100
+       }
+      ]
+     },
+     "archer_b": {
+      "name": "Ann",
+      "legend": "Ann (handicap 30)",
+      "passes": [
+       {
+        "index": 0,
+        "score": 90
+       },
+       {
+        "index": 1,
+        "score": 85
+       },
+       {
+        "index": 2,
+        "score": 100
+       }
+      ]
+     },
+     "distribution_a": [
+      {
+       "x": 79,
+       "y": 1.3677284941665435e-50
+      },
+      {
+       "x": 80,
+       "y": 3.626753909396424e-48
+      },
+      {
+       "x": 81,
+       "y": 8.422415557979341e-46
+      },
+      {
+       "x": 82,
+       "y": 1.712737349151318e-43
+      },
+      {
+       "x": 83,
+       "y": 3.049358445082261e-41
+      },
+      {
+       "x": 84,
+       "y": 4.752411076434621e-39
+      },
+      {
+       "x": 85,
+       "y": 6.482307283123855e-37
+      },
+      {
+       "x": 86,
+       "y": 7.737051457259989e-35
+      },
+      {
+       "x": 87,
+       "y": 8.079173820249809e-33
+      },
+      {
+       "x": 88,
+       "y": 7.379205261656804e-31
+      },
+      {
+       "x": 89,
+       "y": 5.893765981139718e-29
+      },
+      {
+       "x": 90,
+       "y": 4.1151309019017086e-27
+      },
+      {
+       "x": 91,
+       "y": 2.5108473428717933e-25
+      },
+      {
+       "x": 92,
+       "y": 1.3381623559968856e-23
+      },
+      {
+       "x": 93,
+       "y": 6.226163881263527e-22
+      },
+      {
+       "x": 94,
+       "y": 2.5275043910131743e-20
+      },
+      {
+       "x": 95,
+       "y": 8.945913399288298e-19
+      },
+      {
+       "x": 96,
+       "y": 2.7585821765303642e-17
+      },
+      {
+       "x": 97,
+       "y": 7.404675652646274e-16
+      },
+      {
+       "x": 98,
+       "y": 1.7285174566334224e-14
+      },
+      {
+       "x": 99,
+       "y": 3.5053182319369075e-13
+      },
+      {
+       "x": 100,
+       "y": 6.1679763755529376e-12
+      },
+      {
+       "x": 101,
+       "y": 9.404101832695989e-11
+      },
+      {
+       "x": 102,
+       "y": 1.2403797062091119e-09
+      },
+      {
+       "x": 103,
+       "y": 1.4126889493711135e-08
+      },
+      {
+       "x": 104,
+       "y": 1.3862986488905568e-07
+      },
+      {
+       "x": 105,
+       "y": 1.1692431340203971e-06
+      },
+      {
+       "x": 106,
+       "y": 8.45178048223095e-06
+      },
+      {
+       "x": 107,
+       "y": 5.2186801279663577e-05
+      },
+      {
+       "x": 108,
+       "y": 0.00027422049407403856
+      },
+      {
+       "x": 109,
+       "y": 0.0012208339543962068
+      },
+      {
+       "x": 110,
+       "y": 0.004581139883084065
+      },
+      {
+       "x": 111,
+       "y": 0.014398596513136505
+      },
+      {
+       "x": 112,
+       "y": 0.03760993427662689
+      },
+      {
+       "x": 113,
+       "y": 0.0808311668060416
+      },
+      {
+       "x": 114,
+       "y": 0.14106654607428037
+      },
+      {
+       "x": 115,
+       "y": 0.19635246233916162
+      },
+      {
+       "x": 116,
+       "y": 0.21249611181395206
+      },
+      {
+       "x": 117,
+       "y": 0.17210996698614509
+      },
+      {
+       "x": 118,
+       "y": 0.09806656622467537
+      },
+      {
+       "x": 119,
+       "y": 0.035031671722307
+      },
+      {
+       "x": 120,
+       "y": 0.00589882098951225
+      }
+     ],
+     "distribution_b": [
+      {
+       "x": 79,
+       "y": 1.3677284941665435e-50
+      },
+      {
+       "x": 80,
+       "y": 3.626753909396424e-48
+      },
+      {
+       "x": 81,
+       "y": 8.422415557979341e-46
+      },
+      {
+       "x": 82,
+       "y": 1.712737349151318e-43
+      },
+      {
+       "x": 83,
+       "y": 3.049358445082261e-41
+      },
+      {
+       "x": 84,
+       "y": 4.752411076434621e-39
+      },
+      {
+       "x": 85,
+       "y": 6.482307283123855e-37
+      },
+      {
+       "x": 86,
+       "y": 7.737051457259989e-35
+      },
+      {
+       "x": 87,
+       "y": 8.079173820249809e-33
+      },
+      {
+       "x": 88,
+       "y": 7.379205261656804e-31
+      },
+      {
+       "x": 89,
+       "y": 5.893765981139718e-29
+      },
+      {
+       "x": 90,
+       "y": 4.1151309019017086e-27
+      },
+      {
+       "x": 91,
+       "y": 2.5108473428717933e-25
+      },
+      {
+       "x": 92,
+       "y": 1.3381623559968856e-23
+      },
+      {
+       "x": 93,
+       "y": 6.226163881263527e-22
+      },
+      {
+       "x": 94,
+       "y": 2.5275043910131743e-20
+      },
+      {
+       "x": 95,
+       "y": 8.945913399288298e-19
+      },
+      {
+       "x": 96,
+       "y": 2.7585821765303642e-17
+      },
+      {
+       "x": 97,
+       "y": 7.404675652646274e-16
+      },
+      {
+       "x": 98,
+       "y": 1.7285174566334224e-14
+      },
+      {
+       "x": 99,
+       "y": 3.5053182319369075e-13
+      },
+      {
+       "x": 100,
+       "y": 6.1679763755529376e-12
+      },
+      {
+       "x": 101,
+       "y": 9.404101832695989e-11
+      },
+      {
+       "x": 102,
+       "y": 1.2403797062091119e-09
+      },
+      {
+       "x": 103,
+       "y": 1.4126889493711135e-08
+      },
+      {
+       "x": 104,
+       "y": 1.3862986488905568e-07
+      },
+      {
+       "x": 105,
+       "y": 1.1692431340203971e-06
+      },
+      {
+       "x": 106,
+       "y": 8.45178048223095e-06
+      },
+      {
+       "x": 107,
+       "y": 5.2186801279663577e-05
+      },
+      {
+       "x": 108,
+       "y": 0.00027422049407403856
+      },
+      {
+       "x": 109,
+       "y": 0.0012208339543962068
+      },
+      {
+       "x": 110,
+       "y": 0.004581139883084065
+      },
+      {
+       "x": 111,
+       "y": 0.014398596513136505
+      },
+      {
+       "x": 112,
+       "y": 0.03760993427662689
+      },
+      {
+       "x": 113,
+       "y": 0.0808311668060416
+      },
+      {
+       "x": 114,
+       "y": 0.14106654607428037
+      },
+      {
+       "x": 115,
+       "y": 0.19635246233916162
+      },
+      {
+       "x": 116,
+       "y": 0.21249611181395206
+      },
+      {
+       "x": 117,
+       "y": 0.17210996698614509
+      },
+      {
+       "x": 118,
+       "y": 0.09806656622467537
+      },
+      {
+       "x": 119,
+       "y": 0.035031671722307
+      },
+      {
+       "x": 120,
+       "y": 0.00589882098951225
+      }
+     ],
+     "x_min": 79,
+     "x_max": 120,
+     "y_max": 0.24437052858604486,
+     "current_pass": 2
+    }
+   }
+  },
+  {
+   "command": "export",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 100,
+         "1": 100
+        },
+        "closest": 0
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "kind": "leaderboard_csv",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "filename": "leaderboard_20261004-153012.csv",
+     "mime_type": "text/csv",
+     "encoding": "utf-8",
+     "content": "Rank,Archer,Points,Passes decided,Starting handicap,To-date handicap,Exported\r\n1,Ann,2,3,30,62.2,2026-10-04 15:30:12\r\n2,Ben,1,3,30,63.5,2026-10-04 15:30:12\r\n"
+    }
+   }
+  },
+  {
+   "command": "export",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 100,
+         "1": 100
+        },
+        "closest": 0
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "kind": "archer_results_csv",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "filename": "archer-results_20261004-153012.csv",
+     "mime_type": "text/csv",
+     "encoding": "utf-8",
+     "content": "Archer,Starting handicap,To-date handicap,Pass,Opponent,Score,Percentile (%),Handicap of score,Exported\r\nBen,30,63.5,1,Ann,90,0.0,63.5,2026-10-04 15:30:12\r\nBen,30,63.5,2,Ann,80,0.0,70.3,2026-10-04 15:30:12\r\nBen,30,63.5,3,Ann,100,0.0,54.5,2026-10-04 15:30:12\r\nAnn,30,62.2,1,Ben,90,0.0,63.5,2026-10-04 15:30:12\r\nAnn,30,62.2,2,Ben,85,0.0,67.1,2026-10-04 15:30:12\r\nAnn,30,62.2,3,Ben,100,0.0,54.5,2026-10-04 15:30:12\r\n"
+    }
+   }
+  },
+  {
+   "command": "export",
+   "payload": {
+    "doc": {
+     "schema_version": 1,
+     "id": "fixture-tie_break",
+     "name": "New event",
+     "created_at": "2026-10-04T15:30:12",
+     "updated_at": "2026-10-04T15:30:12",
+     "revision": 0,
+     "status": "complete",
+     "setup": {
+      "stage": 3,
+      "n_archers": 2,
+      "total_arrows": 36,
+      "n_pass": 12,
+      "setup_mode": "simple",
+      "shoot_byes": true,
+      "target": {
+       "distance_key": "20yd",
+       "face_cm": 60
+      },
+      "update_handicaps": false,
+      "n_lookback": null,
+      "start_weight": null
+     },
+     "archers": [
+      {
+       "name": "Ann",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      },
+      {
+       "name": "Ben",
+       "bowstyle": "Recurve",
+       "handicap": 30.0,
+       "target": null
+      }
+     ],
+     "assignment": [
+      1,
+      0
+     ],
+     "scores": {
+      "0": {
+       "0": {
+        "scores": {
+         "0": 90,
+         "1": 90
+        },
+        "closest": 1
+       }
+      },
+      "1": {
+       "0": {
+        "scores": {
+         "0": 80,
+         "1": 85
+        },
+        "closest": null
+       }
+      },
+      "2": {
+       "0": {
+        "scores": {
+         "0": 100,
+         "1": 100
+        },
+        "closest": 0
+       }
+      }
+     },
+     "current_pass": 2
+    },
+    "kind": "results_pdf",
+    "now_iso": "2026-10-04T15:30:12"
+   },
+   "result": {
+    "ok": true,
+    "data": {
+     "filename": "results_20261004-153012.pdf",
+     "mime_type": "application/pdf",
+     "encoding": "base64",
+     "content": {
+      "header": "%PDF-1.3",
+      "pages": 1,
+      "text": [
+       "Handicapped H2H results",
+       "Exported 2026-10-04 15:30:12 (local time)",
+       "2 archers, 12 arrows per pass. 3 of 3 passes completed (only completed passes are counted).",
+       "Leaderboard",
+       "Rank",
+       "Archer",
+       "Points",
+       "Passes decided",
+       "Starting",
+       "handicap",
+       "To-date handicap",
+       "1",
+       "Ann",
+       "2",
+       "3",
+       "30",
+       "62.2",
+       "2",
+       "Ben",
+       "1",
+       "3",
+       "30",
+       "63.5",
+       "Ben - total score 270 - starting handicap 30 - to-date handicap 63.5",
+       "Pass",
+       "Opponent",
+       "Score",
+       "Percentile",
+       "Handicap",
+       "1",
+       "Ann",
+       "90",
+       "0.0%",
+       "63.5",
+       "2",
+       "Ann",
+       "80",
+       "0.0%",
+       "70.3",
+       "3",
+       "Ann",
+       "100",
+       "0.0%",
+       "54.5",
+       "Average",
+       "90.0",
+       "0.0%",
+       "62.8",
+       "Ann - total score 275 - starting handicap 30 - to-date handicap 62.2",
+       "Pass",
+       "Opponent",
+       "Score",
+       "Percentile",
+       "Handicap",
+       "1",
+       "Ben",
+       "90",
+       "0.0%",
+       "63.5",
+       "2",
+       "Ben",
+       "85",
+       "0.0%",
+       "67.1",
+       "3",
+       "Ben",
+       "100",
+       "0.0%",
+       "54.5",
+       "Average",
+       "91.7",
+       "0.0%",
+       "61.7"
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

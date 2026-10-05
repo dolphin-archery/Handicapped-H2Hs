@@ -1,6 +1,16 @@
 # Handicapped H2Hs
 
-**Status: under active development, not yet feature-complete.**
+**Status: the Flask prototype is feature-complete; UI polish and deployment are pending.**
+
+The localhost app covers everything specified so far (three-stage setup, simple
+and advanced target setup, per-pass scoring with tie-break, optional handicap
+updating, graph view, leaderboard, per-archer results, CSV/PDF exports and the
+handicap calculator), with 900+ automated tests and real-browser verification.
+Still to do (see "Future Plans" in `Specification/feedback.md`): a nicer UI
+(likely a proper front-end design system rather than hand-written Flask
+templates), an in-app explanation of the maths, a user guide, and publication
+to an existing web page / GitHub Pages. Persistence is deliberately absent:
+state lives in memory for a single scorer on one machine.
 
 A localhost web tool for running fair head-to-head (H2H) archery matches
 between archers of different skill levels and bowstyles (Recurve, Compound,
@@ -156,8 +166,11 @@ Specification/          Design documents driving development:
                             work progresses.
   feedback.md               Rounds of feedback on the running app.
   logbook.md                Implementation history, assumptions, and notes.
-  loopPrompt.md / feedbackPrompt.md
-                             Process instructions used to drive development.
+  UISpec.md                 Specification for the planned UI redesign.
+  deploymentConstrains.md   Hosting constraints for the static (Pyodide,
+                             GitHub Pages) deployment.
+Prompts/                Process instructions used to drive development
+                         (loopPrompt.md, feedbackPrompt.md, UILoopPrompt.md).
 Initial Testing/        Original problem write-up (ideas.md), the statistical
                          evaluation that the current design is based on
                          (idea_evaluation.md), and an exploratory notebook for
@@ -198,4 +211,7 @@ uv run pytest
 Before making changes, read `Specification/AISpec.md` and the most recent
 entries in `Specification/logbook.md` to understand current scope and
 decisions already made. Known limitations and explicitly out-of-scope items
-(for this version) are listed in `Specification/AISpec.md`.
+(for this version) are listed in `Specification/AISpec.md`. The next phase
+(UI and deployment) is described under "Future Plans" in
+`Specification/feedback.md`; deploying beyond localhost will need persistence
+and multi-user handling, which the prototype intentionally does not have.
