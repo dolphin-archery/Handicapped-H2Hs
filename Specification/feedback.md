@@ -129,6 +129,11 @@ During setup stage 2 if in advanced mode have a yes/no toggle for 'Update Handic
 ## Deployment
 - Publication to existing webpage/githubpages
 
+## UI Feedback
+- Red/green higlight on yes/no winners
+- pairwise result charts: if pair show more than one match together then vertical lines for all shared passes should be plotted by default
+- Change 'to-date' to 'end' once event is completed
+
 ## Additional Features
 ### Maths Explanations
 Both to use graphs where appropriate
