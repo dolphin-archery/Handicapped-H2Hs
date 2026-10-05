@@ -46,6 +46,28 @@ export function About() {
         page brings them back, on this or another device.
       </Text>
 
+      <Title order={2} size="h3">
+        Licence, source and credits
+      </Title>
+      <Text>
+        Copyright © 2026 Alex Williams. This is free software under the{" "}
+        <Anchor href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noreferrer">
+          GNU Affero General Public License, version 3
+        </Anchor>
+        , and its{" "}
+        <Anchor
+          href="https://github.com/dolphin-archery/Handicapped-H2Hs"
+          target="_blank"
+          rel="noreferrer"
+        >
+          source code is available on GitHub
+        </Anchor>
+        . It is provided as is, without any warranty, and without any promise that this website will
+        stay available; the author accepts no liability for its use or results. To use the software
+        under other terms, for example commercially, ask about a separate licence through the source
+        repository. Third-party libraries keep their own licences.
+      </Text>
+
       <Text size="sm" c="dimmed">
         The calculations use the{" "}
         <Anchor

@@ -1,6 +1,8 @@
 {
   "name": "handicapped-h2hs-web",
   "private": true,
+  "license": "AGPL-3.0-only",
+  "author": "Alex Williams",
   "type": "module",
   "scripts": {
     "dev": "vite",

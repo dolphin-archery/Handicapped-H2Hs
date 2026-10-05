@@ -3,6 +3,9 @@ name = "handicapped-h2hs"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE", "NOTICE.md"]
+authors = [{ name = "Alex Williams" }]
 requires-python = ">=3.14"
 dependencies = [
     "archeryutils>=3.0.0",
