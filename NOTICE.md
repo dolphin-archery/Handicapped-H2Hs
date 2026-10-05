@@ -32,4 +32,5 @@ released under different terms.
 
 The software uses third-party libraries (for example React, Mantine, Chart.js, Pyodide, numpy,
 archeryutils and fpdf2). They are covered by their own licences, not by this one, and their
-copyright and licence notices apply to them.
+copyright and licence notices apply to them. Those notices are collected in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

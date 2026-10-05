@@ -217,7 +217,10 @@ that you keep the copyright notice and release your source under the same licenc
 for modified versions you run as a service). It comes **as is, without any warranty or
 liability** (see sections 15 and 16 of the licence). If you want to use it under other terms, for
 example in a closed-source or commercial product, ask about a separate commercial licence (see
-`NOTICE.md`). Third-party libraries keep their own licences.
+`NOTICE.md`). Third-party libraries keep their own licences, listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). That file is generated; regenerate it after
+changing dependencies with `uv run python scripts/generate_third_party_notices.py` (run
+`npm ci` in `web/` first).
 
 ## Contributing / continuing development
 
