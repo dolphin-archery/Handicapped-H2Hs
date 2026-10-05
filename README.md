@@ -206,6 +206,22 @@ and run matches.
 uv run pytest
 ```
 
+## Licence
+
+Copyright (C) 2026 Alex Williams. Licensed under the GNU Affero General Public License,
+version 3 only ([`LICENSE`](LICENSE)); the credit requirement and commercial-licensing
+information are in [`NOTICE.md`](NOTICE.md).
+
+In short: you may use, study, modify and share this software, including commercially, provided
+that you keep the copyright notice and release your source under the same licence (including
+for modified versions you run as a service). It comes **as is, without any warranty or
+liability** (see sections 15 and 16 of the licence). If you want to use it under other terms, for
+example in a closed-source or commercial product, ask about a separate commercial licence (see
+`NOTICE.md`). Third-party libraries keep their own licences, listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). That file is generated; regenerate it after
+changing dependencies with `uv run python scripts/generate_third_party_notices.py` (run
+`npm ci` in `web/` first).
+
 ## Contributing / continuing development
 
 Before making changes, read `Specification/AISpec.md` and the most recent
